@@ -748,6 +748,24 @@ function findChromium() {
   s = await S();
   check('the house interior loads', s.world.area === 'house', s.world.area);
   check('fridge and shelf tiles are in place', await page.evaluate(() => mapChar(12, 1) === 'r' && mapChar(2, 1) === 'a' && mapChar(10, 12) === 'D'), '');
+  // Deliberate interior doors (Daniel's playtest, Nov 26, 2026): entry
+  // drops Frank at (10,11), one tile above the exit — brushing the door
+  // tile must not leave; pressing A while standing on it must.
+  await page.keyboard.down('ArrowDown'); await page.waitForTimeout(200); await page.keyboard.up('ArrowDown');
+  await page.waitForTimeout(300);
+  s = await S();
+  check('house door: stepping onto the exit tile does not leave', s.world.area === 'house' && s.player.x === 10 && s.player.y === 12, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(200); await page.keyboard.up('ArrowUp');
+  await page.waitForTimeout(200);
+  await page.keyboard.down('ArrowDown'); await page.waitForTimeout(200); await page.keyboard.up('ArrowDown');
+  await page.waitForTimeout(300);
+  s = await S();
+  check('house door: brushing past it again still does not leave', s.world.area === 'house' && s.player.y === 12, 'area=' + s.world.area + ' y=' + s.player.y);
+  await tap('z'); // A on the door tile: the deliberate way out
+  await page.waitForTimeout(300);
+  s = await S();
+  check('house door: pressing A on the exit tile leaves for the yard', s.world.area === 'yard', 'area=' + s.world.area);
+  await page.evaluate(() => window.__hss.gotoArea('house', 10, 11));
   await page.evaluate(() => window.__hss.gotoArea('yard', 10, 5));
   await page.evaluate(() => window.__hss.fridgeSeeds());
   await page.evaluate(() => { G.save.world.flags.carried = true; saveGame(); });
@@ -951,6 +969,17 @@ function findChromium() {
   check("oma's promise is written in the register", s.promise === true && s.mode === 'card' && s.world.ch === 6, 'promise=' + s.promise + ' mode=' + s.mode + ' ch=' + s.world.ch);
   await tap('z'); await page.waitForTimeout(300);
   await dismissDialogue(8);
+  // the downstairs stairs share the deliberate door: entry lands at
+  // (10,5), the up-stairs tile is (10,6) — brushing it must not climb
+  await page.evaluate(() => window.__hss.gotoArea('oma', 10, 5));
+  await page.keyboard.down('ArrowDown'); await page.waitForTimeout(200); await page.keyboard.up('ArrowDown');
+  await page.waitForTimeout(300);
+  s = await S();
+  check('stairs door: stepping onto the stairs tile does not climb', s.world.area === 'oma' && s.player.y === 6, 'area=' + s.world.area + ' y=' + s.player.y);
+  await tap('z');
+  await page.waitForTimeout(300);
+  s = await S();
+  check('stairs door: pressing A on the stairs tile climbs to the barn', s.world.area === 'barnIn', 'area=' + s.world.area);
 
   // CHAPTER 6 — THE FIELD: the hard spring, the repotting, the long
   // prep, planting day, and the first night.

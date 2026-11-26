@@ -3796,6 +3796,12 @@ const EXITS = { // area -> () => [{x,y,to,tx,ty}] (state-dependent)
   },
   green: () => [{ x: 6, y: 8, to: 'barnOut', tx: 20, ty: 11 }],
 };
+/* Interior doors are DELIBERATE (Daniel's playtest, Nov 26, 2026): every
+   interior entry drops Frank one tile from the exit, so a brushed door
+   tile was a constant accidental exit — worst in the Chapter 2 house.
+   Inside these areas, stepping on the exit tile only shows the way;
+   pressing A on it is the way out. Outdoor roads still exit on the step. */
+const DELIBERATE_EXITS = new Set(['house', 'barnIn', 'oma', 'green']);
 /* NPCs: simple folk, placed by chapter and step. Sets are palettes for the
    little figure drawer; Constance uses her real sprite set. */
 const NPC_SETS = {
@@ -6064,7 +6070,8 @@ function overworldUpdate(dt) {
   }
   if (stepped) {
     const ex = exitsFor(area).find(e => e.x === player.tx && e.y === player.ty);
-    if (ex) { setArea(ex.to, ex.tx, ex.ty); return; }
+    if (ex && DELIBERATE_EXITS.has(area)) { toast('THE DOOR — PRESS A TO STEP THROUGH'); }
+    else if (ex) { setArea(ex.to, ex.tx, ex.ty); return; }
     player.stepAlt = !player.stepAlt;
     if (dx0 && dy0) diagX = !diagX;
     alvinTarget = { x: player.tx - lastStep.dx, y: player.ty - lastStep.dy }; // tile the player just left
@@ -6110,6 +6117,12 @@ let menuSel = 0;
 function potIndexAt(x, y) { return (y === 10 && x >= 9 && x <= 14) ? x - 9 : -1; }
 function interact() {
   const f = frontTile(player), s = G.save;
+  // Deliberate interior doors: standing on an interior exit tile, A is
+  // the way out — walking onto the tile alone never leaves (see EXITS).
+  if (DELIBERATE_EXITS.has(area)) {
+    const ex = exitsFor(area).find(e => e.x === player.tx && e.y === player.ty);
+    if (ex) { setArea(ex.to, ex.tx, ex.ty); return; }
+  }
   const npc = npcList.find(n => n.tx === f.x && n.ty === f.y);
   if (npc) return npcTalk(npc);
   if (area !== 'yard') return areaInteract(f);
