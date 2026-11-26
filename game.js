@@ -4369,17 +4369,16 @@ window.addEventListener('gamepadconnected', () => { if (!padToastShown) { padToa
      · diagonals never reach the game; release stops movement at once. */
 const deckEl = document.getElementById('deck');
 const consoleEl = document.getElementById('console');
-// Daniel (Nov 26, 2026): the game fills the browser window. The stage
-// scales uniformly — the 160:144 aspect never changes — letterboxed on
-// the page ground, snapping to a whole-number scale whenever that still
-// fills the window well (>= 85% of the fit), so the pixels stay crisp;
-// below that (small phones) it takes the exact fractional fit instead.
+// Daniel (Nov 26, 2026): the game fills the available browser area. The
+// stage scales uniformly — the 160:144 aspect never changes — and always
+// takes the EXACT fit: the largest size that fits the window, so the
+// stage touches the limiting edge at every viewport size (an earlier
+// whole-number-scale preference left visible letterbox; Daniel's word
+// overruled it). Letterboxing remains only on the non-limiting axis.
 function fitStage() {
   const deckH = deckEl.hidden ? 0 : deckEl.offsetHeight;
   const availW = window.innerWidth - 8, availH = window.innerHeight - deckH - 8; // 8: the console's borders
-  let scale = Math.min(availW / 160, availH / 144);
-  const whole = Math.floor(scale);
-  if (whole >= 2 && whole / scale >= 0.85) scale = whole;
+  const scale = Math.min(availW / 160, availH / 144);
   consoleEl.style.width = (Math.max(160, Math.floor(160 * scale)) + 8) + 'px'; // +8 so the SCREEN is exactly 160 x scale
 }
 window.addEventListener('resize', fitStage);
