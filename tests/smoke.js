@@ -944,6 +944,91 @@ function findChromium() {
   await tap('z'); await page.waitForTimeout(300);
   await dismissDialogue(8);
 
+  // CHAPTER 6 — THE FIELD: the hard spring, the repotting, the long
+  // prep, planting day, and the first night.
+  const projReset = () => page.evaluate(() => { const sv = __hss.debugSave(); sv.world.proj = 0; __hss.setSave(sv); });
+  await page.evaluate(() => window.__hss.advanceDay()); // crisis dawn 1: no water, vent shut
+  await dismissDialogue(8);
+  s = await S();
+  check('the hard spring, day 1: the glass house slips', s.world.step === 1 && s.plants.some(p => p.location === 'GREENHOUSE' && p.health > 0), 'step=' + s.world.step);
+  await page.evaluate(() => { const sv = __hss.debugSave(); sv.field.vent = true; __hss.setSave(sv); });
+  for (let i = 0; i < 2; i++) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(8); }
+  s = await S();
+  check('the vent holds the line: nobody critical', s.world.step === 3 && !s.plants.some(p => p.location === 'GREENHOUSE' && p.health >= 3), 'step=' + s.world.step);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(8);
+  s = await S();
+  check('the friend arrives with dirt: repot ready', s.world.step === 4 && s.world.flags.repotReady === true, 'step=' + s.world.step);
+  const memorialsBefore = s.plants.filter(p => p.memorial).length;
+  await page.evaluate(() => window.__hss.repot());
+  await dismissDialogue(12);
+  s = await S();
+  check('the repotting: everyone held, a gift bush joins', s.world.step === 5 && s.plants.filter(p => p.memorial).length === memorialsBefore && s.plants.some(p => p.giftName) && s.plants.filter(p => !p.memorial && !p.giftName && p.location === 'GREENHOUSE').every(p => p.history.includes('THE HARD SPRING')), 'step=' + s.world.step + ' gift=' + s.plants.some(p => p.giftName));
+  await page.evaluate(() => window.__hss.doPlanting());
+  await dismissDialogue(8);
+  s = await S();
+  check('the gate refuses an unready field', s.world.step === 5 && !s.plants.some(p => p.location.startsWith('ROW')), '');
+  await page.evaluate(() => { const sv = __hss.debugSave(); sv.plants.forEach(p => { if (p.location === 'GREENHOUSE') { p.stage = 4; p.health = 0; } }); __hss.setSave(sv); });
+  await page.evaluate(() => window.__hss.orderMulch());
+  await dismissDialogue(4);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(6);
+  for (const bi of [0, 1, 2]) { await projReset(); await page.evaluate(b => window.__hss.layTarp(b), bi); await dismissDialogue(4); }
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(6);
+  for (const bi of [3, 4]) { await projReset(); await page.evaluate(b => window.__hss.layTarp(b), bi); await dismissDialogue(4); }
+  s = await S();
+  check('the fifth tarp tears, as foretold', s.field.tarp[4] === 4, 'tarp=' + JSON.stringify(s.field.tarp));
+  await projReset();
+  await page.evaluate(() => window.__hss.patchTarp(4));
+  await dismissDialogue(4);
+  for (let i = 0; i < 4; i++) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(6); }
+  for (const bi of [0, 1, 2, 3]) { await projReset(); await page.evaluate(b => window.__hss.moveTarp(b), bi); await dismissDialogue(4); }
+  for (const sg of [0, 1, 2]) { await projReset(); await page.evaluate(g => window.__hss.fenceSeg(g), sg); await dismissDialogue(4); }
+  await projReset();
+  await page.evaluate(() => window.__hss.digPipe());
+  await dismissDialogue(6);
+  await page.evaluate(() => window.__hss.turnValve());
+  await dismissDialogue(4);
+  await page.evaluate(() => window.__hss.turnValve());
+  await dismissDialogue(6);
+  s = await S();
+  check('pipe found and valved in, fence at three', s.field.pipe === true && s.field.fenceSeg.filter(Boolean).length === 3, 'pipe=' + s.field.pipe);
+  for (const rn of [1, 2, 3, 4, 5, 6, 7]) {
+    if ((await S()).field.mulch < 3) { await page.evaluate(() => window.__hss.orderMulch()); await dismissDialogue(3); await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(5); }
+    await projReset();
+    await page.evaluate(r => window.__hss.mulchRow(r), rn);
+    await dismissDialogue(4);
+  }
+  s = await S();
+  check('the gate is satisfied', (await page.evaluate(() => window.__hss.plantingGate())).length === 0 && s.rows.slice(0, 7).every(r => r.mulched), '');
+  await page.evaluate(() => window.__hss.doPlanting());
+  await dismissDialogue(12);
+  s = await S();
+  const row1 = s.plants.filter(p => p.row === 1 && !p.memorial);
+  check('planting day: Row 1 stands with the General at its head', s.world.step === 6 && row1.length === 6 && s.world.flags.bookend === 'GENERAL' && s.plants.filter(p => p.firstSix && !p.memorial).every(p => p.row === 1), 'row1=' + row1.length + ' bookend=' + s.world.flags.bookend);
+  check('the company fills rows 2-7', [2, 3, 4, 5, 6, 7].every(rn => s.plants.some(p => p.row === rn && !p.memorial)), '');
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('the first night: DEER 55 behind a three-quarter fence', s.mode === 'trial' && s.trial && s.trial.foe === 'DEER' && s.trial.maxPressure === 55 && s.trial.maxVigor === 30, JSON.stringify(s.trial && { mp: s.trial.maxPressure, mv: s.trial.maxVigor }));
+  await page.evaluate(() => { trial.pressure = 3; });
+  await page.waitForTimeout(1400);
+  await tap('z'); await page.waitForTimeout(250);
+  await tap('z'); await page.waitForTimeout(1600);
+  await dismissDialogue(8);
+  s = await S();
+  check('the field keeps its first night', s.world.step === 7 && s.mode === 'overworld', 'step=' + s.world.step);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('the field chapter closes: card, chapter 7', s.mode === 'card' && s.world.ch === 7, 'mode=' + s.mode + ' ch=' + s.world.ch);
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(8);
+
   // a save written in the oldest formats still loads: pots as a bare stage
   // int and as {stage, waterDays} objects both migrate to named plants
   await page.evaluate(() => {

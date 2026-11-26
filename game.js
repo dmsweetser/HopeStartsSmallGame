@@ -1583,12 +1583,17 @@ function barnInteract(f) {
   }
   if (f.x === 13 && f.y === 12) { // the field gate
     if (w.ch >= 4) {
-      if (player.ty >= 13) return say('BACK TO THE YARD?', which => { if (which === 0) { player.tx = 13; player.ty = 11; syncPixels(player); alvin.tx = 13; alvin.ty = 12; syncPixels(alvin); } }, ['CLIMB BACK', 'STAY']);
+      if (player.ty >= 13) {
+        if (w.ch === 6 && w.step === 5) return say('THE PLANTING GATE. THE FIELD, THE REGISTER, AND FRANK ALL CHECK THE SAME LIST.', which => { if (which === 0) doPlanting(); if (which === 1) say(['THE LIST, AS THE FIELD KEEPS IT:', ...(plantingGate().length ? plantingGate().map(m => '— ' + m) : ['— NOTHING. IT IS TIME.'])]); }, ['PLANTING DAY', 'READ THE LIST', 'NOT YET']);
+        return say('BACK TO THE YARD?', which => { if (which === 0) { player.tx = 13; player.ty = 11; syncPixels(player); alvin.tx = 13; alvin.ty = 12; syncPixels(alvin); } }, ['CLIMB BACK', 'STAY']);
+      }
       return say('THE FIELD GATE. IT SWINGS BOTH WAYS NOW, LIKE A DECISION THAT HAS BEEN MADE.', which => { if (which === 0) { player.tx = 13; player.ty = 13; syncPixels(player); alvin.tx = 13; alvin.ty = 12; syncPixels(alvin); if (w.ch === 4 && w.step === 0) stakeField(); } }, ['ENTER THE FIELD', 'NOT YET']);
     }
     return say('THE FIELD GATE. FIRST, A HOUSE TO LIVE IN AND A GLASS HOUSE FOR THE PLANTS. THEN — EVERYTHING.');
   }
   if (w.ch === 5 && w.step >= 2 && !w.flags.patchCleared && f.x >= 23 && f.x <= 24 && f.y >= 6 && f.y <= 7) return patchInteract();
+  if (w.ch >= 6 && f.y === 12) return fenceInteract(f);
+  if (w.ch >= 6 && f.y >= 13) return fieldInteract(f);
   if (w.ch >= 4 && (f.x === 6 || f.x === 7) && f.y === 5) return irisInteract();
   if (f.x >= 18 && f.x <= 22 && f.y >= 8 && f.y <= 11) { // the greenhouse site
     if (w.ch === 3 && w.step === 6 && (w.flags.buildStep || 0) < 3) {
@@ -1639,6 +1644,9 @@ function barnInInteract(f) {
     }
     return say('THE STAIRS. UP AND DOWN, LIKE A FAMILY.');
   }
+  if (ch === 'k' && w.ch === 6 && w.flags.pipeFound && !s.field.pipe) {
+    return say('AMONG THE BARN\'S PLUMBING: A VALVE, GREEN WITH AGE, THAT FRANK TURNS WITH BOTH HANDS AND A PRAYER.', which => { if (which === 0) turnValve(); }, ['TURN IT', 'NOT YET']);
+  }
   if (ch === 'e') return say('THE TABLE. IT MADE THE TRIP. EVERYTHING IMPORTANT IN THIS FAMILY HAS BEEN DECIDED AT THIS TABLE, INCLUDING BREAKFAST.');
   if (ch === 'k') return say('THE COUNTER. THE KETTLE HAS FOUND ITS NEW HOME AND APPROVES OF THE VIEW.');
   if (ch === 'm') return say('THE BED. MOVING HOUSE IS A CONTACT SPORT AND EVERYONE IS BRUISED IN PLACES THEY DID NOT KNOW THEY HAD.');
@@ -1646,6 +1654,7 @@ function barnInInteract(f) {
 }
 function waterLocation(loc) {
   let n = 0;
+  if (loc === 'GREENHOUSE' && G.save.world.ch === 6 && G.save.world.step <= 3) G.save.world.flags.mitWaterDay = G.save.day;
   for (const p of G.save.plants) if (!p.memorial && p.location === loc && p.stage >= 1 && !p.watered) { waterPlant(p); n++; }
   saveGame();
   say(n ? 'WATERED, ALL OF THEM. ' + n + ' DRINKS POURED.' : 'EVERYONE HERE IS ALREADY WATERED.');
@@ -1665,11 +1674,34 @@ function carryPlants() {
 }
 function greenInteract(f) {
   const s = G.save, w = s.world, ch = mapChar(f.x, f.y);
+  if (ch === 'H' && w.ch === 5 && !s.field.protoWire) {
+    return say('THE GLASS, AND A ROLL OF CHICKEN WIRE FRANK HAS BEEN MEANING TO TRY AROUND THE VENTS.', which => { if (which === 0) { s.field.protoWire = true; saveGame(); say(['THE WIRE PROTOTYPE: A LITTLE SKIRT OF MESH AROUND THE GLASS HOUSE, TO TELL CLIMBERS AND CRAWLERS THE NEWS.', 'IT WILL NOT STOP A DEER. IT IS NOT FOR DEER. IT IS A FIRST DRAFT OF AN IDEA, AND THE FENCE WILL BE THE SECOND.']); } }, ['FIT THE WIRE', 'NOT YET']);
+  }
   if (ch === 'h') {
+    if (w.ch >= 6) {
+      return say('THE STOVE, AND ABOVE IT THE VENT — A LITTLE ROOF WINDOW ON A ROPE. THE VENT IS ' + (s.field.vent ? 'OPEN.' : 'SHUT.'), which => {
+        if (which === 0) { if (!w.flags.heaterLit) { w.flags.heaterLit = true; saveGame(); say('LIT. THE STOVE SETTLES INTO ITS WORK WITH A TICK AND A SIGH.'); } else say('THE STOVE TICKS WITH HEAT. ALL IS WELL.'); }
+        if (which === 1) { s.field.vent = !s.field.vent; saveGame(); say(s.field.vent ? 'THE VENT CREAKS OPEN. HOT AIR LEAVES LIKE IT WAS CALLED BY NAME.' : 'THE VENT COMES DOWN. THE GLASS HOUSE HOLDS ITS BREATH AGAIN.'); }
+      }, [w.flags.heaterLit ? 'STOVE (LIT)' : 'LIGHT THE STOVE', s.field.vent ? 'CLOSE THE VENT' : 'OPEN THE VENT', 'LEAVE IT']);
+    }
     if (w.flags.heaterLit) return say('THE STOVE TICKS WITH HEAT. THE GLASS FOGS, JUST A LITTLE, AT THE EDGES. ALL IS WELL.');
     return say('THE LITTLE STOVE, COLD. THE NIGHT WILL BE WHAT IT WILL BE.', which => { if (which === 0) { w.flags.heaterLit = true; saveGame(); say('LIT. THE STOVE SETTLES INTO ITS WORK WITH A TICK AND A SIGH.'); } }, ['LIGHT THE STOVE', 'LEAVE IT']);
   }
-  if (ch === 'a') return say('THE BENCHES. EVERY PLANT IN ITS PLACE, EVERY PLACE WITH A PLANT.', which => { if (which === 0) waterLocation('GREENHOUSE'); }, ['WATER THE BENCHES', 'NOT NOW']);
+  if (ch === 'a') {
+    if (w.ch === 6 && w.step === 4 && w.flags.repotReady) return repot();
+    if (w.ch === 6 && w.step <= 3) {
+      return say('THE BENCHES. EVERY LEAF IN THE GLASS HOUSE IS A QUESTION.', which => {
+        if (which === 0) waterLocation('GREENHOUSE');
+        if (which === 1) {
+          const weak = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE').sort((a, b) => b.health - a.health)[0];
+          if (!weak) return say('NO ONE HERE TO FEED.');
+          if (s.goodDirt <= 0) return say(weak.name + ' IS THE WEAKEST, AND THERE IS NO GOOD DIRT LEFT. THE YARD LOOP STILL PAYS: WEEDS, COMPOST, DIRT.');
+          feedDirt(weak); say('GOOD DIRT FOR ' + weak.name + ', THE WEAKEST FIRST. IT IS NOT FAVOURITISM. IT IS TRIAGE, AND TRIAGE IS LOVE WITH A LIST.');
+        }
+      }, ['WATER THEM ALL', 'FEED THE WEAKEST', 'JUST LOOK']);
+    }
+    return say('THE BENCHES. EVERY PLANT IN ITS PLACE, EVERY PLACE WITH A PLANT.', which => { if (which === 0) waterLocation('GREENHOUSE'); }, ['WATER THE BENCHES', 'NOT NOW']);
+  }
   return say('THE GREENHOUSE. IT SMELLS OF WARM EARTH AND POSSIBILITY.');
 }
 function omaInteract(f) {
@@ -1776,6 +1808,245 @@ TRIAL_OUTCOMES.weedsPatch = {
     w.flags.patchWeedsBack = true; w.flags.patchTrialDone = false;
     saveGame();
     say(['THE PATCH WINS THE NIGHT. THE CANES ARE SET BACK, SORE AND SMALLER — BUT ROOTED, AND ROOTS ARE A PROMISE.', 'THE WEEDS WILL TRY AGAIN IN TWO DAYS. SO WILL ALVIN. IT IS THAT KIND OF WAR.']);
+  },
+};
+function fenceInteract(f) {
+  const s = G.save, w = s.world;
+  const seg = Math.min(3, Math.floor((f.x - 1) / 6));
+  const built = s.field.fenceSeg.filter(Boolean).length;
+  if (player.ty >= 13 && s.field.pipe) {
+    return say('THE FENCE LINE, AND THE VALVE POST FRANK PAINTED BLUE SO HE WOULD STOP LOSING IT.', which => {
+      if (which === 0) { if (projUse()) { for (const r of s.cropRows) r.watered = true; for (const p of s.plants) if (!p.memorial && p.location.startsWith('ROW')) waterPlant(p); say('THE VALVE TURNS. SOMEWHERE UNDER THE FIELD, WATER REMEMBERS ITS ROAD. EVERY ROW DRINKS.'); } }
+      if (which === 1) fenceSegDialogue(seg, built);
+    }, ['OPEN THE VALVE (ALL ROWS)', 'THE FENCE ITSELF', 'LEAVE IT']);
+  }
+  return fenceSegDialogue(seg, built);
+}
+function fenceSegDialogue(seg, built) {
+  const s = G.save, w = s.world;
+  if (s.field.fenceSeg[seg]) {
+    if (s.field.pipe && !s.field.fenceIrr[seg]) return say('SEGMENT ' + (seg + 1) + ' STANDS. THE IRRIGATION LINE COULD RUN ALONG IT, IF A CERTAIN PIPE EVER GETS FOUND.', which => { if (which === 0 && projUse()) { s.field.fenceIrr[seg] = 1; s.field.irrigation = s.field.fenceIrr.filter(Boolean).length; saveGame(); say('LINE RUN. THE FENCE NOW CARRIES WATER LIKE A SECRET IT IS PROUD OF.'); } }, ['RUN THE LINE', 'NOT YET']);
+    return say('SEGMENT ' + (seg + 1) + ' OF THE DOUBLE FENCE STANDS. POSTS TRUE, WIRE TIGHT, A PUZZLE A DEER MUST SOLVE TWICE.');
+  }
+  const free = built === 0 && s.field.protoNet && s.field.protoWire;
+  return say('FENCE SEGMENT ' + (seg + 1) + ' OF 4. ' + (free ? 'THE TWO PROTOTYPES — NET AND WIRE — HAVE ALREADY TAUGHT FRANK\'S HANDS THIS WORK. THIS ONE GOES UP LIKE IT WAS REHEARSED.' : 'POSTS, WIRE, AND A PARALLEL RUN FOUR FEET INSIDE.'), which => { if (which === 0) buildFenceSeg(seg); }, ['BUILD IT', 'NOT YET']);
+}
+function buildFenceSeg(seg) {
+  const s = G.save;
+  if (s.field.fenceSeg[seg]) return;
+  const built = s.field.fenceSeg.filter(Boolean).length;
+  const free = built === 0 && s.field.protoNet && s.field.protoWire;
+  if (!free && !projUse()) return;
+  s.field.fenceSeg[seg] = 1; s.field.fence = s.field.fenceSeg.filter(Boolean).length; saveGame();
+  say('SEGMENT ' + (seg + 1) + ' STANDS. ' + s.field.fence + ' OF 4. THE FIELD IS BEGINNING TO HAVE AN INSIDE AND AN OUTSIDE, WHICH IS ALL A FENCE EVER REALLY SAYS.');
+}
+function digPipe() {
+  const s = G.save, w = s.world;
+  if (!projUse()) return;
+  w.flags.pipeFound = true; saveGame();
+  say(['FOUR FEET DOWN: A PIPE. AN OLD IRRIGATION LINE, LAID BY WHOEVER FARMED HERE BEFORE, CAPPED AND PATIENT.', 'JEREMIAH, HOLDING THE VALVE LIKE A TROPHY: IT STILL TURNS. EVERYTHING STILL TURNS IF YOU ARE POLITE AND USE BOTH HANDS.', 'HE KEEPS THE VALVE. THIS IS NON-NEGOTIABLE AND ALSO CORRECT — NOW THE HOUSE END NEEDS ITS VALVE FOUND, SOMEWHERE IN THE BARN\'S PLUMBING.']);
+}
+function turnValve() {
+  const s = G.save, w = s.world;
+  w.flags.valveWrong = (w.flags.valveWrong || 0) + 1;
+  if (w.flags.valveWrong < 2) return say('SOMEWHERE, A TAP SINGS OPERA. THE GREENHOUSE STOVE GURGLES A WARNING. WRONG VALVE — THE HOUSE END IS STILL HIDING.');
+  s.field.pipe = true; saveGame();
+  say(['CONSTANCE, ARRIVING WITH A WRENCH AND THE AIR OF A WOMAN WHO HAS READ THE MANUAL: THAT ONE IS THE HOUSE. THIS ONE — THIS ONE IS THE FIELD.', 'THE VALVE TURNS. UNDER THE BARN, UNDER THE YARD, A PIPE FULL OF YEARS CLEARS ITS THROAT — AND WATER RUNS TO THE FIELD LIKE IT REMEMBERS THE WAY. THE PIPE IS IN.']);
+}
+function orderMulch() {
+  const s = G.save, w = s.world;
+  w.flags.mulchComing = s.day + 1; saveGame();
+  say('ORDERED. IT WILL ARRIVE BY MORNING, THE WAY MULCH DOES: QUIETLY, AND ALL AT ONCE.');
+}
+function layTarp(bi) {
+  const s = G.save, w = s.world;
+  if (!projUse()) return;
+  s.field.tarp[bi] = (w.flags.tarpPlaced || 0) >= 4 && !w.flags.tarpTorn ? 4 : 1;
+  if (s.field.tarp[bi] === 4) { w.flags.tarpTorn = true; say('THE TARP TEARS ON A HIDDEN STONE — OF COURSE IT DOES, ON THE LAST STRETCH. IT WILL NEED A PATCH BEFORE IT COOKS.'); }
+  else say('TARP DOWN. THE DARK BEGINS ITS SLOW ARGUMENT.');
+  w.flags.tarpPlaced = (w.flags.tarpPlaced || 0) + 1; s.field.tarpDay[bi] = s.day; saveGame();
+}
+function patchTarp(bi) {
+  const s = G.save;
+  if (!projUse()) return;
+  s.field.tarp[bi] = 1; s.field.tarpDay[bi] = s.day; saveGame();
+  say('PATCHED. THE DARK RESUMES.');
+}
+function moveTarp(bi) {
+  const s = G.save;
+  if (!projUse()) return;
+  s.field.tarp[bi] = 3; saveGame();
+  say('TARP MOVED AND FOLDED. SECTION ' + (bi + 1) + ' IS CLEAR GROUND, READY FOR ROOTS. (' + s.field.tarp.filter(t => t === 3).length + ' OF 5)');
+}
+function fieldInteract(f) {
+  const s = G.save, w = s.world;
+  if (w.step < 5) return say('THE FIELD, WAITING ON THE GLASS HOUSE. FIRST THE PLANTS LIVE. THEN THE FIELD.');
+  if ((f.x === 23 || f.x === 24) && f.y === 16) { // the bad shed corner: dig here
+    if (s.field.pipe) return say('THE OLD BURIED LINE RUNS FROM HERE, QUIET AND FULL OF ITSELF.');
+    if (!w.flags.pipeFound) {
+      return say('THE BAD SHED\'S CORNER, WHERE THE GROUND DIPS LIKE IT IS KEEPING SOMETHING.', which => { if (which === 0) digPipe(); }, ['DIG', 'NOT YET']);
+    }
+    return say('THE PIPE IS FOUND. THE HOUSE END STILL HIDES ITS VALVE — SOMEWHERE IN THE BARN, AMONG ITS PLUMBING.');
+  }
+  if (f.x === 1 && f.y === 13) { // the mulch pile
+    if (!w.flags.mulchComing && s.field.mulch < 3) return say('THE MULCH PILE IS A MEMORY. A DELIVERY CAN BE ARRANGED — MULCH FINDS ITS WAY TO FIELDS LIKE NEWS TO A SMALL TOWN.', which => { if (which === 0) orderMulch(); }, ['ARRANGE A DELIVERY', 'NOT YET']);
+    return say('THE MULCH PILE: ' + s.field.mulch + ' CARTLOADS OF TOMORROW\'S INSURANCE, SMELLING OF RAIN AND WOOD.');
+  }
+  const bands = [[1, 5], [6, 10], [11, 15], [16, 19], [20, 24]];
+  const bi = bands.findIndex(([a, b]) => f.x >= a && f.x <= b);
+  const rn = 1 + (f.y - 13) * 3 + Math.floor((f.x - 2) / 8); // the row this tile belongs to (1..12)
+  const row = s.cropRows[rn - 1];
+  const inRow = s.plants.filter(p => !p.memorial && p.row === rn);
+  if (inRow.length) {
+    return say('ROW ' + rn + ': ' + inRow.length + ' BUSHES. ' + (row.mulched ? 'MULCHED. ' : 'UNMULCHED. ') + inRow.map(p => p.name).slice(0, 4).join(', ') + (inRow.length > 4 ? '…' : ''), which => {
+      if (which === 0) { inRow.forEach(waterPlant); row.watered = true; saveGame(); say('ROW ' + rn + ' WATERED, BUSH BY BUSH, NAME BY NAME.'); }
+      if (which === 1 && !row.mulched) mulchRow(rn);
+    }, ['WATER THE ROW', row.mulched ? 'IT IS MULCHED' : 'MULCH IT (3 CARTS)', 'LEAVE IT']);
+  }
+  const st = s.field.tarp[bi] || 0;
+  if (st === 0) return say('TARP SECTION ' + (bi + 1) + ' OF 5. BLACK PLASTIC OVER LIVING GROUND: FOUR DAYS OF DARK, AND THE WEEDS UNDER IT GIVE UP THEIR NAMES.', which => { if (which === 0) layTarp(bi); }, ['LAY THE TARP', 'NOT YET']);
+  if (st === 4) return say('THE TORN SECTION. A PATCH, A PRAYER, AND IT COOKS LIKE THE REST.', which => { if (which === 0) patchTarp(bi); }, ['PATCH IT', 'NOT YET']);
+  if (st === 1) return say('THE TARP COOKS. DAY ' + Math.min(4, s.day - (s.field.tarpDay[bi] || s.day)) + ' OF 4. UNDERNEATH, A SMALL DARK SUMMER IS ENDING THINGS.');
+  if (st === 2) return say('COOKED THROUGH. WHAT LIVES UNDER THERE NOW IS SOIL AND SILENCE.', which => { if (which === 0) moveTarp(bi); }, ['MOVE THE TARP', 'NOT YET']);
+  // clear ground: the row work that remains
+  if (row && !row.mulched) return say('CLEAR GROUND, ROW ' + rn + '. IT WANTS MULCH BEFORE IT WANTS PLANTS.', which => { if (which === 0) mulchRow(rn); }, ['MULCH IT (3 CARTS)', 'NOT YET']);
+  return say('ROW ' + rn + ', READY. THE PLANTING GATE AT THE FENCE KNOWS WHAT REMAINS.');
+}
+function mulchRow(rn) {
+  const s = G.save;
+  if (s.field.mulch < 3) return say('NOT ENOUGH MULCH. THE PILE AT THE FIELD\'S CORNER KEEPS THE COUNT: ' + s.field.mulch + ' CARTS.');
+  if (!projUse()) return;
+  if (!projUse()) return;
+  s.field.mulch -= 3; s.cropRows[rn - 1].mulched = true; saveGame();
+  say('ROW ' + rn + ' MULCHED — THREE CARTLOADS DEEP. DRY DAYS WILL HAVE TO GO AROUND.');
+}
+function plantingGate() {
+  const s = G.save, w = s.world, missing = [];
+  if (s.day - (w.flags.repotDay || 0) < 5) missing.push('RECOVERY: ' + (s.day - (w.flags.repotDay || 0)) + ' OF 5 FED DAYS SINCE THE REPOTTING');
+  const stock = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE' && p.stage >= 3);
+  const declining = stock.filter(p => p.health >= 2);
+  if (declining.length) missing.push(declining[0].name + (declining.length > 1 ? ' AND ' + (declining.length - 1) + ' MORE ARE' : ' IS') + ' STILL DECLINING — WATER AND DIRT, AND TIME');
+  if (s.field.tarp.filter(t => t === 3).length < 4) missing.push('TARP: ' + s.field.tarp.filter(t => t === 3).length + ' OF 4 SECTIONS CLEARED');
+  if (s.field.fenceSeg.filter(Boolean).length < 3) missing.push('FENCE: ' + s.field.fenceSeg.filter(Boolean).length + ' OF 4 SEGMENTS (3 WILL DO)');
+  const unmulched = [0, 1, 2, 3, 4, 5, 6].filter(i => !s.cropRows[i].mulched);
+  if (unmulched.length) missing.push('MULCH: ROWS ' + unmulched.map(i => i + 1).join(', ') + ' STILL BARE');
+  return missing;
+}
+function doPlanting() {
+  const s = G.save, w = s.world;
+  const missing = plantingGate();
+  if (missing.length) return say(['NOT YET. THE FIELD KEEPS ITS OWN CHECKLIST:', ...missing.map(m => '— ' + m)]);
+  const stock = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE' && p.stage >= 3);
+  const six = stock.filter(p => p.firstSix).sort((a, b) => a.slot - b.slot);
+  const general = six.find(p => p.name === 'GENERAL');
+  const rowOne = [];
+  if (general) { rowOne.push(general); for (const p of six) if (p !== general) rowOne.push(p); }
+  else for (const p of six) rowOne.push(p);
+  const others = stock.filter(p => !p.firstSix).sort((a, b) => (b.stage - a.stage) || (b.tended - a.tended));
+  while (rowOne.length < 6 && others.length) rowOne.push(others.shift());
+  const lines = ['PLANTING DAY. THE AUGER SINGS. JEREMIAH WORKS ALONGSIDE, QUIET IN THE WAY OF A BOY WHO KNOWS THIS MATTERS.', 'ZOEY IS ALREADY IN THE HOUSE, HAVING GONE IN EARLY WITHOUT ANY DRAMA AT ALL, TAKING THE SMALL ONES WITH HER LIKE A PARADE.'];
+  if (!general && sixPlants().some(p => p.name === 'GENERAL' && p.memorial)) {
+    w.flags.markerStone = true;
+    lines.push('AT THE HEAD OF ROW 1, FRANK READS THE GENERAL\'S MEMORIAL ALOUD, EVERY WORD, AND SETS A FLAT STONE WHERE THE BOOKEND WOULD HAVE STOOD.', 'CONSTANCE: HE GUARDS THE ROW ANYWAY. FRANK: HE DOES. HE ALWAYS DID LIKE THE END WITH THE VIEW.');
+  }
+  rowOne.forEach((p, i) => { p.location = 'ROW1'; p.row = 1; p.plantedDay = s.day; p.slot = i; if (!p.history.includes('PLANTED IN ROW 1')) p.history.push('PLANTED IN ROW 1'); });
+  w.flags.bookend = rowOne.length ? rowOne[0].name : null;
+  if (general) lines.push('THE GENERAL GOES IN FIRST, AT THE HEAD OF ROW 1 — THE BOOKEND, WHERE HE HAS ALWAYS STOOD IN EVERY LINE THIS FAMILY MAKES.');
+  const byVar = { ECHO: [], CHANDLER: [], CLIMAX: [] };
+  for (const p of others) (byVar[p.variety] || byVar.CHANDLER).push(p);
+  const queue = [...byVar.ECHO, ...byVar.CHANDLER, ...byVar.CLIMAX];
+  let rn = 2;
+  for (const p of queue) { // round-robin over rows 2-7, by variety, strongest first
+    let guard = 0;
+    while (s.plants.filter(q => q.row === rn && !q.memorial).length >= 12 && guard++ < 6) rn = rn >= 7 ? 2 : rn + 1;
+    p.location = 'ROW' + rn; p.row = rn; p.plantedDay = s.day;
+    if (!p.history.includes('PLANTED IN ROW ' + rn)) p.history.push('PLANTED IN ROW ' + rn);
+    rn = rn >= 7 ? 2 : rn + 1;
+  }
+  lines.push('THE COMPANY GOES INTO ROWS 2 THROUGH 7, BY VARIETY, IN THE ORDER OF THEIR STRENGTH. EVERY HOLE GETS A NAME SPOKEN OVER IT. EVERY NAME GETS WRITTEN DOWN.');
+  lines.push('AND IN THE HEAT OF THE AFTERNOON FRANK NEARLY INSISTS JEREMIAH STAY AND FINISH — AND CATCHES HIMSELF, MID-SENTENCE, LIKE A MAN STEPPING BACK FROM A LEDGE HE BUILT.', 'FRANK: GO IN WHEN YOU ARE READY, SON. THE ROW WILL KEEP. (JEREMIAH STAYS A WHILE ANYWAY — HIS OWN CHOICE, WHICH IS A DIFFERENT AND BETTER THING — AND THEN GOES IN, BLESSED AND UNHURRIED.)');
+  w.step = 6; saveGame();
+  say(lines);
+}
+function repot() {
+  const s = G.save, w = s.world;
+  const lines = ['THE FRIEND AGAIN, ROLLING UP THE DRIVE WITH A TRUCK BED OF DIRT AND THE AIR OF A MAN DELIVERING WEATHER.', 'THE GARDENING FRIEND: YOUR PLANTS ARE NOT DYING OF HEAT, FRANK. THEY ARE DYING OF HUNGER IN A PLASTIC WORLD. PLANTS NEED DIRT. REAL DIRT, ALL THE WAY DOWN.', 'SO THEY REPOT. EVERY PLANT, OUT OF ITS LITTLE WORLD AND INTO A BIGGER ONE, WITH DIRT LIKE A COUNTRY. IT TAKES ALL DAY. IT TAKES ALL OF EVERYONE.'];
+  const fed = w.flags.fedNames || [];
+  let sixDied = null;
+  if (!w.flags.mitAny) {
+    const weak = sixPlants().filter(p => !p.memorial).sort((a, b) => (b.health - a.health) || (a.tended - b.tended))[0];
+    if (weak) { weak.health = 3; }
+  }
+  for (const p of s.plants.filter(q => q.location === 'GREENHOUSE')) {
+    if (p.memorial) continue;
+    if (p.health >= 3) {
+      if (fed.includes(p.name)) { p.health = 2; lines.push(p.name + ' WAS FED IN TIME — PULLED BACK IN THE REPOTTING, SORE AND ALIVE.'); }
+      else if (p.firstSix && w.flags.mitAny) { p.health = 2; lines.push('CONSTANCE\'S HANDS FIND ' + p.name + ' IN THE FIRST HOUR AND DO NOT LET GO UNTIL IT IS IN DIRT AND DRINKING.'); }
+      else { killPlant(p, 'THE HARD SPRING'); if (p.firstSix) sixDied = p; }
+    }
+  }
+  if (sixDied) lines.push('CONSTANCE, QUIETLY, OVER ' + sixDied.name + '\'S HUSK: HE HELD ON LONGER THAN ANY OF THEM. REMEMBER THAT PART TOO, FRANK. (IT IS WRITTEN IN THE REGISTER, IN THE BACK, WHERE THE MEMORIALS LIVE.)');
+  const survivors = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE');
+  for (const p of survivors) if (!p.history.includes('THE HARD SPRING')) p.history.push('THE HARD SPRING');
+  const gift = freshPlant(allocName(s.plants), { variety: 'CHANDLER', stage: 4, location: 'GREENHOUSE', sownDay: s.day, giftName: true, history: ['A GIFT FROM A FRIEND WHO SHOWS UP'] });
+  s.plants.push(gift);
+  lines.push('AND BEFORE THE FRIEND LEAVES: A BUSH FROM HIS OWN FIELD, IN A BUCKET, WITH ITS NAME ALREADY ON IT — ' + gift.name + '. SOME GIFTS YOU DO NOT ARGUE WITH. YOU WATER THEM.');
+  lines.push('THE GLASS HOUSE BREATHES DIFFERENTLY BY EVENING. NOW: FIVE DAYS OF FEEDING AND WATER, WHILE THE FIELD GETS ITS TARP, ITS PIPE, ITS MULCH, ITS FENCE. THEN — PLANTING.');
+  w.flags.repotDay = s.day; w.flags.repotReady = false; w.step = 5; saveGame();
+  say(lines);
+}
+function ch6Opening() {
+  say(['THE PROMISE IS WRITTEN. SPRING COMES TO BERRYHILL LIKE IT MEANS IT.', 'AND IN THE GLASS HOUSE, UNDER A SUN THAT HAS SUDDENLY REMEMBERED ITS STRENGTH, THE PLANTS BEGIN TO WILT.']);
+}
+function ch6Dawn(ev) {
+  const s = G.save, w = s.world;
+  if (w.step <= 2) { // a crisis dawn: the glass house is an oven with a garden in it
+    const slipped = [];
+    const gh = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE');
+    gh.forEach((p, i) => {
+      if (s.field.vent) return;
+      if ((w.flags.wasWatered || {})[p.name]) return;
+      if (hashDay(s.day * 31 + i) % 5 < 2 && p.health < 3) { p.health++; slipped.push(p.name); }
+    });
+    if (Object.keys(w.flags.wasWatered || {}).length || s.field.vent || w.flags.mitDirtDay === s.day - 1) w.flags.mitAny = true;
+    w.step++;
+    const hints = ['WATER THEM — THE BENCH IN THE GLASS HOUSE POURS FOR EVERYONE AT ONCE.', 'THE VENT, OVER THE STOVE: OPEN IT AND LET THE HEAT OUT BY NAME.', 'FEED THE WEAKEST GOOD DIRT. TRIAGE IS LOVE WITH A LIST.'];
+    return ['THE GLASS HOUSE IS AN OVEN THIS MORNING.' + (slipped.length ? ' ' + slipped.slice(0, 3).join(', ') + (slipped.length > 3 ? ' AND MORE' : '') + ' SLIPPED IN THE NIGHT.' : ' THEY HELD, THIS TIME.'), hints[(w.step - 1) % 3], 'THE CRISIS HAS THREE DAYS IN IT. THIS IS DAY ' + w.step + '.'];
+  }
+  if (w.step === 3) {
+    w.step = 4; w.flags.repotReady = true; saveGame();
+    return ['A TRUCK ROLLS UP THE DRIVE: THE GARDENING FRIEND, WITH DIRT, AND OPINIONS, AND BOTH ARE NEEDED.', 'THE GARDENING FRIEND: FRANK. YOUR PLANTS ARE STARVING IN PLASTIC. REPOT THEM — TODAY, ALL OF THEM. I BROUGHT THE DIRT. (THE REPOTTING WAITS AT THE GLASS HOUSE BENCH.)'];
+  }
+  if (w.step === 6) { // the first night
+    const rowOne = s.plants.filter(p => !p.memorial && p.row === 1);
+    const complete = s.field.fenceSeg.filter(Boolean).length >= 4;
+    const weak = rowOne.slice().sort((a, b) => b.health - a.health)[0];
+    startTrial({ foe: 'DEER', kind: 'deerFirstNight', pressure: complete ? 40 : 55, vigor: 30, graze: !complete, plantsList: rowOne.length ? rowOne : sixPlants(), msg: 'THE FIRST NIGHT. THE HERD COMES TO READ THE NEW FIELD — AND ' + (weak ? weak.name + ' IS ' + HEALTH_NAMES[weak.health] + ' TONIGHT, AT THE HEAD OF THE ROW' : 'THE ROW') + '. ALVIN TAKES HIS POST.' });
+    return null;
+  }
+  if (w.step === 7) { completeChapter(6); return null; }
+  return null;
+}
+TRIAL_OUTCOMES.deerFirstNight = {
+  win(t) {
+    const w = G.save.world; w.step = 7; saveGame();
+    say(['THE HERD TURNS AT THE DOUBLE FENCE LIKE WEATHER AT A MOUNTAIN. THE FIELD KEEPS ITS FIRST NIGHT.', 'IN ROW 1, SIXTY HEARTBEATS SLOW DOWN. IN THE BARN, FRANK SLEEPS THE WHOLE NIGHT THROUGH, EVENTUALLY, MOSTLY.']);
+  },
+  lose(t, fled) {
+    const s = G.save, w = s.world;
+    const lines = ['THE HERD GETS IN. IT IS A BAD HOUR, AND THEN IT IS OVER.'];
+    for (const p of (t.plantsList || [])) {
+      if (p.memorial) continue;
+      p.dirtCredit = 0;
+      if (p.health >= 3) { killPlant(p, 'THE FIRST NIGHT'); lines.push(p.name + ' DID NOT SURVIVE THE NIGHT. IT IS WRITTEN IN THE BACK OF THE REGISTER, WITH THE REST OF THE TRUTH.'); }
+      else p.health++;
+    }
+    if (s.cropRows[1]) s.cropRows[1].mowed = true;
+    const seg = s.field.fenceSeg.findIndex(x => x);
+    if (seg >= 0) { s.field.fenceSeg[seg] = 0; s.field.fence = s.field.fenceSeg.filter(Boolean).length; w.flags.breach = true; }
+    lines.push('A ROW IS MOWED, A FENCE SEGMENT IS DOWN, AND THE FIELD LOOKS LIKE A PLACE WHERE SOMETHING HAPPENED. REPAIR IT. PLANTS HAVE SURVIVED WORSE CHAPTERS THAN THIS ONE.');
+    w.step = 7; saveGame();
+    say(lines);
   },
 };
 function ch4Opening() {
@@ -1993,6 +2264,34 @@ function renderBerry() {
     if (ch === 'T') ctx.drawImage(winter && SNOW_TREE ? SNOW_TREE : TREE, sx, sy);
     if (ch === 's' && ty >= 13) { // the field: combed soil, waiting for stakes
       ctx.fillStyle = 'rgba(90,58,30,0.35)'; ctx.fillRect(sx, sy + 3, TILE, 1); ctx.fillRect(sx, sy + 10, TILE, 1);
+    }
+  }
+  { // chapter 6 field furniture: tarp bands, fence run, mulch pile, the bad shed, planted rows
+    const s6 = G.save, w6 = s6.world;
+    if (w6.ch >= 6) {
+      const bands = [[1, 5], [6, 10], [11, 15], [16, 19], [20, 24]];
+      bands.forEach(([x0, x1], bi) => {
+        const st = s6.field.tarp[bi] || 0;
+        if (st === 1 || st === 4) { ctx.fillStyle = 'rgba(32,36,42,0.55)'; ctx.fillRect(x0 * TILE - camX, 13 * TILE - camY, (x1 - x0 + 1) * TILE, 4 * TILE); }
+        if (st === 2) { ctx.fillStyle = 'rgba(32,36,42,0.3)'; ctx.fillRect(x0 * TILE - camX, 13 * TILE - camY, (x1 - x0 + 1) * TILE, 4 * TILE); ctx.fillStyle = '#e8e2d2'; ctx.fillRect(x0 * TILE - camX + 2, 13 * TILE - camY + 2, 6, 2); }
+        if (st === 3) { ctx.fillStyle = 'rgba(122,90,160,0.25)'; ctx.fillRect(x0 * TILE - camX, 13 * TILE - camY, (x1 - x0 + 1) * TILE, 4 * TILE); }
+      });
+      ctx.fillStyle = '#8a6f45'; ctx.fillRect(1 * TILE - camX + 3, 13 * TILE - camY + 14, 10, 8); // the mulch pile
+      ctx.fillStyle = '#5d4a30'; ctx.fillRect(1 * TILE - camX + 5, 13 * TILE - camY + 10, 6, 5);
+      // the tumbledown bad shed at the field's back corner
+      ctx.fillStyle = '#4a4238'; ctx.fillRect(23 * TILE - camX, 16 * TILE - camY + 6, 2 * TILE, 10);
+      ctx.fillStyle = '#38322a'; ctx.fillRect(23 * TILE - camX - 2, 16 * TILE - camY + 2, 2 * TILE + 4, 5);
+      // the fence's second run, segment by segment
+      ctx.fillStyle = '#c9c2ae';
+      for (let sg = 0; sg < 4; sg++) if (s6.field.fenceSeg[sg]) ctx.fillRect((1 + sg * 6) * TILE - camX, 12 * TILE - camY + 12, 6 * TILE, 2);
+      // planted rows: little bushes, in their rows
+      for (const p of s6.plants) {
+        if (p.memorial || !p.location.startsWith('ROW')) continue;
+        const rn = p.row || 1, idx = s6.plants.filter(q => q.row === rn && !q.memorial).indexOf(p);
+        const px = (2 + (rn - 1) % 3 * 8 + (idx % 6)) * TILE - camX, py = (13 + Math.floor((rn - 1) / 3) + Math.floor(idx / 6) * 0) * TILE - camY;
+        ctx.fillStyle = p.health >= 2 ? '#7a8a3a' : '#3f7a2e'; ctx.fillRect(px + 4, py + 6, 8, 6);
+        ctx.fillStyle = '#2e5a22'; ctx.fillRect(px + 6, py + 3, 4, 4);
+      }
     }
   }
   if (G.save.world.flags.staked) { // corner stakes and string over the field
@@ -2301,6 +2600,10 @@ function ensureV2(s) {
   if (!s.world) s.world = { ch: 1, step: 0, flags: {}, area: 'yard', proj: 0, projDay: 1, lastSeason: 0, rainToday: false, jeremiahDay: 0, omaReqDay: 0, watchRow: null, alvinDown: false };
   if (!s.world.flags) s.world.flags = {};
   if (!s.field) s.field = { tarp: [0, 0, 0, 0, 0], tarpDay: [0, 0, 0, 0, 0], fence: 0, protoNet: false, protoWire: false, pipe: false, irrigation: false, mulch: 0, weedLv: [0, 0, 0, 0, 0, 0], vent: false, heater: false };
+  if (!Array.isArray(s.field.fenceSeg) || s.field.fenceSeg.length !== 4) s.field.fenceSeg = [0, 0, 0, 0];
+  if (!Array.isArray(s.field.fenceIrr) || s.field.fenceIrr.length !== 4) s.field.fenceIrr = [0, 0, 0, 0];
+  if (typeof s.field.mulch !== 'number') s.field.mulch = 0;
+  for (const r of s.cropRows) if (r.mulched === undefined) r.mulched = false;
   if (!s.wine) s.wine = { jar: null, batches: [], honey: 6, pounds: 0, poundsByYear: {}, shared: 0 };
   if (!s.tray) s.tray = { n: 0, watered: false, sownDay: null, stratDays: 0, ready: false, pottedTotal: 0 };
   if (!Array.isArray(s.cropRows) || s.cropRows.length !== 12) { const old = s.cropRows || []; s.cropRows = []; for (let i = 0; i < 12; i++) s.cropRows.push(Object.assign(freshRow(), old[i] || {})); }
@@ -2717,6 +3020,7 @@ function objective() {
   if (w.ch === 3) return ['GO AND LOOK. QUIETLY.', 'THE GATE BY THE ROAD LEADS TO BERRYHILL.', 'THINK IT OVER. THEN DECIDE LIKE YOU MEAN IT.', 'THE BARN. THE FIELD. THE SET.', 'MOVING WEEKEND: THE TRUCK, AT THE OLD DOOR.', 'ONE MORE LOAD, ONE WAY OR ANOTHER.', 'BUILD THE GREENHOUSE: FRAME, SHELL, HEATER.', 'CARRY THE PLANTS TO THE GLASS HOUSE.', 'THE FIRST NIGHT IN THE GLASS HOUSE.', 'SETTLE IN.'][w.step] || 'SETTLE IN.';
   if (w.ch === 4) return ['STAKE THE FIELD.', 'MEET THE IRISES.', 'THE TOWN HAS OPINIONS.', 'PRICE THE FENCE AT THE GOOD SHED.'][w.step] || 'WALK THE FIELD.';
   if (w.ch === 5) return ['BUILD THE STAIRS DOWN.', 'OMA IS COMING. MAKE READY.', 'CLEAR THE PATCH BEHIND THE GOOD SHED.', 'THE PATCH FIGHTS BACK.', 'VISIT OMA.'][w.step] || 'TEND EVERYONE.';
+  if (w.ch === 6) return ['SOMETHING IS WRONG IN THE GLASS HOUSE.', 'WATER. VENT. DIRT. FIGHT FOR THEM.', 'WATER. VENT. DIRT. FIGHT FOR THEM.', 'WATER. VENT. DIRT. FIGHT FOR THEM.', 'REPOT THEM. THE FRIEND IS RIGHT: DIRT.', 'THE LONG PREP: TARP, PIPE, MULCH, FENCE.', 'PLANTING DAY.', 'THE FIRST NIGHT.'][w.step] || 'TEND THE FIELD.';
   if (s.tutorial === 1) return 'THE GRAND PLAN: SIX POTS, SIX PROMISES (A)';
   if (s.tutorial === 2) return 'A DRINK FOR EACH POT: A AT A POT';
   if (s.chapterDone) return 'FREE TENDING. BERRYHILL COMES LATER.';
@@ -2955,6 +3259,14 @@ function potInteract(p) {
 
 /* Watering a plant: sets its flag, and — if it stands CRITICAL — records
    the rescue the mortality doctrine asks about at dawn (spec 2.8). */
+function projUse() {
+  const w = G.save.world;
+  if (w.proj >= 3) { say('ENOUGH. THE DAY HAS A BOTTOM, AND FRANK HAS FOUND IT. REST, AND LET TOMORROW CARRY THE REST.'); return false; }
+  w.proj++;
+  if (w.proj === 3) say('ONE MORE THING, THEN. FRANK\'S HANDS ARE SORE AND HIS LIST IS LONGER THAN THE DAY. AFTER THIS: REST.');
+  saveGame();
+  return true;
+}
 function waterPlant(p) {
   p.watered = true;
   if (p.health === 3) p.lastRescue = G.save.day;
@@ -2963,6 +3275,7 @@ function waterPlant(p) {
 function feedDirt(p) { // good dirt: +8 Vigor, +1 growth credit, one health step up
   const s = G.save;
   s.goodDirt--; p.dirt = true; p.dirtCredit = (p.dirtCredit || 0) + 1; p.vigor += 8;
+  if (s.world.ch === 6 && s.world.step <= 4 && p.location === 'GREENHOUSE') { (s.world.flags.fedNames = s.world.flags.fedNames || []).push(p.name); s.world.flags.mitDirtDay = s.day; }
   if (p.health > 0) p.health--;
   if (p.health === 3) p.lastRescue = s.day;
   saveGame();
@@ -3094,7 +3407,14 @@ const BERRY_MORNING = [
   'THE MOUNTAINS ARE DOING THEIR LONG BLUE STAND AT THE EDGE OF EVERYTHING.',
 ];
 function wineDawn() {} // spliced full by the Wine chapter
-function chapterDawnPrep(ev) { const w = G.save.world; if (w.ch === 2) ch2DawnPrep(ev); if (w.ch >= 3) { G.save.world.flags.heaterLit = false; } }
+function chapterDawnPrep(ev) { const w = G.save.world; if (w.ch === 2) ch2DawnPrep(ev); if (w.ch >= 3) { G.save.world.flags.heaterLit = false; } if (w.ch >= 6) ch6DawnPrep(); }
+function ch6DawnPrep() {
+  const s = G.save, w = s.world;
+  w.flags.wasWatered = {};
+  for (const p of s.plants) if (p.watered && p.location === 'GREENHOUSE') w.flags.wasWatered[p.name] = true;
+  for (let i = 0; i < 5; i++) if (s.field.tarp[i] === 1 && s.day - (s.field.tarpDay[i] || 0) >= 4) s.field.tarp[i] = 2;
+  if (w.flags.mulchComing && w.flags.mulchComing <= s.day) { s.field.mulch += 8; w.flags.mulchComing = null; }
+}
 function ch2DawnPrep(ev) {
   const s = G.save, w = s.world;
   // stratification: the fridge tray banks one day per winter day
@@ -3165,7 +3485,7 @@ TRIAL_OUTCOMES.frostTray = {
   },
 };
 
-function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); if (w.ch === 3) return ch3Dawn(ev); if (w.ch === 4) return ch4Dawn(ev); if (w.ch === 5) return ch5Dawn(ev); return null; }
+function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); if (w.ch === 3) return ch3Dawn(ev); if (w.ch === 4) return ch4Dawn(ev); if (w.ch === 5) return ch5Dawn(ev); if (w.ch === 6) return ch6Dawn(ev); return null; }
 
 const CHAPTER_INFO = [
   null,
@@ -3950,7 +4270,7 @@ function renderTrial() {
 function cardUpdate() {
   if (Input.aHit || Input.bHit) { mode = 'overworld'; chapterCardDone(cardChapter); } // KEEP TENDING
 }
-function chapterCardDone(n) { if (n === 1) ch2Opening(); if (n === 2) ch3Opening(); if (n === 3) ch4Opening(); if (n === 4) ch5Opening(); }
+function chapterCardDone(n) { if (n === 1) ch2Opening(); if (n === 2) ch3Opening(); if (n === 3) ch4Opening(); if (n === 4) ch5Opening(); if (n === 5) ch6Opening(); }
 function renderCard() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
   drawSceneBanner(2, true);
@@ -4363,7 +4683,7 @@ requestAnimationFrame(frame);
 window.__hss = {
   state() {
     const so = seasonOf(G.save.day);
-    const ser = p => ({ name: p.name, stage: p.stage, wateredDays: p.wateredDays, watered: p.watered, vigor: p.vigor, tended: p.tended, sownDay: p.sownDay, sproutedDay: p.sproutedDay, seedlingDay: p.seedlingDay, location: p.location, dirt: p.dirt, dirtCredit: p.dirtCredit, variety: p.variety, health: p.health, dryDays: p.dryDays, memorial: p.memorial, row: p.row, slot: p.slot, chill: p.chill, wintered: p.wintered, history: p.history.slice(), firstSix: p.firstSix });
+    const ser = p => ({ name: p.name, stage: p.stage, wateredDays: p.wateredDays, watered: p.watered, vigor: p.vigor, tended: p.tended, sownDay: p.sownDay, sproutedDay: p.sproutedDay, seedlingDay: p.seedlingDay, location: p.location, dirt: p.dirt, dirtCredit: p.dirtCredit, variety: p.variety, health: p.health, dryDays: p.dryDays, memorial: p.memorial, row: p.row, slot: p.slot, chill: p.chill, wintered: p.wintered, history: p.history.slice(), firstSix: p.firstSix, giftName: p.giftName, gardenState: p.gardenState });
     return {
       mode, day: G.save.day, season: SEASON_NAMES[so.idx], year: so.year, tutorial: G.save.tutorial, seedsLeft: G.save.seedsLeft, tea: G.save.tea,
       compost: G.save.compost, goodDirt: G.save.goodDirt, weeds: JSON.parse(JSON.stringify(G.save.weeds || [])),
@@ -4372,7 +4692,7 @@ window.__hss = {
       tray: JSON.parse(JSON.stringify(G.save.tray)),
       world: { ch: G.save.world.ch, step: G.save.world.step, area, flags: JSON.parse(JSON.stringify(G.save.world.flags)), proj: G.save.world.proj, rainToday: G.save.world.rainToday },
       field: JSON.parse(JSON.stringify(G.save.field)),
-      rows: G.save.cropRows.map(r => ({ yieldRating: r.yieldRating, fruitSet: r.fruitSet, wateredDays: r.wateredDays, poundsByYear: r.poundsByYear })),
+      rows: G.save.cropRows.map(r => ({ yieldRating: r.yieldRating, fruitSet: r.fruitSet, wateredDays: r.wateredDays, poundsByYear: r.poundsByYear, mulched: r.mulched, watered: r.watered, mowed: !!r.mowed })),
       wine: { jar: G.save.wine.jar ? { phase: G.save.wine.jar.phase, days: G.save.wine.jar.days, index: G.save.wine.jar.index, care: G.save.wine.jar.care, batch: G.save.wine.jar.batch } : null, batches: G.save.wine.batches.map(b => ({ n: b.n, verdict: b.verdict, index: b.index, care: b.care })), honey: G.save.wine.honey, pounds: G.save.wine.pounds, poundsByYear: G.save.wine.poundsByYear, shared: G.save.wine.shared },
       promise: G.save.promise, germ: G.save.germ,
       npcs: npcList.map(n => ({ id: n.id, x: n.tx, y: n.ty })),
@@ -4411,6 +4731,18 @@ window.__hss = {
   stakeField() { stakeField(); },
   irisInteract() { irisInteract(); },
   patchInteract() { patchInteract(); },
+  repot() { repot(); },
+  doPlanting() { doPlanting(); },
+  fieldInteractAt(x, y) { fieldInteract({ x, y }); },
+  fenceSeg(seg) { buildFenceSeg(seg); },
+  layTarp(bi) { layTarp(bi); },
+  patchTarp(bi) { patchTarp(bi); },
+  moveTarp(bi) { moveTarp(bi); },
+  digPipe() { digPipe(); },
+  turnValve() { turnValve(); },
+  orderMulch() { orderMulch(); },
+  mulchRow(rn) { mulchRow(rn); },
+  plantingGate() { return plantingGate(); },
   carryPlants() { carryPlants(); },
   warp(x, y) { player.tx = x; player.ty = y; syncPixels(player); alvin.tx = x; alvin.ty = Math.min(AH - 1, y + 1); syncPixels(alvin); },
   gotoArea(a, x, y) { setArea(a, x, y); },
