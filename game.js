@@ -1016,6 +1016,202 @@ const JEREMIAH_SIDE_TALK = makeSprite([
 ], JEREMIAH_PAL);
 
 const JEREMIAH_SET = { down: [JEREMIAH_DOWN, JEREMIAH_DOWN2], up: [JEREMIAH_UP, JEREMIAH_UP2], side: [JEREMIAH_SIDE, JEREMIAH_SIDE2], blinkDown: JEREMIAH_DOWN_BLINK, blinkSide: JEREMIAH_SIDE_BLINK, talkDown: JEREMIAH_DOWN_TALK, talkSide: JEREMIAH_SIDE_TALK };
+
+/* THE PASTOR — an unnamed guest (role only), in for the one evening the
+   whole field has been pointing at: the October tasting. A dark suit, and
+   the little white tab at his throat that says the rest. */
+const PASTOR_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: '#5a5148', H: '#453f36', e: EYE, t: '#33373f', T: '#22252b', j: '#26282e', w: '#f4f1e6', o: '#33261a' };
+const PASTOR_DOWN = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khhhhhhhhk...',
+'...khsssssshk...',
+'....kssssssk....',
+'....ksessesk....',
+'....kssooSsk....',
+'.....kkkkkk.....',
+'...kkttwwttkk...',
+'...skttttttks...',
+'...sktTttttks...',
+'....kkttttkk....',
+'....kjjkkjjk....',
+'....kjjkkjjk....',
+'....kookkook....',
+], PASTOR_PAL);
+
+const PASTOR_DOWN2 = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khhhhhhhhk...',
+'...khsssssshk...',
+'....kssssssk....',
+'....ksessesk....',
+'....kssooSsk....',
+'.....kkkkkk.....',
+'...kkttwwttkk...',
+'...skttttttks...',
+'..sktttttttks...',
+'....kkttttkk....',
+'...kjjk..kjjk...',
+'...kjjk..kjjk...',
+'...kook..kook...',
+], PASTOR_PAL);
+
+const PASTOR_UP = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khhhhhhhhk...',
+'...khhhhhhhhk...',
+'....khhhhhhk....',
+'....khhHhhhk....',
+'....khhhhhhk....',
+'.....kkkkkk.....',
+'...kkttttttkk...',
+'...skttttttks...',
+'...skttttttks...',
+'....kkttttkk....',
+'....kjjkkjjk....',
+'....kjjkkjjk....',
+'....kookkook....',
+], PASTOR_PAL);
+
+const PASTOR_UP2 = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khhhhhhhhk...',
+'...khhhhhhhhk...',
+'....khhhhhhk....',
+'....khhHhhhk....',
+'....khhhhhhk....',
+'.....kkkkkk.....',
+'...kkttttttkk...',
+'...skttttttks...',
+'...skttttttks...',
+'....kkttttkk....',
+'...kjjk..kjjk...',
+'...kjjk..kjjk...',
+'...kook..kook...',
+], PASTOR_PAL);
+
+const PASTOR_SIDE = makeSprite([
+'................',
+'.....kkkkkk.....',
+'...kkhhhhhhhk...',
+'....khhhhhhk....',
+'....kHhhhssk....',
+'....khhhhsek....',
+'....khhhhssk....',
+'....kHhhhsok....',
+'.....kkkkkk.....',
+'....kktttwk.....',
+'....kttttTks....',
+'....kttttttk....',
+'....kkttttk.....',
+'....kjjkjjjk....',
+'....kjjkjjjk....',
+'....koookooo....',
+], PASTOR_PAL);
+
+const PASTOR_SIDE2 = makeSprite([
+'................',
+'.....kkkkkk.....',
+'...kkhhhhhhhk...',
+'....khhhhhhk....',
+'....kHhhhssk....',
+'....khhhhsek....',
+'....khhhhssk....',
+'....kHhhhsok....',
+'.....kkkkkk.....',
+'....kktttwk.....',
+'....kttttTks....',
+'....kttttttk....',
+'....kkttttk.....',
+'...kjjk.kjjk....',
+'....kjjkjjjk....',
+'...kook..ook....',
+], PASTOR_PAL);
+
+const PASTOR_DOWN_BLINK = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khhhhhhhhk...',
+'...khsssssshk...',
+'....kssssssk....',
+'....ksSssSsk....',
+'....kssooSsk....',
+'.....kkkkkk.....',
+'...kkttwwttkk...',
+'...skttttttks...',
+'...sktTttttks...',
+'....kkttttkk....',
+'....kjjkkjjk....',
+'....kjjkkjjk....',
+'....kookkook....',
+], PASTOR_PAL);
+
+const PASTOR_DOWN_TALK = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khhhhhhhhk...',
+'...khsssssshk...',
+'....kssssssk....',
+'....ksessesk....',
+'....ksskkSsk....',
+'.....kkkkkk.....',
+'...kkttwwttkk...',
+'...skttttttks...',
+'...sktTttttks...',
+'....kkttttkk....',
+'....kjjkkjjk....',
+'....kjjkkjjk....',
+'....kookkook....',
+], PASTOR_PAL);
+
+const PASTOR_SIDE_BLINK = makeSprite([
+'................',
+'.....kkkkkk.....',
+'...kkhhhhhhhk...',
+'....khhhhhhk....',
+'....kHhhhssk....',
+'....khhhhsSk....',
+'....khhhhssk....',
+'....kHhhhsok....',
+'.....kkkkkk.....',
+'....kktttwk.....',
+'....kttttTks....',
+'....kttttttk....',
+'....kkttttk.....',
+'....kjjkjjjk....',
+'....kjjkjjjk....',
+'....koookooo....',
+], PASTOR_PAL);
+
+const PASTOR_SIDE_TALK = makeSprite([
+'................',
+'.....kkkkkk.....',
+'...kkhhhhhhhk...',
+'....khhhhhhk....',
+'....kHhhhssk....',
+'....khhhhsek....',
+'....khhhhssk....',
+'....kHhhhskk....',
+'.....kkkkkk.....',
+'....kktttwk.....',
+'....kttttTks....',
+'....kttttttk....',
+'....kkttttk.....',
+'....kjjkjjjk....',
+'....kjjkjjjk....',
+'....koookooo....',
+], PASTOR_PAL);
+
+const PASTOR_SET = { down: [PASTOR_DOWN, PASTOR_DOWN2], up: [PASTOR_UP, PASTOR_UP2], side: [PASTOR_SIDE, PASTOR_SIDE2], blinkDown: PASTOR_DOWN_BLINK, blinkSide: PASTOR_SIDE_BLINK, talkDown: PASTOR_DOWN_TALK, talkSide: PASTOR_SIDE_TALK };
 const ZOEY_PAL = { k: '#20242a', s: '#f0c8a0', S: '#d99e5f', h: '#7a4a21', H: '#5e3717', e: EYE, d: '#e06a9a', D: '#b84a78', l: '#5e4a6e', w: '#f8f8f8', o: '#33261a' };
 const ZOEY_DOWN = makeSprite([
 '................',
@@ -2216,6 +2412,10 @@ function npcsFor(a) {
     if (a === 'oma') list.push({ id: 'oma', tx: 5, ty: 4, dir: 'down', set: 'oma', name: 'OMA' });
     if (a === 'barnOut' && hashDay(s.day) % 3 === 0) list.push({ id: 'oma', tx: 16, ty: 6, dir: 'down', set: 'oma', name: 'OMA' });
     if (a === 'barnIn' && w.ch === 5) list.push({ id: 'constance', tx: 4, ty: 3, dir: 'down', set: 'constance', name: 'CONSTANCE' });
+    if (a === 'barnIn' && w.ch === 10 && w.step === 5) { // the tasting: the pastor at the table, Constance beside Frank — as the book has it
+      list.push({ id: 'pastor', tx: 7, ty: 4, dir: 'right', set: 'pastor', name: 'PASTOR' });
+      list.push({ id: 'constance', tx: 12, ty: 4, dir: 'left', set: 'constance', name: 'CONSTANCE' });
+    }
   }
   if (w.ch === 3) {
     if (a === 'barnOut') {
@@ -2243,7 +2443,7 @@ function drawNPCFigure(n, sx, sy, talking) {
     ctx.drawImage(LILY_STROLLER, sx, sy);
     return;
   }
-  const NPC_SPRITE_SETS = { jeremiah: [JEREMIAH_SET, 0.7], zoey: [ZOEY_SET, 1.3], oma: [OMA_SET, 2.2], mom: [MOM_SET, 0.4] };
+  const NPC_SPRITE_SETS = { jeremiah: [JEREMIAH_SET, 0.7], zoey: [ZOEY_SET, 1.3], oma: [OMA_SET, 2.2], mom: [MOM_SET, 0.4], pastor: [PASTOR_SET, 1.6] };
   const npcSet = NPC_SPRITE_SETS[n.set];
   if (npcSet) { charSprite({ px: sx + camX, py: sy + camY, dir: n.dir || 'down', moving: false, blinkOff: npcSet[1], talk: talking }, npcSet[0]); return; }
   const P = NPC_SETS[n.set] || NPC_SETS.jeremiah;
@@ -2259,6 +2459,9 @@ function drawNPCFigure(n, sx, sy, talking) {
 function npcTalk(npc) {
   const s = G.save, w = s.world;
   if (npc.id === 'constance') {
+    if (w.ch === 10 && w.step === 5) {
+      return say(['CONSTANCE: A PASTOR, A TABLE, AND YOUR WINE, FRANK. NO PRESSURE AT ALL.', 'CONSTANCE: POUR IT LIKE YOU MEAN IT. YOU DO EVERYTHING ELSE THAT WAY.']);
+    }
     const lines = [
       'CONSTANCE: THE HOUSE IS MOSTLY BOXES AND OPINIONS NOW. THE PLANTS HAVE THE BEST ROOM. THIS SEEMS FAIR.',
       'CONSTANCE: WATER THE SHELF, FRANK. THE SMALL ONES CANNOT ASK, SO I AM ASKING FOR THEM.',
@@ -2353,6 +2556,9 @@ function npcTalk(npc) {
       ['OMA: ASK ME ABOUT THE SIX. GO ON. — THE ADMIRAL, THE CAPTAIN, THE GENERAL. HOPE. PATIENCE. THE PROFESSOR.', 'OMA: I KNOW ALL THEIR NAMES. AN OLD WOMAN MEMORIZES WHAT THE HOUSE LOVES. IT IS THE WHOLE JOB, AND I AM GOOD AT IT.'],
     ];
     return say(stories[s.day % stories.length]);
+  }
+  if (npc.id === 'pastor') {
+    return say(['PASTOR: I HAVE HEARD ABOUT THIS WINE AT SOME LENGTH, FRANK. A MAN IN MY POSITION LEARNS TO POUR SLOWLY, AND JUDGE SLOWER.', 'PASTOR: WHENEVER YOU ARE READY — THE TABLE, I THINK. SOME VERDICTS A MAN SHOULD BE SITTING DOWN FOR.']);
   }
   say('...');
 }
@@ -4272,10 +4478,10 @@ function faceName(dx, dy) { return dx < 0 ? 'left' : dx > 0 ? 'right' : dy < 0 ?
 let dlg = null; // {lines:[{name,text}], idx, chars, timer, cb, choice}
 function say(lines, cb, choice) {
   const raw = Array.isArray(lines) ? lines : [lines];
-  // a leading "FRANK:" / "CONSTANCE:" becomes a speaker name tag on the box,
-  // so the characterization reads without shouting prefixes in the text
+  // a leading "FRANK:" / "CONSTANCE:" / "PASTOR:" becomes a speaker name tag
+  // on the box, so the characterization reads without shouting prefixes
   const parsed = raw.map(l => {
-    const m = String(l).match(/^(FRANK|CONSTANCE):\s*/);
+    const m = String(l).match(/^(FRANK|CONSTANCE|PASTOR):\s*/);
     return m ? { name: m[1], text: String(l).slice(m[0].length) } : { name: null, text: String(l) };
   });
   dlg = { lines: parsed, idx: 0, chars: 0, timer: 0, cb: cb || null, choice: choice || null };
@@ -4819,8 +5025,8 @@ function bottleJar() {
     return say(['BATCH ONE, BOTTLED AND TASTED IN THE KITCHEN DOORWAY, STANDING UP, LIKE A VERDICT DELIVERED IN A HALLWAY.', 'IT IS — THERE IS NO KINDER WORD, AND CONSTANCE TRIES THREE — TART. TART AS A GREEN APPLE\'S OPINION OF YOU.', 'CONSTANCE, KINDLY, WITH THE GLASS STILL IN HER HAND: IT IS THE HONEY, FRANK. A DASH IS A SEASONING. WINE WANTS A MEASURE — HALF TO FOUR-FIFTHS, HONEY AGAINST FRUIT, THE WAY THE OLD BOOKS SAY. BATCH TWO IS YOURS TO SET. THE FIELD WILL PROVIDE.', 'THE LESSON GOES IN THE JOURNAL, IN INK: A DASH IS NOT A MEASUREMENT. AND NOW — THE HARVEST IS RIPE. ROW 1 FIRST, BY NAME, INTO ITS OWN BOWL.']);
   }
   if (w.ch === 10 && j.batch === 2) {
-    w.flags.batch2 = 'bottled'; w.step = 5; saveGame();
-    return say(['BATCH TWO, BOTTLED. THE VERDICT, BY THE FORMULA THE REGISTER KEEPS: ' + entry.verdict + '.', 'THE TASTING IS SET FOR A LATE-OCTOBER EVENING: THE PASTOR, HIS WIFE, AND OMA AT THE TABLE, WITH A SMALL GLASS, IN THE PRESENT TENSE. THE TABLE IN THE BARN WILL HOST IT.']);
+    w.flags.batch2 = 'bottled'; w.step = 5; saveGame(); layoutNPCs();
+    return say(['BATCH TWO, BOTTLED. THE VERDICT, BY THE FORMULA THE REGISTER KEEPS: ' + entry.verdict + '.', 'THE TASTING IS SET FOR A LATE-OCTOBER EVENING: THE PASTOR AT THE TABLE, AND CONSTANCE WHERE SHE HAS STOOD FOR EVERY STEP OF IT — BESIDE FRANK. THE TABLE IN THE BARN WILL HOST IT.']);
   }
   saveGame();
   say('BATCH ' + entry.n + ', BOTTLED: ' + entry.verdict + '. THE CELLAR PAGE TAKES ANOTHER LINE, AND KEEPS IT FOREVER.');
@@ -4866,12 +5072,12 @@ function harvestRow(rn) {
 function tasting() {
   const s = G.save, w = s.world;
   const b = s.wine.batches[s.wine.batches.length - 1];
-  const lines = ['A LATE-OCTOBER EVENING. THE TABLE IS SET IN THE BARN: THE PASTOR, HIS WIFE, AND OMA — IN HER CHAIR, WITH A SMALL GLASS, IN THE PRESENT TENSE, EXACTLY AS PROMISED.'];
-  if (b && b.verdict === 'LOVELY') lines.push('THE WINE IS POURED. THE PASTOR HOLDS IT TO THE LIGHT LIKE A MAN WHO HAS BEEN HANDED A LETTER FROM A FRIEND.', 'THE PASTOR: LOVELY. (ONE WORD. IT IS ENOUGH. IT IS, IN FACT, THE WHOLE REVIEW.)', 'HIS WIFE: YOU CAN TASTE THE FIELD IN IT. ALL THAT WORK, AND IT COMES UP THROUGH THE GLASS LIKE A REPORT.');
-  else if (b && b.verdict === 'SWEET AS CANDY') lines.push('THE WINE IS POURED. IT IS — THERE IS NO OTHER WORD — SWEET AS CANDY. THE PASTOR\'S WIFE LAUGHS INTO HER GLASS, DELIGHTED AND BETRAYED IN EQUAL MEASURE.', 'THE PASTOR: THE CHILDREN AT THE HARVEST SUPPER WILL FIGHT OVER THIS, FRANK. THE ADULTS WILL PRETEND NOT TO.');
-  else if (b && b.verdict === 'TART') lines.push('THE WINE IS POURED. IT IS TART — HONESTLY, STRUCTURALLY TART. THE TABLE SURVIVES IT WITH GOOD HUMOUR AND WATER.', 'THE PASTOR: IT WOULD WAKE A MAN FOR MORNING PRAYER, FRANK. THERE ARE WORSE MINISTRIES.');
-  else lines.push('THE WINE IS POURED. IT IS AN HONEST WINE — NOT THE ONE FRANK DREAMED, AND NOT A LIE EITHER. THE TABLE DRINKS IT WITH RESPECT.', 'HIS WIFE: IT TASTES LIKE THE YEAR IT WAS. THAT IS ALL ANY WINE CAN TRULY SAY.');
-  lines.push('OMA RAISES HER SMALL GLASS, LAST AND SLOWEST: I STAYED FOR THIS. IT WAS WORTH STAYING FOR. (THE PROMISE, IN THE REGISTER, STAMPS ITSELF: THE JAR IS FILLED. SHE TASTED IT.)');
+  const lines = ['A LATE-OCTOBER EVENING. THE TABLE IS SET IN THE BARN: CONSTANCE, AND THE PASTOR — COME AT LAST TO TASTE WHAT THE FIELD HAS MADE, AS FRANK HAS BEEN PROMISING HIM ALL YEAR.'];
+  if (b && b.verdict === 'LOVELY') lines.push('THE WINE IS POURED. THE PASTOR HOLDS IT TO THE LIGHT LIKE A MAN WHO HAS BEEN HANDED A LETTER FROM A FRIEND.', 'PASTOR: LOVELY. (ONE WORD. IT IS ENOUGH. IT IS, IN FACT, THE WHOLE REVIEW.)', 'CONSTANCE: YOU CAN TASTE THE FIELD IN IT. ALL THAT WORK, AND IT COMES UP THROUGH THE GLASS LIKE A REPORT. (SHE SAYS IT TO THE PASTOR. SHE LOOKS AT FRANK WHEN SHE SAYS IT.)');
+  else if (b && b.verdict === 'SWEET AS CANDY') lines.push('THE WINE IS POURED. IT IS — THERE IS NO OTHER WORD — SWEET AS CANDY. CONSTANCE LAUGHS INTO HER GLASS, DELIGHTED AND BETRAYED IN EQUAL MEASURE.', 'PASTOR: THE CHILDREN AT THE HARVEST SUPPER WILL FIGHT OVER THIS, FRANK. THE ADULTS WILL PRETEND NOT TO.');
+  else if (b && b.verdict === 'TART') lines.push('THE WINE IS POURED. IT IS TART — HONESTLY, STRUCTURALLY TART. THE TABLE SURVIVES IT WITH GOOD HUMOUR AND WATER.', 'PASTOR: IT WOULD WAKE A MAN FOR MORNING PRAYER, FRANK. THERE ARE WORSE MINISTRIES.');
+  else lines.push('THE WINE IS POURED. IT IS AN HONEST WINE — NOT THE ONE FRANK DREAMED, AND NOT A LIE EITHER. THE TABLE DRINKS IT WITH RESPECT.', 'CONSTANCE: IT TASTES LIKE THE YEAR IT WAS. THAT IS ALL ANY WINE CAN TRULY SAY.');
+  lines.push('CONSTANCE RAISES HER GLASS, LAST AND SLOWEST: TO THE FIELD. AND TO THE MAN WHO TALKED ABOUT IT AT THIS TABLE UNTIL THE TABLE BELIEVED HIM. (SHE IS SMILING. SHE HAS BEEN SMILING SINCE THE FIRST POUR.)');
   lines.push('AND AT THE END OF THE TABLE, WITH THE GLASSES LOW AND THE LIGHT GOING, FRANK SAYS THE THING THE WHOLE FIELD HAS BEEN WAITING TO HEAR HIM SAY PLAINLY:', 'FRANK: NEXT YEAR, AND EVERY YEAR: WINE. I AM A WINEMAKER. THE FIELD IS A VINEYARD THAT HAPPENS TO BE BLUEBERRIES. WE ARE GOING TO NEED MORE BUSHES. (CONSTANCE: WE ARE GOING TO NEED MORE EVERYTHING, FRANK. SHE IS SMILING WHEN SHE SAYS IT.)');
   say(lines, () => completeChapter(10));
 }
@@ -6301,6 +6507,7 @@ window.__hss = {
   bottleJar() { bottleJar(); },
   harvestRow(rn) { harvestRow(rn); },
   tasting() { tasting(); },
+  dlgLines() { return dlg ? dlg.lines.map(l => ({ name: l.name, text: l.text })) : []; },
   ltGoals() { return ltGoals(); },
   plantNurseryRow(rn) { plantNurseryRow(rn); },
   pruneRow(rn) { pruneRow(rn); },

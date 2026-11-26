@@ -1261,10 +1261,16 @@ function findChromium() {
   await dismissDialogue(8);
   s = await S();
   check('batch two, at the lesson ratio and full care: LOVELY', s.wine.batches.length === 2 && s.wine.batches[1].verdict === 'LOVELY' && s.world.step === 5, 'verdict=' + (s.wine.batches[1] || {}).verdict);
+  await page.evaluate(() => window.__hss.gotoArea('barnIn', 10, 7));
+  s = await S();
+  check('the tasting table is set: the pastor and Constance in the barn, Oma not among them', s.npcs.some(n => n.id === 'pastor') && s.npcs.some(n => n.id === 'constance') && !s.npcs.some(n => n.id === 'oma'), 'npcs=' + s.npcs.map(n => n.id).join(','));
   await page.evaluate(() => window.__hss.tasting());
+  const tlines = await page.evaluate(() => window.__hss.dlgLines());
+  check("the pastor's verdict beat fires: LOVELY, spoken by the pastor, Constance beside him", tlines.some(l => l.name === 'PASTOR' && /LOVELY/.test(l.text)) && tlines.some(l => l.name === 'CONSTANCE'), 'lines=' + tlines.map(l => l.name || '—').join(','));
+  check('the tasting dialogue seats no Oma: no line names her, no glass is hers', !tlines.some(l => l.name === 'OMA' || /\bOMA\b/.test(l.text)), '');
   await dismissDialogue(16);
   s = await S();
-  check('the tasting: Oma at the table, the promise kept, the finale lands', s.mode === 'card' && s.world.ch === 11 && s.promise === true, 'mode=' + s.mode + ' ch=' + s.world.ch);
+  check('the tasting: the finale lands on the chapter card', s.mode === 'card' && s.world.ch === 11 && s.promise === true, 'mode=' + s.mode + ' ch=' + s.world.ch);
   await tap('z'); await page.waitForTimeout(300);
   await dismissDialogue(8);
 
