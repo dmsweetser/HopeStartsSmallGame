@@ -1470,6 +1470,36 @@ function findChromium() {
   check('fullscreen: 360px wide — exact fit, nothing clipped, no scrollbars', exactFit(L) && L.conR <= L.iw && L.deckB <= L.ih && L.linkIn && L.scrollW <= L.iw, JSON.stringify(L));
   await page.setViewportSize({ width: 880, height: 800 });
 
+  // PORTRAIT FILL (Daniel's Android phone, Nov 26, 2026): the exact-fit
+  // console used to FLOAT mid-screen on a portrait phone — ~190px of
+  // empty background above and below it at 390x844, the deck hovering
+  // with it. Now the console fills the whole height, the screen takes
+  // the full width at 10:9, and the deck area takes the rest at the
+  // foot of the device. Fresh touch profiles: the deck must show by
+  // default, under the screen, every control inside the viewport.
+  const phoneAt = async (w, h) => {
+    const c2 = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true, userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36' });
+    const p2 = await c2.newPage();
+    await p2.goto('http://127.0.0.1:8907/index.html', { waitUntil: 'load' });
+    await p2.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+    await p2.waitForTimeout(500);
+    const m = await p2.evaluate(() => {
+      const R = id => { const r = document.getElementById(id).getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; };
+      return { iw: window.innerWidth, ih: window.innerHeight, console: R('console'), screen: R('screen'), deck: R('deck'), stick: R('stickBase'), btnA: R('btnA'), btnMenu: R('btnMenu'), deckHidden: document.getElementById('deck').hidden, pad: window.__hss.state().padVisible, scrollW: document.documentElement.scrollWidth, scrollH: document.documentElement.scrollHeight };
+    });
+    await c2.close();
+    return m;
+  };
+  for (const [w, h] of [[360, 740], [390, 844], [412, 915]]) {
+    const m = await phoneAt(w, h);
+    check('portrait fill ' + w + 'x' + h + ': console fills the height, deck at the foot, controls inside',
+      m.console.top <= 10 && (m.ih - m.console.bottom) <= 10 && !m.deckHidden && m.pad === true &&
+      m.deck.top >= m.screen.bottom - 2 && m.deck.bottom <= m.ih + 1 &&
+      m.stick.left >= -1 && m.btnA.right <= m.iw + 1 && m.btnMenu.top >= m.deck.top - 1 && m.btnMenu.bottom <= m.ih + 1 &&
+      m.scrollW <= m.iw && m.scrollH <= m.ih + 1,
+      'top=' + Math.round(m.console.top) + ' bottomGap=' + Math.round(m.ih - m.console.bottom) + ' deckTop=' + Math.round(m.deck.top) + ' screenBottom=' + Math.round(m.screen.bottom));
+  }
+
   await browser.close();
   if (ownServer) server.close();
   log('SMOKE DONE');

@@ -5792,6 +5792,17 @@ const consoleEl = document.getElementById('console');
 // whole-number-scale preference left visible letterbox; Daniel's word
 // overruled it). Letterboxing remains only on the non-limiting axis.
 function fitStage() {
+  // Portrait fill (Daniel's Android phone, Nov 26, 2026): in portrait
+  // with the deck in play, the exact-fit console floated mid-screen with
+  // ~190px of empty background above and below it, and the deck hovered
+  // with it instead of sitting at the foot of the device. There the
+  // console fills the whole height (the .fill CSS): the screen takes
+  // the full width at the unchanged aspect and the deck area takes the
+  // remaining height. Everywhere else the exact fit below stands.
+  const portrait = window.innerHeight > window.innerWidth;
+  const fill = portrait && !deckEl.hidden;
+  consoleEl.classList.toggle('fill', fill);
+  if (fill) { consoleEl.style.width = window.innerWidth + 'px'; return; }
   const deckH = deckEl.hidden ? 0 : deckEl.offsetHeight;
   const availW = window.innerWidth - 8, availH = window.innerHeight - deckH - 8; // 8: the console's borders
   const scale = Math.min(availW / 160, availH / 144);
@@ -5799,10 +5810,15 @@ function fitStage() {
 }
 window.addEventListener('resize', fitStage);
 const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+/* Touch detection, hardened: (pointer: coarse) alone can miss on real
+   Android browsers/WebViews, which left the deck hidden on a touch
+   phone under 'auto'. Any one of the three signals is enough; an
+   explicit CONTROLS choice ('always'/'off') still wins outright. */
+const touchCapable = coarsePointer || (navigator.maxTouchPoints || 0) > 0 || ('ontouchstart' in window);
 let touchSeen = false;
 const stickDebug = { dir: null, mag: 0 }; // exposed via __hss for the smoke test
 function stickShouldShow() {
-  return settings.stick === 'always' || (settings.stick === 'auto' && (touchSeen || coarsePointer));
+  return settings.stick === 'always' || (settings.stick === 'auto' && (touchSeen || touchCapable));
 }
 function applyStickPref() { deckEl.hidden = !stickShouldShow(); fitStage(); }
 window.addEventListener('touchstart', () => { if (!touchSeen) { touchSeen = true; applyStickPref(); } }, { passive: true });
