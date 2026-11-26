@@ -9,7 +9,22 @@ A Playwright-driven pass over the whole Seeds slice: title, intro, the
 daily watering loop, growth stages, the first trial, the Plant Register,
 saving/continuing, migration of old save formats, plus regression checks
 for the movement seam rendering, Alvin's auto-displace, the talking
-frames, and Alvin's idle sit.
+frames, Alvin's idle sit, the weeds → compost → good dirt loop, and the
+title-screen theme song (playback, the MUSIC setting, and the melody's
+match to the hymnal reference and to `theme.mid`).
+
+## make-theme.js — the theme song source
+
+`theme.mid` (repo root) and the THEME data inside `game.js` are both
+generated from the single arrangement defined in `tests/make-theme.js`:
+
+```
+node tests/make-theme.js
+```
+
+It verifies the melody against its public-domain sources (see the
+header comment), rewrites `theme.mid`, and prints the literal to paste
+into `game.js`.
 
 Run it from anywhere:
 

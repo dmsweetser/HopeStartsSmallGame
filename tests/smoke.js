@@ -74,6 +74,20 @@ function findChromium() {
   check('boots to title', s.mode === 'title', s.mode);
   await page.screenshot({ path: path.join(SHOTS, 'title.png') });
 
+  // THEME SONG (pass 8): browsers block audio before a user gesture, so
+  // the title sits silent until the player's first interaction — then
+  // TERRA BEATA starts, looping, and stops the moment the game starts.
+  check('theme silent before first interaction', s.theme && s.theme.playing === false && s.theme.ctx === 'none', JSON.stringify(s.theme));
+  check('music setting defaults ON', s.settings && s.settings.music === true, JSON.stringify(s.settings));
+  await page.keyboard.press('Shift'); // a neutral key: an interaction that selects nothing
+  await page.waitForTimeout(900);
+  s = await S();
+  check('theme starts after first interaction on title', s.theme.playing === true && s.theme.ctx === 'running', JSON.stringify(s.theme));
+  await page.waitForTimeout(3000); // phrase 1 ends on a 3-beat held note; give phrase 2 time to schedule
+  s = await S();
+  check('theme schedules notes', s.theme.scheduled > 12, 'scheduled=' + s.theme.scheduled);
+  await page.screenshot({ path: path.join(SHOTS, 'title-theme.png') });
+
   // CONTROLS from the title menu (no save yet: NEW GAME / CHAPTERS / CONTROLS)
   await tap('ArrowDown'); await tap('ArrowDown');
   await tap('Enter');
@@ -101,6 +115,46 @@ function findChromium() {
   check('intro dismissed by A presses', await dismissDialogue(50));
   s = await S();
   check('tutorial at plant step', s.tutorial === 1, 'tutorial=' + s.tutorial);
+  check('theme stops when the game starts', s.theme.playing === false, JSON.stringify(s.theme));
+
+  // The theme's melody, checked note-for-note against the hymnal
+  // reference: TERRA BEATA in Eb major (Hymnary.org tune record, incipit
+  // 12353 21234 65326; the 1919 printing's opening Eb4 F4 G4 Bb4 G4 F4
+  // Eb4 F4 G4; second half opens on Bb4, peaks on Eb5, dips to Bb3).
+  // theme.mid in the repo root must carry that same melody.
+  const THEME_REF = [63, 65, 67, 70, 67, 65, 63, 65, 67, 68, 72, 70, 67, 65, 72, 70, 67, 67, 65, 63, 67, 65, 63, 58, 63, 65, 67, 70, 65, 67, 63, 70, 75, 70, 72, 74, 75, 75, 74, 72, 68, 67, 70, 70, 72, 70, 67, 67, 65, 63, 67, 65, 63, 58, 63, 65, 67, 70, 65, 67, 63, 68, 63];
+  const td = await page.evaluate(() => window.__hss.themeData());
+  check('theme melody matches the hymnal reference note-for-note', JSON.stringify(td.melody) === JSON.stringify(THEME_REF), td.melody.length + ' notes, first: ' + td.melody.slice(0, 9).join(','));
+  check('theme is 69 beats at 88 BPM', td.beats === 69 && td.bpm === 88, td.bpm + 'bpm / ' + td.beats + ' beats');
+  const midPath = [path.join(DIR, '..', 'theme.mid'), '/home/hatch/workspace/hope-starts-small-game/theme.mid'].find(p => fs.existsSync(p));
+  const mid = midPath ? fs.readFileSync(midPath) : null;
+  check('theme.mid exists with a valid SMF header', !!mid && mid.toString('ascii', 0, 4) === 'MThd' && mid.readUInt16BE(8) === 1 && mid.readUInt16BE(10) === 4, mid ? mid.length + ' bytes' : 'missing');
+  const parseMidTracks = (buf) => {
+    const tracks = []; let off = 14;
+    while (off + 8 <= buf.length && buf.toString('ascii', off, off + 4) === 'MTrk') {
+      const end = off + 8 + buf.readUInt32BE(off + 4);
+      let i = off + 8, run = 0; const notes = [];
+      const vlq = () => { let v = 0, c; do { c = buf[i++]; v = (v << 7) | (c & 0x7f); } while (c & 0x80); return v; };
+      while (i < end) {
+        vlq();
+        let st = buf[i];
+        if (st & 0x80) { run = st; i++; } else st = run;
+        if (st === 0xff) { i++; const L = vlq(); i += L; }
+        else if (st === 0xf0 || st === 0xf7) { const L = vlq(); i += L; }
+        else {
+          const cmd = st & 0xf0;
+          if (cmd === 0x90) { const n = buf[i], vel = buf[i + 1]; i += 2; if (vel > 0) notes.push(n); }
+          else if (cmd === 0x80 || cmd === 0xa0 || cmd === 0xb0 || cmd === 0xe0) i += 2;
+          else if (cmd === 0xc0 || cmd === 0xd0) i += 1;
+          else break;
+        }
+      }
+      tracks.push(notes); off = end;
+    }
+    return tracks;
+  };
+  const midTracks = mid ? parseMidTracks(mid) : [];
+  check('theme.mid melody track matches the reference', JSON.stringify(midTracks[1]) === JSON.stringify(THEME_REF), (midTracks[1] || []).length + ' notes in track 1 of ' + midTracks.length);
 
   // The stick (deck set to ALWAYS above): rigorous direction discipline,
   // driven by real synthetic pointer drags on the stick base.
@@ -321,6 +375,192 @@ function findChromium() {
   check('continue restores day', s.day === savedDay, 'day=' + s.day + ' expected ' + savedDay);
   check('continue restores pots', JSON.stringify(s.pots.map(p => p.stage)) === savedStages, JSON.stringify(s.pots.map(p => p.stage)));
   await page.screenshot({ path: path.join(SHOTS, 'continue.png') });
+
+  // WEEDS -> COMPOST -> GOOD DIRT (pass 8): the yard's second loop.
+  // Spawn rules: a dry dawn adds 2, a dawn after watering adds 3, the
+  // living cap is 6, and every tuft sits on a legal grass tile.
+  const weedLegality = () => page.evaluate(() => {
+    const bad = [], seen = new Set();
+    for (const w of G.save.weeds) {
+      const ch = mapChar(w.x, w.y), k = w.x + ',' + w.y;
+      if (ch !== 'g' && ch !== 'u') bad.push('tile ' + ch + ' at ' + k);
+      if (w.y < 5) bad.push('house apron row ' + w.y);
+      if (isSolid(w.x, w.y)) bad.push('solid at ' + k);
+      if (w.x === player.tx && w.y === player.ty) bad.push('on Frank');
+      if (w.x === alvin.tx && w.y === alvin.ty) bad.push('on Alvin');
+      if (w.x === constance.tx && w.y === constance.ty) bad.push('on Constance');
+      if (G.save.deerPresent && !G.save.deerBeaten && w.x === 18 && w.y === 8) bad.push('on the deer');
+      if (seen.has(k)) bad.push('duplicate ' + k);
+      seen.add(k);
+    }
+    return bad;
+  });
+  await page.evaluate(() => { window.__hss.setWeeds([]); G.save.pots.forEach(p => { p.watered = false; }); saveGame(); });
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('dry dawn spawns 2 weeds', s.weeds.length === 2, JSON.stringify(s.weeds));
+  check('spawned weeds sit on legal tiles', (await weedLegality()).length === 0, JSON.stringify(await weedLegality()));
+  for (let i = 0; i < 4; i++) await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('weeds never exceed the cap of 6', s.weeds.length === 6, 'count=' + s.weeds.length);
+  await page.evaluate(() => window.__hss.setWeeds([]));
+  await page.evaluate(() => window.__hss.waterAll());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('dawn after a watering day spawns 3', s.weeds.length === 3, 'count=' + s.weeds.length);
+  check('watered-dawn weeds are legal too', (await weedLegality()).length === 0, JSON.stringify(await weedLegality()));
+
+  // Pulling: weeds are non-solid (Frank can stand on one), a faced
+  // deep-rooted tuft pays 2, the one under his boots pays 1.
+  await page.evaluate(() => window.__hss.setWeeds([{ x: 16, y: 13, deep: false }, { x: 17, y: 13, deep: true }]));
+  await page.evaluate(() => window.__hss.warp(16, 14));
+  await page.waitForTimeout(250);
+  await page.screenshot({ path: path.join(SHOTS, 'weeds.png') });
+  const compost0 = (await S()).compost;
+  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(70); await page.keyboard.up('ArrowUp');
+  await page.waitForTimeout(350);
+  s = await S();
+  check('weeds are non-solid: Frank stands on a tuft', s.player.x === 16 && s.player.y === 13, JSON.stringify(s.player));
+  await page.evaluate(() => { player.dir = 'right'; });
+  await tap('z'); // pull the deep-rooted weed he faces (first pull: Frank's line runs)
+  await page.waitForTimeout(250);
+  await dismissDialogue(10);
+  s = await S();
+  check('pull: deep-rooted weed pays 2 compost and is gone', s.compost === compost0 + 2 && s.weeds.length === 1 && s.weeds[0].deep === false, 'compost=' + s.compost + ' weeds=' + JSON.stringify(s.weeds));
+  await page.evaluate(() => { player.dir = 'up'; });
+  await tap('z'); // nothing to face up here: the tuft under his boots goes
+  await page.waitForTimeout(250);
+  s = await S();
+  check('pull: tuft underfoot pays 1 compost and is gone', s.compost === compost0 + 3 && s.weeds.length === 0 && s.mode === 'overworld', 'compost=' + s.compost + ' weeds=' + s.weeds.length + ' mode=' + s.mode);
+
+  // The compost corner: below 3 compost it only reports the count; at 3
+  // it offers the conversion, and B declines it.
+  const faceCorner = async () => {
+    await page.evaluate(() => window.__hss.warp(20, 12));
+    await page.evaluate(() => { player.dir = 'up'; });
+    await page.waitForTimeout(200);
+  };
+  await page.evaluate(() => { G.save.compost = 2; G.save.goodDirt = 0; saveGame(); });
+  await faceCorner();
+  await tap('z');
+  await page.waitForTimeout(250);
+  await dismissDialogue(10);
+  s = await S();
+  check('corner below 3 compost converts nothing', s.compost === 2 && s.goodDirt === 0, 'compost=' + s.compost + ' dirt=' + s.goodDirt);
+  await page.evaluate(() => { G.save.compost = 3; saveGame(); });
+  await faceCorner();
+  await tap('z'); await page.waitForTimeout(250);
+  await dismissDialogue(15); // A on the offer: MAKE IT (+ the confirmation line)
+  s = await S();
+  check('corner converts 3 compost into 1 good dirt', s.compost === 0 && s.goodDirt === 1, 'compost=' + s.compost + ' dirt=' + s.goodDirt);
+  await page.evaluate(() => { G.save.compost = 3; saveGame(); });
+  await faceCorner();
+  await tap('z'); await page.waitForTimeout(350); // line 1 completes (or advances)
+  await tap('z'); await page.waitForTimeout(350); // offer line arrives (or completes line 1)
+  await tap('z'); await page.waitForTimeout(350); // offer line completes
+  await tap('z'); await page.waitForTimeout(350); // (timing slack: ensure the offer is fully typed)
+  await tap('x'); // B: NOT NOW — only declines once the line is fully typed
+  await page.waitForTimeout(250);
+  s = await S();
+  check('corner offer can be declined with B', s.compost === 3 && s.goodDirt === 1 && s.mode === 'overworld', 'compost=' + s.compost + ' dirt=' + s.goodDirt + ' mode=' + s.mode);
+
+  // Good dirt at the bench: a watered pot is fed — vigor +8, the plant
+  // is marked, and a growth credit is banked.
+  await page.evaluate(() => { G.save.goodDirt = 1; G.save.pots[0].watered = true; saveGame(); });
+  const vigor0 = (await S()).pots[0].vigor;
+  await page.evaluate(() => window.__hss.warp(9, 11));
+  await page.evaluate(() => { player.dir = 'up'; });
+  await page.waitForTimeout(200);
+  await tap('z');
+  await page.waitForTimeout(250);
+  await dismissDialogue(15); // A through the offer: FEED IT (+ confirmation)
+  s = await S();
+  check('good dirt feeds a watered pot: +8 vigor, marked, credit banked',
+    s.goodDirt === 0 && s.pots[0].dirt === true && s.pots[0].dirtCredit === 1 && s.pots[0].vigor === vigor0 + 8,
+    JSON.stringify({ dirt: s.goodDirt, pot: s.pots[0] }));
+
+  // The credit does its work at dawn: a seed watered once, holding one
+  // credit, sprouts a day early — and the credit is spent.
+  await page.evaluate(() => { const p = G.save.pots[1]; p.stage = 1; p.wateredDays = 0; p.watered = true; p.dirt = true; p.dirtCredit = 1; saveGame(); });
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('dirt credit sprouts a seed a day early', s.pots[1].stage === 2 && s.pots[1].dirtCredit === 0, JSON.stringify(s.pots[1]));
+
+  // And when the credit causes the FIRST sprout, the deer trial still
+  // dawns as usual.
+  await page.evaluate(() => {
+    G.save.deerBeaten = false; G.save.deerPresent = false;
+    const p = G.save.pots[2]; p.stage = 1; p.wateredDays = 0; p.watered = true; p.dirtCredit = 1; saveGame();
+  });
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('credit-caused first sprout still brings the deer', s.pots[2].stage === 2 && s.deerPresent === true, 'stage=' + s.pots[2].stage + ' deer=' + s.deerPresent);
+  await page.evaluate(() => { G.save.deerBeaten = true; G.save.deerPresent = false; saveGame(); });
+
+  // All the new state survives a save / Continue round-trip.
+  const rt = await S();
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+  await page.waitForTimeout(300);
+  await tap('ArrowDown'); // CONTINUE
+  await tap('Enter');
+  await page.waitForTimeout(400);
+  s = await S();
+  check('weeds state survives Continue', s.compost === rt.compost && s.goodDirt === rt.goodDirt && JSON.stringify(s.weeds) === JSON.stringify(rt.weeds) && s.pots[0].dirt === true && s.pots[1].dirt === true,
+    'compost=' + s.compost + '/' + rt.compost + ' dirt=' + s.goodDirt + '/' + rt.goodDirt + ' weeds=' + s.weeds.length + '/' + rt.weeds.length);
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('hss-save-v1')));
+  check('save file carries weeds, compost, dirt and per-plant marks',
+    Array.isArray(persisted.weeds) && typeof persisted.compost === 'number' && typeof persisted.goodDirt === 'number' && persisted.pots[0].dirt === true && typeof persisted.pots[1].dirtCredit === 'number',
+    JSON.stringify({ compost: persisted.compost, goodDirt: persisted.goodDirt, weeds: (persisted.weeds || []).length }));
+
+  // MUSIC SETTING: on the CONTROLS screen, persisted in the settings
+  // key, and OFF means the title stays silent even after interactions.
+  await tap('p'); // pause menu
+  await page.waitForTimeout(250);
+  await tap('ArrowDown'); await tap('ArrowDown'); // SAVE & QUIT
+  await tap('Enter');
+  await page.waitForTimeout(300);
+  s = await S();
+  check('back on title for the music setting', s.mode === 'title', s.mode);
+  await tap('ArrowDown'); await tap('ArrowDown'); await tap('ArrowDown'); // CONTROLS
+  await tap('Enter');
+  await page.waitForTimeout(250);
+  await tap('ArrowDown'); // MUSIC row
+  await tap('ArrowRight'); // ON -> OFF
+  await page.waitForTimeout(200);
+  s = await S();
+  check('music toggles OFF on the controls screen', s.settings.music === false, JSON.stringify(s.settings));
+  await page.screenshot({ path: path.join(SHOTS, 'controls-music.png') });
+  await tap('x'); // back to title
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Shift');
+  await page.waitForTimeout(700);
+  s = await S();
+  check('music OFF: title stays silent after interaction', s.theme.playing === false, JSON.stringify(s.theme));
+  const savedSettings = await page.evaluate(() => JSON.parse(localStorage.getItem('hss-settings-v1')));
+  check('music OFF persists in the settings key', savedSettings && savedSettings.music === false, JSON.stringify(savedSettings));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+  await page.waitForTimeout(300);
+  s = await S();
+  check('music OFF survives a reload', s.settings.music === false, JSON.stringify(s.settings));
+  await tap('ArrowDown'); await tap('ArrowDown'); await tap('ArrowDown'); // CONTROLS
+  await tap('Enter');
+  await page.waitForTimeout(250);
+  await tap('ArrowDown'); await tap('ArrowRight'); // MUSIC back ON
+  await page.waitForTimeout(200);
+  await tap('x');
+  await page.waitForTimeout(900);
+  s = await S();
+  check('music back ON: theme plays again on title', s.settings.music === true && s.theme.playing === true, JSON.stringify(s.theme));
+  // Leave the title the way the sections after this one expect: in the yard.
+  // (Select CONTINUE directly: the selection sits on CONTROLS after the
+  // detour, and NEW GAME would stop at the overwrite-confirm prompt.)
+  await page.evaluate(() => { titleSel = titleLabels().indexOf('CONTINUE'); });
+  await tap('Enter');
+  await page.waitForTimeout(400);
+  s = await S();
+  check('continue back into the yard after the music detour', s.mode === 'overworld', s.mode);
 
   // Regression: "weird black lines when I move" (Daniel, Nov 26). Root cause:
   // a fractional camera drew every tile at a fractional offset, and GPU

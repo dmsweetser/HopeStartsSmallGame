@@ -279,6 +279,46 @@ TILES.compost = tileCanvas(c => {
   c.fillStyle = '#4a7c2f'; c.fillRect(4, 2, 3, 3); c.fillRect(9, 1, 4, 3); c.fillRect(12, 3, 2, 2);
   c.fillStyle = '#5da244'; c.fillRect(5, 1, 2, 2); c.fillRect(10, 0, 2, 2);
 });
+/* ---- weeds (pass 8): drawn OVER a grass tile, decor layer. The common
+   tuft is a yellow-green fan, quite unlike the lawn's own thin tufts; the
+   deep-rooted one is taller, darker, and shows its root flare. ---- */
+const WEED_TUFT = makeSprite([
+'................',
+'................',
+'.....y....y.....',
+'....l.l..l.l....',
+'....l..l.l..l...',
+'.....l.lll.l....',
+'..y...lll...y...',
+'...l..lll..l....',
+'....l.lllll.....',
+'.....llllll.....',
+'....dddddddd....',
+'...dddddddddd...',
+'.......rr.......',
+'................',
+'................',
+'................',
+], { y: '#a8b83e', l: '#7a9a2e', d: '#4a7c2f', r: '#6f4520' });
+const WEED_DEEP = makeSprite([
+'..D.......D.....',
+'..D..s...D..s...',
+'...D.D..D..D....',
+'....D.DDD.D.....',
+'..D..DDDD...D...',
+'...D.DDDD.D.....',
+'....DDDDDD......',
+'..D.DDDDDDD.D...',
+'...DDDDDDDDD....',
+'....ddddddd.....',
+'...ddddddddd....',
+'..DDDDDDDDDDD...',
+'.....R.R.R......',
+'......RRR.......',
+'................',
+'................',
+], { D: '#2e5d24', d: '#3f7030', s: '#c9a83e', R: '#5a3a1e' });
+
 /* ---- pass 3 dressing: sway frames, garden plot, props, dressed fences ---- */
 TILES.flowerB = tileCanvas(c => { // flower frame B: blooms leaned 1px the other way (sway)
   c.drawImage(TILES.grass, 0, 0);
@@ -1233,6 +1273,7 @@ function freshPot(i) {
   return {
     name: PLANT_NAMES[i], stage: 0, wateredDays: 0, watered: false, vigor: 0, tended: 0,
     sownDay: null, sproutedDay: null, seedlingDay: null, location: 'BENCH',
+    dirt: false, dirtCredit: 0, // good dirt: a permanent mark + banked growth credit
   };
 }
 /* Old saves stored pots as bare stage ints, then as {stage, waterDays, ...}
@@ -1251,9 +1292,22 @@ function migratePot(p, i) {
     sproutedDay: p.sproutedDay != null ? p.sproutedDay : (st >= 2 ? 1 : null),
     seedlingDay: p.seedlingDay != null ? p.seedlingDay : (st >= 3 ? 1 : null),
     location: 'BENCH',
+    dirt: !!p.dirt, dirtCredit: p.dirtCredit || 0,
   };
 }
-function migrateSave(s) { s.pots = s.pots.map((p, i) => migratePot(p, i)); return s; }
+function migrateSave(s) {
+  s.pots = s.pots.map((p, i) => migratePot(p, i));
+  // pass 8 fields (the weeds loop): saves from before it have none of
+  // this — weeds start absent, purses empty, the two lines unheard.
+  s.weeds = Array.isArray(s.weeds)
+    ? s.weeds.filter(w => w && Number.isInteger(w.x) && Number.isInteger(w.y)).map(w => ({ x: w.x, y: w.y, deep: !!w.deep }))
+    : [];
+  if (typeof s.compost !== 'number') s.compost = 0;
+  if (typeof s.goodDirt !== 'number') s.goodDirt = 0;
+  s.weedLineSeen = !!s.weedLineSeen;
+  s.cornerLineSeen = !!s.cornerLineSeen;
+  return s;
+}
 let G = null; // game state (serializable part in G.save)
 function newSave() {
   return {
@@ -1264,6 +1318,7 @@ function newSave() {
     tutorial: 0, // 0 intro dialogue, 1 plant, 2 water, 3 done
     player: { x: 10, y: 6, dir: 'down' },
     constanceLine: 0,
+    weeds: [], compost: 0, goodDirt: 0, weedLineSeen: false, cornerLineSeen: false,
   };
 }
 function saveGame() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(G.save)); } catch (e) {} }
@@ -1285,13 +1340,113 @@ function strongestPot() {
 /* Persisted separately from the game save, so starting a New Game (which
    overwrites the save) never resets the player's control preferences. */
 const SETTINGS_KEY = 'hss-settings-v1';
-const settings = { stick: 'auto' }; // auto | always | off
+const settings = { stick: 'auto', music: true }; // stick: auto | always | off; music: theme on/off
 try {
   const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
   const v = s && (s.stick || s.pad); // 'pad' was the D-pad-era field name; migrate it forward
   if (['auto', 'always', 'off'].includes(v)) settings.stick = v;
+  if (s && s.music === false) settings.music = false;
 } catch (e) {}
-function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ stick: settings.stick })); } catch (e) {} }
+function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ stick: settings.stick, music: settings.music })); } catch (e) {} }
+
+/* ============================== THEME SONG ============================== */
+/* "This Is My Father's World" — the tune TERRA BEATA (Franklin L.
+   Sheppard, Alleluia, 1915; traditional English melody). Public domain;
+   tune only, no words anywhere in the game. The arrangement below is
+   the game's own (soft lead, simple bass, gentle chord pads), and it is
+   generated from theme.mid — the Standard MIDI File in the repo root is
+   the source of truth (see tests/make-theme.js, which writes both).
+   Melody verified note-for-note Nov 26, 2026 against Hymnary.org's
+   TERRA BEATA tune record (Eb major; incipit 12353 21234 65326) and the
+   1919 printing as engraved at piano.org (opening Eb4 F4 G4 Bb4 G4 F4
+   Eb4 F4 G4; second half opens on Bb4 and peaks on Eb5; lowest note
+   Bb3; the Amen moves Ab -> Eb). Playback data is [note, beats] pairs
+   on one shared 69-beat timeline; 0 / [] is a rest. */
+const THEME = {
+  bpm: 88, beats: 69,
+  melody: [[63,0.5],[65,0.5],[67,1],[70,1],[67,1],[65,1],[63,3],[65,0.5],[67,0.5],[68,1],[72,1],[70,1],[67,1],[65,3],[72,0.5],[70,0.5],[67,1],[67,1],[65,1],[63,1],[67,2],[65,0.5],[63,0.5],[58,1],[63,1],[65,1],[67,1],[70,1],[65,1],[67,1],[63,2],[70,0.5],[75,0.5],[70,1],[72,1],[74,1],[75,3],[75,0.5],[74,0.5],[72,1],[68,1],[67,1],[70,1],[70,3],[72,0.5],[70,0.5],[67,1],[67,1],[65,1],[63,1],[67,2],[65,0.5],[63,0.5],[58,1],[63,1],[65,1],[67,1],[70,1],[65,1],[67,1],[63,2],[68,2],[63,2]],
+  bass: [[0,1],[39,2],[46,2],[39,2],[46,2],[44,2],[51,2],[44,2],[48,2],[39,2],[46,2],[39,3],[46,1],[39,2],[46,2],[39,2],[43,2],[0,0.5],[39,2],[46,1.5],[39,2],[43,2],[44,2],[48,2],[44,2],[44,2],[39,2],[46,2],[39,3],[46,1],[39,2],[46,2],[39,4],[44,2],[39,2]],
+  chords: [[[],1],[[55,58,63],4],[[55,58,63],4],[[56,60,63],4],[[56,60,63],4],[[55,58,63],4],[[55,58,63],4],[[55,58,63],4],[[55,58,63],4],[[],0.5],[[55,58,63],3.5],[[55,58,63],4],[[56,60,63],4],[[56,60,63],4],[[55,58,63],4],[[55,58,63],4],[[55,58,63],4],[[55,58,63],4],[[56,60,63],2],[[55,58,63],2]],
+};
+/* The three voices merged into one beat-sorted event list, once. */
+const THEME_SEQ = (() => {
+  const ev = [];
+  const add = (stream, kind) => {
+    let b = 0;
+    for (const [n, d] of stream) {
+      if (Array.isArray(n)) { for (const nn of n) if (nn) ev.push({ beat: b, kind, note: nn, dur: d }); }
+      else if (n) ev.push({ beat: b, kind, note: n, dur: d });
+      b += d;
+    }
+  };
+  add(THEME.melody, 'melody'); add(THEME.bass, 'bass'); add(THEME.chords, 'chord');
+  ev.sort((a, b) => a.beat - b.beat);
+  return ev;
+})();
+/* WebAudio chiptune playback, title screen only. Browsers refuse audio
+   before a user gesture, so nothing is created until the player's first
+   key/touch/click anywhere; themeSync() (called every frame) then starts
+   and stops the loop as the mode and the MUSIC setting demand. */
+let themeCtx = null, themeMaster = null, themeTimer = null, themePlaying = false;
+let themeIdx = 0, themeLoopStart = 0, userGestured = false;
+const themeDbg = { scheduled: 0 }; // notes scheduled since boot (read via __hss)
+for (const evName of ['pointerdown', 'keydown', 'touchstart']) {
+  window.addEventListener(evName, () => {
+    userGestured = true;
+    if (themeCtx && themeCtx.state === 'suspended') themeCtx.resume();
+  }, { passive: true });
+}
+function themePlayNote(t, e) {
+  const spb = 60 / THEME.bpm;
+  const osc = themeCtx.createOscillator(), g = themeCtx.createGain();
+  const conf = e.kind === 'melody' ? { type: 'triangle', peak: 0.5, atk: 0.012 }
+    : e.kind === 'bass' ? { type: 'triangle', peak: 0.36, atk: 0.012 }
+    : { type: 'square', peak: 0.11, atk: 0.09 }; // chord pads breathe in slowly
+  osc.type = conf.type;
+  osc.frequency.value = 440 * Math.pow(2, (e.note - 69) / 12);
+  const dur = Math.max(0.06, e.dur * spb * (e.kind === 'chord' ? 1 : 0.92));
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(conf.peak, t + conf.atk);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  osc.connect(g); g.connect(themeMaster);
+  osc.start(t); osc.stop(t + dur + 0.05);
+}
+function themeTick() {
+  if (!themeCtx) return;
+  const spb = 60 / THEME.bpm, ahead = themeCtx.currentTime + 0.18;
+  while (themePlaying) {
+    const e = THEME_SEQ[themeIdx], t = themeLoopStart + e.beat * spb;
+    if (t > ahead) break;
+    if (t >= themeCtx.currentTime - 0.05) { themePlayNote(t, e); themeDbg.scheduled++; }
+    themeIdx++;
+    if (themeIdx >= THEME_SEQ.length) { themeIdx = 0; themeLoopStart += THEME.beats * spb; }
+  }
+}
+function themeStart() {
+  if (themePlaying || !userGestured) return;
+  if (!themeCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    themeCtx = new AC();
+    themeMaster = themeCtx.createGain(); themeMaster.gain.value = 0.4; // quiet under everything
+    themeMaster.connect(themeCtx.destination);
+  }
+  if (themeCtx.state === 'suspended') themeCtx.resume();
+  themeMaster.gain.setTargetAtTime(0.4, themeCtx.currentTime, 0.05);
+  themeIdx = 0; themeLoopStart = themeCtx.currentTime + 0.06;
+  themeTimer = setInterval(themeTick, 40);
+  themePlaying = true;
+}
+function themeStop() {
+  if (themeTimer) { clearInterval(themeTimer); themeTimer = null; }
+  if (themeMaster && themeCtx) themeMaster.gain.setTargetAtTime(0.0001, themeCtx.currentTime, 0.03);
+  themePlaying = false;
+}
+function themeSync() {
+  const want = mode === 'title' && settings.music;
+  if (want && !themePlaying) themeStart();
+  else if (!want && themePlaying) themeStop();
+}
 
 /* ============================== INPUT ============================== */
 const keys = {};
@@ -1675,13 +1830,35 @@ function interact() {
     if (strongestPot() < 0) return say('ALVIN IS READY TO DEFEND THE GARDEN. BUT THERE IS NO SPROUT TO DEFEND. YET.');
     return say('WILD DEER APPEARED!', () => startTrial());
   }
+  const fw = weedAt(f.x, f.y); // a weed in front of Frank: pull it
+  if (fw) return pullWeed(fw);
   const ch = mapChar(f.x, f.y);
-  if (ch === 'C') {
-    if (s.teaBrewedDay !== s.day && s.tea < 3) { s.tea++; s.teaBrewedDay = s.day; saveGame(); return say('YOU BREW A QUICK COMPOST TEA. (+1 TEA, NOW ' + s.tea + ')'); }
-    return say('THE COMPOST PILE. YESTERDAY\'S SCRAPS, TOMORROW\'S GARDEN.');
+  if (ch === 'C') { // the compost corner: tea still brews here, and now compost becomes GOOD DIRT
+    const cornerFirst = !s.cornerLineSeen;
+    if (cornerFirst) s.cornerLineSeen = true;
+    const conLine = 'CONSTANCE: HE CURSES THE WEEDS ON MONDAY AND FEEDS THEM TO THE POTS ON FRIDAY. THE GARDEN KEEPS ITS OWN BOOKS.';
+    if (s.compost >= 3) {
+      const lines = ['THE COMPOST CORNER. COMPOST: ' + s.compost + '.', 'MAKE GOOD DIRT FOR A POT? IT TAKES 3.'];
+      if (cornerFirst) lines.push(conLine);
+      saveGame();
+      return say(lines, which => {
+        if (which === 0) {
+          s.compost -= 3; s.goodDirt++; saveGame();
+          say('GOOD DIRT, RICH AND DARK. (+1 GOOD DIRT, NOW ' + s.goodDirt + ') FEED IT TO A WATERED POT AT THE BENCH.');
+        }
+      }, ['MAKE IT', 'NOT NOW']);
+    }
+    const lines = [];
+    if (s.teaBrewedDay !== s.day && s.tea < 3) { s.tea++; s.teaBrewedDay = s.day; lines.push('YOU BREW A QUICK COMPOST TEA. (+1 TEA, NOW ' + s.tea + ')'); }
+    lines.push('COMPOST: ' + s.compost + ' — 3 MAKES GOOD DIRT FOR A POT. PULL WEEDS TO GATHER MORE.');
+    if (cornerFirst) lines.push(conLine);
+    saveGame();
+    return say(lines);
   }
   if (ch === 'G') return say('THE GATE STICKS. BEYOND IT: MOWED LAWNS AND ORDINARY LIFE.');
   if (ch === 'T') return say('TOO MUCH SHADE HERE. A FIELD NEEDS OPEN SKY, AND TIME.');
+  const uw = weedAt(player.tx, player.ty); // or the weed under Frank's own boots
+  if (uw) return pullWeed(uw);
 }
 function potInteract(pi) {
   const s = G.save, p = s.pots[pi];
@@ -1708,6 +1885,14 @@ function potInteract(pi) {
     }
     return say(p.stage === 1 ? 'YOU WATER THE SEED. GROW WELL, LITTLE ONE. NO RUSH.' : 'YOU WATER THE ' + STAGE_NAMES[p.stage] + '. STEADY DOES IT.');
   }
+  if (s.goodDirt > 0) { // a watered pot can be fed: the good dirt goes in
+    return say([p.name + ' IS WATERED AND WAITING.', 'FEED ' + p.name + ' THE GOOD DIRT? (YOU HOLD ' + s.goodDirt + ')'], which => {
+      if (which === 0) {
+        s.goodDirt--; p.dirt = true; p.dirtCredit = (p.dirtCredit || 0) + 1; p.vigor += 8; saveGame();
+        say('GOOD DIRT FOR ' + p.name + '. +8 VIGOR, AND THE NEXT STAGE COMES A DAY SOONER.');
+      }
+    }, ['FEED IT', 'NOT NOW']);
+  }
   return say('ALREADY WATERED TODAY. WAITING IS MOST OF THE WORK.');
 }
 function restDay() {
@@ -1716,13 +1901,19 @@ function restDay() {
 }
 function dawn() {
   const s = G.save; s.day++;
+  const wateredYesterday = s.pots.some(p => p.watered); // weeds love a watered yard
   let sprouted = false, seedled = false;
   for (const p of s.pots) {
     if (p.watered) { p.wateredDays++; p.tended++; p.watered = false; }
-    if (p.stage === 1 && p.wateredDays >= 2) { p.stage = 2; p.wateredDays = 0; p.sproutedDay = s.day; sprouted = true; dexAdd('SPROUT'); }
-    else if (p.stage === 2 && p.wateredDays >= 3) { p.stage = 3; p.wateredDays = 0; p.seedlingDay = s.day; seedled = true; dexAdd('SEEDLING'); }
+    // good dirt banks growth credit: each credit counts as one extra
+    // watered day toward the next stage, and only the credits the stage
+    // change actually needs are spent — the rest stay banked.
+    const credit = p.dirtCredit || 0;
+    if (p.stage === 1 && p.wateredDays + credit >= 2) { p.dirtCredit = Math.max(0, credit - (2 - p.wateredDays)); p.stage = 2; p.wateredDays = 0; p.sproutedDay = s.day; sprouted = true; dexAdd('SPROUT'); }
+    else if (p.stage === 2 && p.wateredDays + credit >= 3) { p.dirtCredit = Math.max(0, credit - (3 - p.wateredDays)); p.stage = 3; p.wateredDays = 0; p.seedlingDay = s.day; seedled = true; dexAdd('SEEDLING'); }
     p.vigor = MAX_VIGOR[p.stage] || 0;
   }
+  spawnWeeds(wateredYesterday ? 3 : 2);
   if (sprouted && !s.deerBeaten && !s.deerPresent) s.deerPresent = true;
   saveGame();
   fading = null;
@@ -1743,6 +1934,52 @@ function checkChapter() {
   return false;
 }
 let cardSel = 0;
+
+/* ============================== WEEDS -> COMPOST -> GOOD DIRT ============================== */
+/* The yard's second loop (Daniel, Nov 26): weeds creep in at dawn, Frank
+   pulls them for compost, and three compost makes one GOOD DIRT for a
+   chosen pot. Weeds are pure opportunity — decor layer, non-solid,
+   never harmful: they cannot block a step or hurt a plant. */
+const WEED_CAP = 6;
+const WEED_TILES = new Set(['g', 'u']); // open grass only — never paths, the bench, the garden plot, flower beds, or the house apron (rows above 5)
+function weedAt(x, y) { return (G.save.weeds || []).find(w => w.x === x && w.y === y) || null; }
+function spawnWeeds(count) {
+  const s = G.save;
+  if (!Array.isArray(s.weeds)) s.weeds = [];
+  const taken = new Set(s.weeds.map(w => w.x + ',' + w.y));
+  const blocked = new Set([player.tx + ',' + player.ty, alvin.tx + ',' + alvin.ty, constance.tx + ',' + constance.ty]);
+  if (s.deerPresent && !s.deerBeaten) blocked.add(DEER_POS.x + ',' + DEER_POS.y);
+  const spots = [];
+  for (let y = 5; y < MAP_H; y++) for (let x = 1; x < MAP_W - 1; x++) {
+    if (!WEED_TILES.has(mapChar(x, y))) continue;
+    const k = x + ',' + y;
+    if (taken.has(k) || blocked.has(k)) continue;
+    spots.push({ x, y });
+  }
+  for (let i = spots.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = spots[i]; spots[i] = spots[j]; spots[j] = t; }
+  while (count > 0 && s.weeds.length < WEED_CAP && spots.length) {
+    const sp = spots.pop();
+    s.weeds.push({ x: sp.x, y: sp.y, deep: Math.random() < 0.2 }); // about 1 in 5 is deep-rooted
+    count--;
+  }
+}
+/* Pull feedback: the tuft arcs away and a "+N COMPOST" note floats up.
+   Both are timed off perfNow at draw time, so they need no update loop. */
+let floaters = []; // {x, y, text, t0} in world pixels
+let tosses = [];   // {x, y, deep, t0} in tiles
+function pullWeed(w) {
+  const s = G.save;
+  s.weeds = s.weeds.filter(q => q !== w);
+  const gain = w.deep ? 2 : 1;
+  s.compost += gain;
+  floaters.push({ x: w.x * TILE + 8, y: w.y * TILE + 4, text: '+' + gain + ' COMPOST', t0: perfNow });
+  tosses.push({ x: w.x, y: w.y, deep: w.deep, t0: perfNow });
+  saveGame();
+  if (!s.weedLineSeen) {
+    s.weedLineSeen = true; saveGame();
+    say('FRANK: AH, A WEED! THE GARDEN\'S LITTLE TAX. INTO THE COMPOST WITH YOU — NOTHING IN THIS YARD IS WASTED.');
+  }
+}
 
 /* intro: original dialogue only */
 function startIntro() {
@@ -1987,6 +2224,13 @@ function renderTitle() {
   // a thin gold frame around the whole scene
   ctx.fillStyle = '#ffd94a';
   ctx.fillRect(0, 0, VW, 1); ctx.fillRect(0, VH - 1, VW, 1); ctx.fillRect(0, 0, 1, VH); ctx.fillRect(VW - 1, 0, 1, VH);
+  // the theme song's one visible trace: a small note in the corner — dim
+  // and breathing until the first touch wakes the audio, gold while it
+  // plays, absent entirely when MUSIC is off
+  if (settings.music) {
+    const col = themePlaying ? '#ffd94a' : (Math.floor(perfNow * 1.5) % 2 ? '#8fce8f' : '#5d8a5d');
+    drawText('♪', 150, 134, col, 1);
+  }
   if (titleConfirm) {
     drawBox(48, 34);
     drawText('ERASE YOUR SAVE AND', 80 - textW('ERASE YOUR SAVE AND', 1) / 2, 54, '#20242a', 1);
@@ -2099,6 +2343,20 @@ function renderOverworld() {
     ctx.fillStyle = '#8a919c'; ctx.fillRect(jx + 2, jy + 2, 5, 1); // a line of his handwriting
     ctx.fillStyle = '#ffd94a'; ctx.fillRect(jx + 10, jy + 3, 3, 1); ctx.fillRect(jx + 13, jy + 3, 1, 1); // the pencil
   }
+  // weeds: a decor layer over the grass, under everything that walks
+  for (const w of (G.save.weeds || [])) {
+    const sx = w.x * TILE - camX, sy = w.y * TILE - camY;
+    if (sx < -16 || sy < -16 || sx > VW || sy > VH) continue;
+    ctx.drawImage(w.deep ? WEED_DEEP : WEED_TUFT, sx, sy);
+  }
+  // a pulled weed arcs up and away, gone in half a second
+  tosses = tosses.filter(t => perfNow - t.t0 < 0.45);
+  for (const t of tosses) {
+    const k = (perfNow - t.t0) / 0.45;
+    const sx = t.x * TILE - camX + Math.round(k * 9), sy = t.y * TILE - camY - Math.round(Math.sin(k * Math.PI) * 9);
+    if (sx < -16 || sy < -16 || sx > VW || sy > VH) continue;
+    ctx.drawImage(t.deep ? WEED_DEEP : WEED_TUFT, sx, sy);
+  }
   // the bench throws a soft shadow onto the grass below it
   ctx.fillStyle = SHADOW; ctx.fillRect(9 * TILE - camX, 11 * TILE - camY, 6 * TILE, 2);
   // pots on the bench
@@ -2106,6 +2364,10 @@ function renderOverworld() {
     const sx = (9 + i) * TILE - camX, sy = 10 * TILE - camY;
     ctx.fillStyle = '#8a5a30'; ctx.fillRect(sx + 3, sy + 9, 10, 2); // the pot's shadow on the bench slats
     ctx.drawImage(POT_SPRITES[p.stage], sx, sy - 2);
+    if (p.dirt) { // good dirt reads as a dark, rich cap of soil in the pot
+      ctx.fillStyle = '#3d2412'; ctx.fillRect(sx + 4, sy + 7, 8, 2);
+      ctx.fillStyle = '#5a3a1e'; ctx.fillRect(sx + 5, sy + 7, 2, 1); ctx.fillRect(sx + 9, sy + 8, 2, 1);
+    }
     if (p.watered) { // a fat droplet, still beaded on the soil, with a glint
       const bob = Math.floor(perfNow * 2) % 2;
       ctx.fillStyle = '#3b6fe0';
@@ -2148,6 +2410,14 @@ function renderOverworld() {
   ctx.fillStyle = 'rgba(20,26,20,0.8)'; ctx.fillRect(2, 2, 34, 9);
   ctx.fillStyle = '#ffd94a'; ctx.fillRect(2, 10, 34, 1); // gold trim, matching the panels
   drawText('DAY ' + G.save.day, 4, 4, '#ffffff', 1);
+  // compost floaters from pulled weeds: rise, hold, fade inside a second
+  floaters = floaters.filter(f => perfNow - f.t0 < 1.1);
+  for (const f of floaters) {
+    const age = perfNow - f.t0;
+    ctx.globalAlpha = age < 0.7 ? 1 : Math.max(0, 1 - (age - 0.7) / 0.4);
+    drawText(f.text, f.x - camX - textW(f.text, 1) / 2, f.y - camY - Math.round(age * 9), '#ffffff', 1);
+    ctx.globalAlpha = 1;
+  }
 }
 
 /* ============================== RENDER: TRIAL ============================== */
@@ -2322,7 +2592,7 @@ function renderMenu() {
 }
 
 /* ============================== CONTROLS SCREEN ============================== */
-let controlsFrom = 'title', controlsSel = 0; // row 0: stick setting, row 1: back
+let controlsFrom = 'title', controlsSel = 0; // row 0: stick setting, row 1: music, row 2: back
 const PAD_MODES = ['AUTO', 'ALWAYS', 'OFF'];
 function openControls(from) { controlsFrom = from; controlsSel = 0; mode = 'controls'; }
 function cycleStick(d) {
@@ -2330,14 +2600,18 @@ function cycleStick(d) {
   settings.stick = PAD_MODES[(cur + d + PAD_MODES.length) % PAD_MODES.length].toLowerCase();
   saveSettings(); applyStickPref();
 }
+function cycleMusic() { settings.music = !settings.music; saveSettings(); }
 function controlsUpdate() {
   if (Input.bHit) { mode = controlsFrom; return; }
   if (controlsFrom === 'menu' && Input.startHit) { mode = 'menu'; return; }
-  if (menuNavHit('up') || menuNavHit('down')) controlsSel = 1 - controlsSel;
+  if (menuNavHit('up')) controlsSel = (controlsSel + 2) % 3;
+  if (menuNavHit('down')) controlsSel = (controlsSel + 1) % 3;
   if (controlsSel === 0) {
     if (menuNavHit('left')) cycleStick(-1);
     if (menuNavHit('right')) cycleStick(1);
     if (Input.aHit) cycleStick(1);
+  } else if (controlsSel === 1) {
+    if (menuNavHit('left') || menuNavHit('right') || Input.aHit) cycleMusic();
   } else if (Input.aHit) mode = controlsFrom;
 }
 function renderControls() {
@@ -2356,11 +2630,13 @@ function renderControls() {
   row('A: OK · B: BACK · START: MENU', 82);
   head('TOUCH', 94);
   row('STICK MOVE · ON-SCREEN A/B', 103);
-  ctx.fillStyle = '#c9ced4'; ctx.fillRect(12, 112, 136, 1);
-  if (controlsSel === 0) drawText('▶', 12, 118, '#b03030', 1);
-  drawText('SHOW STICK: < ' + settings.stick.toUpperCase() + ' >', 20, 118, '#20242a', 1);
-  if (controlsSel === 1) drawText('▶', 12, 128, '#b03030', 1);
-  drawText('BACK', 20, 128, '#20242a', 1);
+  ctx.fillStyle = '#c9ced4'; ctx.fillRect(12, 108, 136, 1);
+  if (controlsSel === 0) drawText('▶', 12, 114, '#b03030', 1);
+  drawText('SHOW STICK: < ' + settings.stick.toUpperCase() + ' >', 20, 114, '#20242a', 1);
+  if (controlsSel === 1) drawText('▶', 12, 122, '#b03030', 1);
+  drawText('MUSIC: < ' + (settings.music ? 'ON' : 'OFF') + ' >', 20, 122, '#20242a', 1);
+  if (controlsSel === 2) drawText('▶', 12, 130, '#b03030', 1);
+  drawText('BACK', 20, 130, '#20242a', 1);
 }
 /* ============================== PLANT REGISTER ============================== */
 /* Frank's garden journal lives on the porch. It is a JOURNAL, not storage:
@@ -2423,6 +2699,11 @@ function renderRegister() {
     drawText(p.name, 14, 11, '#20242a', 2);
     ctx.fillStyle = '#dfe9f5'; ctx.fillRect(14, 22, 100, 1); // ruled line under the name, as in the list
     ctx.drawImage(POT_SPRITES[p.stage], 122, 8, 30, 30);
+    if (p.dirt) { // the good-dirt mark: a little mound of dark soil under the portrait, noted in the journal
+      ctx.fillStyle = '#3d2412'; ctx.fillRect(133, 40, 8, 2); ctx.fillRect(135, 39, 4, 1);
+      ctx.fillStyle = '#5a3a1e'; ctx.fillRect(136, 40, 2, 1);
+      drawText('GOOD DIRT', 118, 44, '#5a3a1e', 1);
+    }
     drawText('BLUEBERRY · ' + STAGE_NAMES[p.stage], 14, 25, '#2e8b3a', 1);
     drawText('LIVES AT: THE BENCH', 14, 34, '#5a6270', 1);
     const rows = [
@@ -2450,6 +2731,7 @@ let perfNow = 0, lastT = 0;
 const audibleBtn = document.getElementById('audibleBtn');
 audibleBtn.href = AUDIBLE_URL;
 function update(dt) {
+  themeSync(); // the theme song lives on the title screen, and only there
   if (toastT > 0) toastT -= dt;
   if (fade > 0 && mode !== 'overworld') fade = Math.max(0, fade - dt * 2);
   switch (mode) {
@@ -2501,12 +2783,14 @@ window.__hss = {
   state() {
     return {
       mode, day: G.save.day, tutorial: G.save.tutorial, seedsLeft: G.save.seedsLeft, tea: G.save.tea,
-      pots: G.save.pots.map(p => ({ name: p.name, stage: p.stage, wateredDays: p.wateredDays, watered: p.watered, vigor: p.vigor, tended: p.tended, sownDay: p.sownDay, sproutedDay: p.sproutedDay, seedlingDay: p.seedlingDay, location: p.location })),
+      compost: G.save.compost, goodDirt: G.save.goodDirt, weeds: JSON.parse(JSON.stringify(G.save.weeds || [])),
+      pots: G.save.pots.map(p => ({ name: p.name, stage: p.stage, wateredDays: p.wateredDays, watered: p.watered, vigor: p.vigor, tended: p.tended, sownDay: p.sownDay, sproutedDay: p.sproutedDay, seedlingDay: p.seedlingDay, location: p.location, dirt: p.dirt, dirtCredit: p.dirtCredit })),
       register: { view: regView, sel: regSel, cardSel: regCardSel },
       dex: JSON.parse(JSON.stringify(G.save.dex)), deerBeaten: G.save.deerBeaten, deerPresent: G.save.deerPresent,
       chapterDone: G.save.chapterDone, player: { x: player.tx, y: player.ty, dir: player.dir },
       alvin: { x: alvin.tx, y: alvin.ty }, trial: trialSnapshot(),
-      settings: { stick: settings.stick }, padVisible: !deckEl.hidden, menuSel,
+      settings: { stick: settings.stick, music: settings.music }, padVisible: !deckEl.hidden, menuSel,
+      theme: { playing: themePlaying, scheduled: themeDbg.scheduled, ctx: themeCtx ? themeCtx.state : 'none' },
       stick: { dir: stickDebug.dir, mag: stickDebug.mag },
     };
   },
@@ -2526,4 +2810,8 @@ window.__hss = {
   skipIntro() { dlg = null; if (G.save.tutorial === 0) G.save.tutorial = 1; if (mode === 'dialogue') mode = 'overworld'; saveGame(); },
   startTrial() { if (G.save.deerPresent && !G.save.deerBeaten && strongestPot() >= 0) startTrial(); },
   warp(x, y) { player.tx = x; player.ty = y; syncPixels(player); alvin.tx = x; alvin.ty = y + 1; syncPixels(alvin); },
+  setWeeds(list) { G.save.weeds = (list || []).map(w => ({ x: w.x, y: w.y, deep: !!w.deep })); saveGame(); },
+  giveCompost(n) { G.save.compost += n; saveGame(); },
+  giveDirt(n) { G.save.goodDirt += n; saveGame(); },
+  themeData() { return { bpm: THEME.bpm, beats: THEME.beats, melody: THEME.melody.map(e => e[0]), bass: THEME.bass.map(e => e[0]), chords: THEME.chords.map(e => e[0]) }; },
 };

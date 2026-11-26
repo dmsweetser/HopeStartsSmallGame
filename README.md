@@ -14,6 +14,10 @@ Open the GitHub Pages site, or run it locally (below). Progress saves automatica
 
 All three work at the same time. The in-game **CONTROLS** menu (from the title screen or the pause menu) lists every scheme and lets you set when the touch controls show: AUTO (touch devices), ALWAYS, or OFF.
 
+## Music
+
+The title screen carries the game's theme: **"This Is My Father's World"** — the tune TERRA BEATA (Franklin L. Sheppard, 1915; a traditional English melody), public domain, in a gentle chiptune arrangement (melody verified against Hymnary.org's tune record and the 1919 printing). It starts after your first keypress, click, or tap — browsers won't play audio before one — loops while the title is up, and stops when the game starts. The **CONTROLS** menu has a MUSIC: ON/OFF setting. The arrangement's source is [`theme.mid`](theme.mid), a Standard MIDI File in this repo; the game plays data generated from that same arrangement (see `tests/make-theme.js`).
+
 ## Run locally
 
 No build step, no dependencies. Serve the folder with any static server, e.g.:
