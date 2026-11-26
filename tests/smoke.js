@@ -1309,6 +1309,37 @@ function findChromium() {
   await dismissDialogue(6);
   s = await S();
   check('the pipeline runs forever: twelve more, potted and named', s.plants.length === plantsBefore + 12, 'plants=' + s.plants.length);
+  // usability pass: the register rolls Down onto the next page (15 in the glass house = 3 pages)
+  await page.evaluate(() => { window.__hss.openRegister(); regLoc = 'GREENHOUSE'; regView = 'list'; regSel = 0; regPage = 0; });
+  await page.waitForTimeout(300);
+  for (let i = 0; i < 6; i++) await tap('ArrowDown');
+  await page.waitForTimeout(200);
+  s = await S();
+  check('register: Down rolls onto the next page', s.register.view === 'list' && s.register.page === 1 && s.register.sel === 0, JSON.stringify(s.register));
+  await tap('x');
+  await page.waitForTimeout(200);
+  // usability pass: the journal also lives on the office desk in the barn
+  await page.evaluate(() => window.__hss.gotoArea('barnIn'));
+  await page.evaluate(() => window.__hss.warp(3, 7));
+  await page.evaluate(() => { player.dir = 'down'; });
+  await page.waitForTimeout(300);
+  await tap('z');
+  await page.waitForTimeout(300);
+  s = await S();
+  check('the office desk journal opens the register', s.mode === 'register', s.mode);
+  await tap('x');
+  await page.waitForTimeout(200);
+  await page.evaluate(() => window.__hss.gotoArea('barnOut'));
+  await page.waitForTimeout(300);
+  // usability pass: the pause menu shows the compost + dirt counters
+  await page.evaluate(() => { const sv = __hss.debugSave(); sv.compost = 7; sv.goodDirt = 2; __hss.setSave(sv); });
+  await tap('p');
+  await page.waitForTimeout(300);
+  s = await S();
+  check('pause menu opens with the counters aboard', s.mode === 'menu' && s.compost === 7, s.mode);
+  await page.screenshot({ path: path.join(SHOTS, 'menu-counters.png') });
+  await tap('x');
+  await page.waitForTimeout(200);
   await page.evaluate(() => { const sv = __hss.debugSave(); sv.plants.forEach(p => { if (p.location === 'GREENHOUSE') p.stage = 3; }); __hss.setSave(sv); });
   await page.evaluate(() => window.__hss.plantNurseryRow(8));
   await dismissDialogue(6);

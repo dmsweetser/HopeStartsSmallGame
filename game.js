@@ -2114,7 +2114,7 @@ const BARNIN_MAP = [
   'HzzzzzzzeeeezzxH',
   'HzzzzzzzzzzzzzzH',
   'HzzzzzzzzzzzzzzH',
-  'HzzkzzzzzzzzzmzH',
+  'HzzjzzzzzzzzzmzH',
   'HzzzzzzzzzzzzzzH',
   'HHHHHHHHHHHHHHHH',
 ];
@@ -2139,7 +2139,7 @@ const GREEN_MAP = [
   'HzzzzzzzzzzH',
   'HHHHHHDHHHHH',
 ];
-const IN_SOLID = new Set(['H', 'a', 'r', 'k', 'h', 'e', 'x', 'm', 'f']);
+const IN_SOLID = new Set(['H', 'a', 'r', 'k', 'h', 'e', 'x', 'm', 'f', 'j']);
 const AREAS = {
   yard: { rows: MAP, w: MAP_W, h: MAP_H, name: 'DEERBROOK' },
   house: { rows: HOUSE_MAP, w: 20, h: 13, name: 'THE HOUSE', solid: HOUSE_SOLID },
@@ -2462,6 +2462,7 @@ function buildGreenhouse() {
 }
 function barnInInteract(f) {
   const s = G.save, w = s.world, ch = mapChar(f.x, f.y);
+  if (ch === 'j') return openRegister(); // the journal lives on the office desk now, as well as the porch
   if (ch === 'a') {
     if (f.x === 1) { // the shelf end: carrying and watering live here
       if (w.ch === 3 && w.step === 7 && s.plants.some(p => p.location === 'OFFICE' && !p.memorial)) {
@@ -2470,7 +2471,7 @@ function barnInInteract(f) {
           else if (which === 1) waterLocation('OFFICE');
         }, ['CARRY A LOAD TO THE GREENHOUSE', 'WATER THEM HERE', 'NOT NOW']);
       }
-      return say('THE OFFICE SHELF.', which => { if (which === 0) waterLocation('OFFICE'); }, ['WATER THE SHELF', 'NOT NOW']);
+      return say('THE OFFICE SHELF. THE JOURNAL KEEPS THE DESK BY THE SOUTH WALL, WHEN A NAME NEEDS FINDING.', which => { if (which === 0) waterLocation('OFFICE'); }, ['WATER THE SHELF', 'NOT NOW']);
     }
     if (f.x >= 2 && f.x <= 7) {
       const p = sixPlants().find(q => q.location === 'OFFICE' && q.slot === f.x - 2);
@@ -3706,6 +3707,14 @@ function drawHouseTile(ch, sx, sy, tx, ty) {
     ctx.fillStyle = '#7a6248'; ctx.fillRect(sx, sy + 4, TILE, 12);
     ctx.fillStyle = '#d8cfc0'; ctx.fillRect(sx, sy + 2, TILE, 4);
     ctx.fillStyle = '#5e4c36'; ctx.fillRect(sx + 3, sy + 9, 10, 1);
+    return;
+  }
+  if (ch === 'j') { // Frank's desk, and the journal that lives on it now
+    ctx.fillStyle = '#7a6248'; ctx.fillRect(sx, sy + 5, TILE, 11);
+    ctx.fillStyle = '#8a2f2a'; ctx.fillRect(sx + 3, sy + 1, 9, 5);
+    ctx.fillStyle = '#f8f0d8'; ctx.fillRect(sx + 4, sy + 2, 7, 3);
+    ctx.fillStyle = '#8a919c'; ctx.fillRect(sx + 5, sy + 3, 5, 1);
+    ctx.fillStyle = '#ffd94a'; ctx.fillRect(sx + 13, sy + 4, 3, 1);
     return;
   }
   if (ch === 'h') { // the fireplace
@@ -5114,6 +5123,7 @@ function trialSetMsg(m, phase) { trial.msg = m; trial.phase = phase || 'wait'; t
 function trialUpdate(dt) {
   const t = trial;
   t.timer += dt;
+  if (t.phase === 'wait' && Input.aHit && t.timer > 0.25) t.timer = 2; // a brisk player may tap through the result message
   if (t.phase === 'intro' && t.timer > 1.1) { t.phase = 'menu'; t.menu = 0; t.sel = 0; }
   else if (t.phase === 'wait' && t.timer > 1.15) {
     if (t.over) return endTrial();
@@ -5828,8 +5838,9 @@ function renderMenu() {
   drawText('DAY ' + G.save.day, 32, 26, '#20242a', 1);
   wrapText(objective(), 24).slice(0, 3).forEach((l, i) => drawText(l, 32, 36 + i * 7, '#5a6270', 1));
   const seen = G.save.dex.blueberry;
-  wrapText('BERRYDEX: ' + (seen.length ? seen.join(' · ') : 'NOTHING SEEN YET'), 24).slice(0, 2).forEach((l, i) => drawText(l, 32, 59 + i * 7, '#5a6270', 1));
-  drawText('TEA ×' + G.save.tea, 32, 75, '#5a6270', 1);
+  wrapText('BERRYDEX: ' + (seen.length ? seen.join(' · ') : 'NOTHING SEEN YET'), 24).slice(0, 2).forEach((l, i) => drawText(l, 32, 57 + i * 7, '#5a6270', 1));
+  drawText('TEA ×' + G.save.tea + ' · COMPOST ×' + G.save.compost, 32, 71, '#5a6270', 1);
+  drawText('GOOD DIRT ×' + G.save.goodDirt, 32, 78, '#5a6270', 1);
   MENU_ITEMS.forEach((l, i) => {
     const y = 86 + i * 12;
     if (i === menuSel) drawText('▶', 32, y, '#b03030', 1);
@@ -5942,7 +5953,7 @@ function registerUpdate() {
       return;
     }
     if (menuNavHit('up')) { regSel--; if (regSel < 0) regSel = -1; }
-    if (menuNavHit('down')) { const pageItems = plants.slice(regPage * 6, regPage * 6 + 6).length; regSel = Math.min(pageItems - 1, regSel + 1); }
+    if (menuNavHit('down')) { const pageItems = plants.slice(regPage * 6, regPage * 6 + 6).length; if (regSel < pageItems - 1) regSel++; else if (regPage < pageCount - 1) { regPage++; regSel = 0; } }
     if (menuNavHit('left')) { regPage = (regPage + pageCount - 1) % pageCount; regSel = 0; }
     if (menuNavHit('right')) { regPage = (regPage + 1) % pageCount; regSel = 0; }
     if (Input.aHit && plants.length) {
@@ -6039,7 +6050,7 @@ function renderRegister() {
       else drawText(p.watered ? 'WET' : '', 128, y, '#3b6fe0', 1);
     });
     if (!plants.length) drawText('NOTHING HERE. YET.', 14, 44, '#5a6270', 1);
-    drawText('A: CARD · B: CLOSE · SEL: PLACE', 12, 129, '#5a6270', 1);
+    drawText('A: CARD · ◀▶ PAGE · B: CLOSE', 12, 129, '#5a6270', 1);
     drawPaw(142, 124, '#b09a72');
   } else if (regView === 'index') {
     drawText('THE REGISTER', 80 - textW('THE REGISTER', 2) / 2, 10, '#20242a', 2);
