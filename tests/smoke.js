@@ -1064,6 +1064,84 @@ function findChromium() {
   await tap('z'); await page.waitForTimeout(300);
   await dismissDialogue(8);
 
+  // CHAPTER 8 — WEEDS: the long war in two waves, mom's sorting day,
+  // the proud weed, strawberries, the butterfly bush, the clear week.
+  const digInWin = async () => {
+    await page.waitForTimeout(1400);
+    await tap('z'); await page.waitForTimeout(250);
+    await page.keyboard.down('ArrowDown'); await page.waitForTimeout(90); await page.keyboard.up('ArrowDown');
+    await tap('z'); await page.waitForTimeout(1600);
+  };
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('the long war opens: WEEDS, wave 1 of 30, vigor 34', s.mode === 'trial' && s.trial && s.trial.foe === 'WEEDS' && s.trial.maxPressure === 30 && s.trial.maxVigor === 34, JSON.stringify(s.trial && { mp: s.trial.maxPressure, mv: s.trial.maxVigor }));
+  await page.evaluate(() => { trial.pressure = 3; });
+  await digInWin();
+  s = await S();
+  check('the second wave breaks over the field: 25', s.mode === 'trial' && s.trial && (await page.evaluate(() => window.__hss.trialState())).wave === 2 && s.trial.maxPressure === 25, JSON.stringify(s.trial && s.trial.maxPressure));
+  await page.evaluate(() => { trial.pressure = 3; });
+  await digInWin();
+  await dismissDialogue(10);
+  s = await S();
+  check('the line breaks: every section drops a level', s.world.step === 1 && JSON.stringify(s.field.weedLv) === JSON.stringify([1, 2, 0, 1, 0, 2]), 'step=' + s.world.step + ' lv=' + JSON.stringify(s.field.weedLv));
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(6);
+  s = await S();
+  check("mom's day: she is in the drive with a basket", s.world.flags.momDay === s.day, 'momDay=' + s.world.flags.momDay + ' day=' + s.day);
+  await page.evaluate(() => window.__hss.gotoArea('barnOut', 10, 7));
+  await page.evaluate(() => { player.dir = 'up'; });
+  for (let i = 0; i < 10; i++) {
+    await tap('z'); await page.waitForTimeout(350);
+    await tap('z'); await page.waitForTimeout(350);
+    await dismissDialogue(4);
+  }
+  s = await S();
+  check('the sorting lesson: ten plants, one left standing on purpose', s.world.flags.momDone === true && s.world.step === 2, 'sort=' + s.world.flags.sortCount + ' step=' + s.world.step);
+  for (let i = 0; i < 3; i++) { await page.evaluate(() => window.__hss.proudWeed()); await dismissDialogue(4); }
+  s = await S();
+  check('the proud weed comes down in three chops', s.world.flags.proudChopped === true, '');
+  await page.evaluate(() => window.__hss.burnPile());
+  await dismissDialogue(8);
+  s = await S();
+  check('the burn at dusk; the roots stay marked', s.world.flags.proudRoots === true && s.world.step === 3, 'step=' + s.world.step);
+  for (let i = 0; i < 4; i++) { await page.evaluate(() => window.__hss.strawberry()); await dismissDialogue(4); }
+  s = await S();
+  check('strawberries home: four founding clumps, named', s.plants.filter(p => p.variety === 'STRAWBERRY').length === 4 && s.world.step === 4, 'sb=' + s.plants.filter(p => p.variety === 'STRAWBERRY').length);
+  await page.evaluate(() => window.__hss.gotoArea('oma', 5, 5));
+  await page.evaluate(() => { player.dir = 'up'; });
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(8);
+  s = await S();
+  check('oma directs: the butterfly bush, on the anniversary', s.world.flags.butterflyReady === true, '');
+  await page.evaluate(() => window.__hss.butterfly());
+  await dismissDialogue(8);
+  s = await S();
+  const lamp = s.plants.find(p => p.name === 'LAMPLIGHT');
+  check("the bush carries Opa's name for it", !!lamp && lamp.giftName === true && s.world.step === 5, 'lamp=' + !!lamp);
+  const pullAll = async () => {
+    for (let sec = 0; sec < 6; sec++) {
+      let guard = 0;
+      while ((await S()).field.weedLv[sec] > 0 && guard++ < 4) {
+        await page.evaluate(() => { const sv = __hss.debugSave(); sv.world.proj = 0; __hss.setSave(sv); });
+        await page.evaluate(x => window.__hss.pullWeeds(x), sec);
+        await dismissDialogue(3);
+      }
+    }
+  };
+  await pullAll();
+  for (let d = 0; d < 7; d++) {
+    await page.evaluate(() => window.__hss.waterEverything());
+    await page.evaluate(() => window.__hss.advanceDay());
+    await dismissDialogue(5);
+    if (d < 6) await pullAll();
+  }
+  s = await S();
+  check('the clear week holds: weeds chapter closes', s.mode === 'card' && s.world.ch === 9, 'mode=' + s.mode + ' ch=' + s.world.ch + ' streak=' + s.world.flags.clearStreak);
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(8);
+
   // a save written in the oldest formats still loads: pots as a bare stage
   // int and as {stage, waterDays} objects both migrate to named plants
   await page.evaluate(() => {
