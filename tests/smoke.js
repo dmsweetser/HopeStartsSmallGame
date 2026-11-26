@@ -1029,6 +1029,41 @@ function findChromium() {
   await tap('z'); await page.waitForTimeout(300);
   await dismissDialogue(8);
 
+  // CHAPTER 7 — THE BARBER: the nursery, the watch, the unknown.
+  await page.evaluate(() => { // three little ones stayed behind on the shelf
+    const sv = __hss.debugSave();
+    sv.plants.filter(p => !p.memorial && p.row >= 5).slice(0, 3).forEach(p => { p.location = 'GREENHOUSE'; p.row = null; p.stage = 2; });
+    __hss.setSave(sv);
+  });
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(8);
+  s = await S();
+  check('the discovery: the smallest, shorn in the night', s.world.step === 1 && s.plants.some(p => p.location === 'GREENHOUSE' && p.history.includes('SHORN IN THE NIGHT')), 'step=' + s.world.step);
+  check('the gift bush turns first, dark red', s.plants.some(p => p.giftName && p.history.some(h => h.includes('FIRST FALL'))), '');
+  await page.evaluate(() => window.__hss.setWatch('NURSERY'));
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(6);
+  await page.evaluate(() => window.__hss.setWatch('NURSERY'));
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('two true watches catch it early: BARBER at 30', s.mode === 'trial' && s.trial && s.trial.foe === 'BARBER' && s.trial.maxPressure === 30 && s.trial.maxVigor === 24, JSON.stringify(s.trial && { f: s.trial.foe, mp: s.trial.maxPressure, mv: s.trial.maxVigor }));
+  await page.evaluate(() => { trial.pressure = 2; });
+  await page.waitForTimeout(1400);
+  await tap('z'); await page.waitForTimeout(250);
+  await tap('z'); await page.waitForTimeout(1600);
+  await dismissDialogue(8);
+  s = await S();
+  check('the barber is faced and gone, unnamed forever', s.world.step === 3 && s.world.flags.barberKnown === true && s.mode === 'overworld', 'step=' + s.world.step);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('the barber chapter closes: card, chapter 8', s.mode === 'card' && s.world.ch === 8, 'mode=' + s.mode + ' ch=' + s.world.ch);
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(8);
+
   // a save written in the oldest formats still loads: pots as a bare stage
   // int and as {stage, waterDays} objects both migrate to named plants
   await page.evaluate(() => {

@@ -1562,6 +1562,16 @@ function barnInteract(f) {
     return say(BERRY_CONSTANCE[s.day % BERRY_CONSTANCE.length]);
   }
   if (f.x === 13 && f.y === 4) { // the barn door
+    if (w.ch === 7) {
+      return say('THE BARN DOOR. INSIDE: BED. OUTSIDE: EVERYTHING ELSE.', which => {
+        if (which === 0) say('WHERE DOES ALVIN WATCH TONIGHT?', watch => {
+          w.watchRow = ['NURSERY', 'ROW1', 'ROWS', null][watch];
+          saveGame();
+          say(watch === 3 ? 'NO WATCH TONIGHT. THE FIELD KEEPS ITS OWN COUNSEL.' : 'ALVIN TAKES THE ' + ['NURSERY', 'ROW 1', 'FIELD ROWS'][watch] + ' WATCH. HIS EARS ARE UP BEFORE FRANK IS DOWN.', () => { fading = 'dawn'; fade = 1; setTimeout(dawn, 350); });
+        }, ['THE NURSERY', 'ROW 1', 'THE FIELD ROWS', 'NO WATCH']);
+        if (which === 1) { setArea('barnIn', 14, 6); }
+      }, ['REST', 'GO INSIDE', 'NOT YET']);
+    }
     return say('THE BARN DOOR. HOME, AS OF VERY RECENTLY.', which => {
       if (which === 0) restDay();
       else if (which === 1) setArea('barnIn', 14, 6);
@@ -2047,6 +2057,69 @@ TRIAL_OUTCOMES.deerFirstNight = {
     lines.push('A ROW IS MOWED, A FENCE SEGMENT IS DOWN, AND THE FIELD LOOKS LIKE A PLACE WHERE SOMETHING HAPPENED. REPAIR IT. PLANTS HAVE SURVIVED WORSE CHAPTERS THAN THIS ONE.');
     w.step = 7; saveGame();
     say(lines);
+  },
+};
+function smallestNursery() {
+  const gh = G.save.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE');
+  return gh.sort((a, b) => (a.stage - b.stage) || (a.tended - b.tended))[0] || null;
+}
+function barberStrike() {
+  const p = smallestNursery();
+  if (!p) return null;
+  if (p.health < 3) p.health++;
+  if (!p.history.includes('SHORN IN THE NIGHT')) p.history.push('SHORN IN THE NIGHT');
+  saveGame();
+  return p;
+}
+function ch7Opening() {
+  say(['THE FIELD SETTLES INTO ITS FIRST SUMMER LIKE IT HAS ALWAYS BEEN THERE.', 'THE GREENHOUSE SHELF HOLDS THE LITTLE ONES NOW — THE NURSERY, FORMALLY, AS OF THIS WEEK. FRANK HAS MADE A SIGN. THE SIGN HAS A BORDER. THE BORDER HAS RULES.']);
+}
+function ch7Dawn(ev) {
+  const s = G.save, w = s.world;
+  if (w.step === 0) {
+    w.step = 1;
+    const gift = s.plants.find(p => p.giftName && !p.memorial);
+    const lines = ['FALL IS COMING INTO THE FIELD LIKE A RELATIVE WHO VISITS IN ORDER.'];
+    if (gift) { if (!gift.history.includes('FIRST FALL — TURNED FIRST, DARK RED')) gift.history.push('FIRST FALL — TURNED FIRST, DARK RED'); lines.push('THE GIFT BUSH TURNS FIRST — DARK RED, ALL AT ONCE, LIKE IT HEARD SOMETHING. THE REST OF THE FIELD TAKES NOTES.'); }
+    const p = barberStrike();
+    if (p) lines.push('AND IN THE NURSERY: ' + p.name + ', THE SMALLEST, FOUND SHORN. CUT CLEAN, AT AN ANGLE, IN THE NIGHT. NO TRACKS. NO FUR. NO EXPLANATION.', 'CONSTANCE: WHATEVER IT IS, IT IS SMALL, AND IT IS PRECISE, AND IT HAS STARTED WITH THE SMALLEST. SET A WATCH, FRANK.');
+    return lines;
+  }
+  if (w.step === 1) {
+    if (w.watchRow === 'NURSERY') {
+      w.flags.watchRight = (w.flags.watchRight || 0) + 1;
+      if (w.flags.watchRight >= 2) {
+        w.step = 2;
+        const gh = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE');
+        startTrial({ foe: 'BARBER', kind: 'barber', pressure: 30, vigor: 24, plantsList: gh.length ? gh : sixPlants(), msg: 'TWO QUIET NIGHTS UNDER ALVIN\'S WATCH — AND ON THE THIRD, A SHADOW AT THE SHELF, SMALL AND PRECISE AND CAUGHT. THE BARBER, AT LAST, IN THE OPEN!' });
+        return null;
+      }
+      return ['A QUIET NIGHT IN THE NURSERY. ALVIN\'S EARS TURNED LIKE DISHES ALL NIGHT, AND NOTHING CAME. OR NOTHING DARED.'];
+    }
+    const p = barberStrike();
+    w.flags.strikes = (w.flags.strikes || 0) + 1;
+    if ((w.flags.strikes || 0) >= 2) {
+      w.step = 2;
+      const gh = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE');
+      startTrial({ foe: 'BARBER', kind: 'barber', pressure: 40, vigor: 24, plantsList: gh.length ? gh : sixPlants(), msg: 'IT COMES IN DAYLIGHT THIS TIME — BOLD WITH PRACTICE. SMALL. PRECISE. SNIPPING AT THE SHELF LIKE IT OWNS SCISSORS AND A GRUDGE. ALVIN, AT LAST, HAS SOMETHING TO FACE!' });
+      return null;
+    }
+    return [p ? 'SHORN AGAIN: ' + p.name + ', THE SMALLEST LEFT. THE CUTS ARE CLEAN. THE NURSERY IS AFRAID IN A TIDY, ORGANIZED WAY.' : 'A QUIET NIGHT.', 'SET THE WATCH WHERE THE SMALLEST SLEEP. AT THE BARN DOOR, AT REST: THE NURSERY.'];
+  }
+  if (w.step === 3) { completeChapter(7); return null; }
+  return null;
+}
+TRIAL_OUTCOMES.barber = {
+  win(t) {
+    const w = G.save.world; w.step = 3; w.flags.barberKnown = true; saveGame();
+    say(['IT IS GONE — OVER THE FENCE, UNDER THE GATE, SOMEWHERE SMALL AND PRECISE AND ELSEWHERE. ALVIN NEVER GOT A NAME FOR IT, OR A LOOK WORTH DESCRIBING.', 'IT WILL BE IN THE REGISTER ANYWAY, IN THE BACK: UNKNOWN — SMALL — PRECISE. SOME ENTRIES ARE WARNINGS. SOME ARE JUST TRUE.']);
+  },
+  lose(t, fled) {
+    const s = G.save, w = s.world;
+    const p = smallestNursery();
+    if (p && !fled) { if (p.health < 3) p.health++; if (!p.history.includes('SHORN IN THE NIGHT')) p.history.push('SHORN IN THE NIGHT'); }
+    w.step = 1; w.flags.strikes = 1; saveGame();
+    say(['IT SLIPS AWAY BETWEEN ONE SNIP AND THE NEXT' + (p ? ', LEAVING ' + p.name + ' SHORN BEHIND IT' : '') + '.', 'IT WILL COME AGAIN. SO WILL ALVIN. THE NURSERY HOLDS ITS BREATH AND GROWS, QUIETLY, IN THE MEANTIME.']);
   },
 };
 function ch4Opening() {
@@ -3021,6 +3094,7 @@ function objective() {
   if (w.ch === 4) return ['STAKE THE FIELD.', 'MEET THE IRISES.', 'THE TOWN HAS OPINIONS.', 'PRICE THE FENCE AT THE GOOD SHED.'][w.step] || 'WALK THE FIELD.';
   if (w.ch === 5) return ['BUILD THE STAIRS DOWN.', 'OMA IS COMING. MAKE READY.', 'CLEAR THE PATCH BEHIND THE GOOD SHED.', 'THE PATCH FIGHTS BACK.', 'VISIT OMA.'][w.step] || 'TEND EVERYONE.';
   if (w.ch === 6) return ['SOMETHING IS WRONG IN THE GLASS HOUSE.', 'WATER. VENT. DIRT. FIGHT FOR THEM.', 'WATER. VENT. DIRT. FIGHT FOR THEM.', 'WATER. VENT. DIRT. FIGHT FOR THEM.', 'REPOT THEM. THE FRIEND IS RIGHT: DIRT.', 'THE LONG PREP: TARP, PIPE, MULCH, FENCE.', 'PLANTING DAY.', 'THE FIRST NIGHT.'][w.step] || 'TEND THE FIELD.';
+  if (w.ch === 7) return 'SOMETHING IS CUTTING THE SMALLEST. SET THE WATCH AT REST.';
   if (s.tutorial === 1) return 'THE GRAND PLAN: SIX POTS, SIX PROMISES (A)';
   if (s.tutorial === 2) return 'A DRINK FOR EACH POT: A AT A POT';
   if (s.chapterDone) return 'FREE TENDING. BERRYHILL COMES LATER.';
@@ -3485,7 +3559,7 @@ TRIAL_OUTCOMES.frostTray = {
   },
 };
 
-function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); if (w.ch === 3) return ch3Dawn(ev); if (w.ch === 4) return ch4Dawn(ev); if (w.ch === 5) return ch5Dawn(ev); if (w.ch === 6) return ch6Dawn(ev); return null; }
+function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); if (w.ch === 3) return ch3Dawn(ev); if (w.ch === 4) return ch4Dawn(ev); if (w.ch === 5) return ch5Dawn(ev); if (w.ch === 6) return ch6Dawn(ev); if (w.ch === 7) return ch7Dawn(ev); return null; }
 
 const CHAPTER_INFO = [
   null,
@@ -3607,7 +3681,7 @@ function startTrial(cfg) {
     plantsList: cfg.plantsList || null, row: cfg.row != null ? cfg.row : null,
     turn: 0, foeTurns: 0, telly: null, snapUsed: false, snap: !!cfg.snap,
     foeArmor: foe === 'WEEDS', graze: !!cfg.graze, grazeStreak: 0, grazeLands: 0,
-    lastMove: null, sameMove: 0, wave: cfg.wave || 1, waves: cfg.waves || null,
+    lastMove: null, sameMove: 0, wave: cfg.wave || 1, waves: cfg.waves || null, cfgRef: cfg,
     watch: cfg.watch || null,
   };
   mode = 'trial';
@@ -3776,6 +3850,11 @@ function endTrial() {
       saveGame();
       say('THE DEER GOT PAST ALVIN AND MOWED THE SPROUT DOWN. IT WILL GROW BACK. SO WILL YOU.', () => { fading = 'dawn'; fade = 1; setTimeout(dawn, 350); });
     }
+    return;
+  }
+  if (t.result === 'win' && t.waves && t.wave < t.waves.length) {
+    const cfg = Object.assign({}, t.cfgRef, { wave: t.wave + 1, pressure: t.waves[t.wave], vigor: t.maxVigor, msg: 'THE SECOND WAVE COMES OVER THE FENCE LINE LIKE WEATHER. ALVIN SHAKES HIMSELF AND DIGS IN AGAIN.' });
+    startTrial(cfg);
     return;
   }
   const oc = TRIAL_OUTCOMES[t.kind];
@@ -4270,7 +4349,7 @@ function renderTrial() {
 function cardUpdate() {
   if (Input.aHit || Input.bHit) { mode = 'overworld'; chapterCardDone(cardChapter); } // KEEP TENDING
 }
-function chapterCardDone(n) { if (n === 1) ch2Opening(); if (n === 2) ch3Opening(); if (n === 3) ch4Opening(); if (n === 4) ch5Opening(); if (n === 5) ch6Opening(); }
+function chapterCardDone(n) { if (n === 1) ch2Opening(); if (n === 2) ch3Opening(); if (n === 3) ch4Opening(); if (n === 4) ch5Opening(); if (n === 5) ch6Opening(); if (n === 6) ch7Opening(); }
 function renderCard() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
   drawSceneBanner(2, true);
@@ -4399,16 +4478,20 @@ function locPretty(loc) { return LOC_PRETTY[loc] || (loc.startsWith('ROW') ? 'FI
 function regLocPlants(loc) {
   if (loc.startsWith('AZ:')) return G.save.plants.filter(p => p.name.startsWith(loc.slice(3)));
   if (loc === 'MEMORIAL') return G.save.plants.filter(p => p.memorial);
-  if (loc.startsWith('ROW')) { const r = parseInt(loc.slice(3), 10) - 1; return G.save.plants.filter(p => p.row === r && !p.memorial); }
+  if (loc === 'NURSERY') return G.save.plants.filter(p => p.location === 'GREENHOUSE' && !p.memorial);
+  if (loc.startsWith('ROW')) { const r = parseInt(loc.slice(3), 10); return G.save.plants.filter(p => p.row === r && !p.memorial); }
   return G.save.plants.filter(p => p.location === loc && !p.memorial);
 }
 function regLocationsPresent() {
   return REG_LOCS.filter(l => regLocPlants(l).length > 0 || (l === 'MEMORIAL' && G.save.plants.some(p => p.memorial)));
 }
+function regInspectMark(p) {
+  if (G.save.world.ch === 7 && p && !p.memorial && !p.history.includes('FIRST FALL')) { p.history.push('FIRST FALL'); saveGame(); }
+}
 function openRegister() {
   regView = 'list'; regSel = 0; regPage = 0;
   const six = sixPlants().find(p => !p.memorial);
-  regLoc = six ? (six.row != null ? 'ROW' + (six.row + 1) : six.location) : 'BENCH';
+  regLoc = six ? (six.row != null ? 'ROW' + six.row : six.location) : 'BENCH';
   if (!regLocPlants(regLoc).length) { const ls = regLocationsPresent(); if (ls.length) regLoc = ls[0]; }
   mode = 'register';
 }
@@ -4441,7 +4524,7 @@ function registerUpdate() {
     if (menuNavHit('right')) { regPage = (regPage + 1) % pageCount; regSel = 0; }
     if (Input.aHit && plants.length) {
       regPlant = G.save.plants.indexOf(plants[regPage * 6 + regSel]);
-      regView = 'card'; regCardSel = 0;
+      regView = 'card'; regCardSel = 0; regInspectMark(G.save.plants[regPlant]);
     }
   } else if (regView === 'index') {
     const entries = regIndexEntries();
@@ -4490,6 +4573,7 @@ function regIndexEntries() {
   if (G.save.germ) es.push({ kind: 'page', page: 'GERMINATION', label: 'GERMINATION RECORD' });
   if (G.save.promise) es.push({ kind: 'page', page: 'PROMISE', label: "OMA'S PROMISE" });
   if (G.save.wine.batches.length || G.save.wine.jar) es.push({ kind: 'page', page: 'CELLAR', label: 'THE CELLAR' });
+  if (G.save.world.flags.barberKnown) es.push({ kind: 'page', page: 'BARBER', label: 'THE BARBER' });
   return es;
 }
 function dayOr(day, none) { return day != null ? 'DAY ' + day : none; }
@@ -4588,7 +4672,7 @@ function renderRegister() {
       drawText('GOOD DIRT', 118, 44, '#5a3a1e', 1);
     }
     drawText((p.variety || 'BLUEBERRY') + ' · ' + plantStageLabel(p), 14, 25, '#2e8b3a', 1);
-    drawText('LIVES AT: ' + (p.memorial ? 'THE BACK PAGES' : locPretty(p.row != null ? 'ROW' + (p.row + 1) : p.location)), 14, 34, '#5a6270', 1);
+    drawText('LIVES AT: ' + (p.memorial ? 'THE BACK PAGES' : locPretty(p.row != null ? 'ROW' + p.row : p.location)), 14, 34, '#5a6270', 1);
     drawText('HEALTH: ' + HEALTH_NAMES[p.health], 14, 43, HEALTH_COL[p.health], 1);
     const rows = [
       'SOWN: ' + dayOr(p.sownDay, 'NOT YET') + (p.sproutedDay ? ' · SPROUTED: DAY ' + p.sproutedDay : ''),
@@ -4612,6 +4696,7 @@ function regPageLines() {
   const s = G.save;
   if (regPage === 'GERMINATION' && s.germ) return { title: 'GERMINATION', lines: ['SOWN: ' + s.germ.sown + ' SEEDS, LATE FALL.', 'POTTED UP: ' + s.germ.potted + ', EVERY ONE NAMED.', 'LOST ALONG THE WAY: ' + s.germ.lost + '.', 'THE TRAY IS EMPTY NOW. THE SHELF IS NOT.'] };
   if (regPage === 'PROMISE') return { title: "OMA'S PROMISE", lines: ['SHE PROMISED TO STAY', 'UNTIL SHE TASTES THE FIRST WINE', 'MADE FROM THIS FIELD\'S FRUIT.', '', s.wine.batches.some(b => b.verdict) ? 'THE JAR IS FILLED. SHE TASTED IT.' : 'THE JAR WAITS, EMPTY, PATIENT AS SHE IS.'] };
+  if (regPage === 'BARBER') return { title: 'THE BARBER', lines: ['UNKNOWN — SMALL — PRECISE.', 'IT CUT THE SMALLEST, AT AN ANGLE,', 'IN THE NIGHT, AND WAS NEVER', 'NAMED, NEVER CAUGHT, NEVER', 'SEEN AGAIN AFTER ALVIN FACED IT.', '', 'THE NURSERY REMEMBERS. SO DOES', 'THE DOG. ESPECIALLY THE DOG.'] };
   if (regPage === 'CELLAR') {
     const lines = s.wine.batches.map(b => 'BATCH ' + b.n + ': ' + b.verdict + ' (HONEY ' + b.index.toFixed(2) + ', CARE ' + b.care + ')');
     lines.push('POUNDS SHARED DOWN THE ROAD: ' + (s.wine.shared || 0));
@@ -4743,6 +4828,7 @@ window.__hss = {
   orderMulch() { orderMulch(); },
   mulchRow(rn) { mulchRow(rn); },
   plantingGate() { return plantingGate(); },
+  setWatch(w) { G.save.world.watchRow = w; saveGame(); },
   carryPlants() { carryPlants(); },
   warp(x, y) { player.tx = x; player.ty = y; syncPixels(player); alvin.tx = x; alvin.ty = Math.min(AH - 1, y + 1); syncPixels(alvin); },
   gotoArea(a, x, y) { setArea(a, x, y); },
