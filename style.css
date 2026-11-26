@@ -37,22 +37,33 @@ canvas#game {
   touch-action: none;
 }
 #deck[hidden] { display: none; }
-/* classic cross D-pad: a 3x3 grid, arms on the edges, hub in the middle */
-#dpad {
-  display: grid; flex: none; touch-action: none;
-  grid-template-columns: repeat(3, 32px); grid-template-rows: repeat(3, 32px);
+/* analog stick: a round base with a knob that follows the thumb; the four
+   direction ticks light up for whichever cardinal the stick has committed to */
+#stick { flex: none; touch-action: none; }
+#stickBase {
+  position: relative; width: 96px; height: 96px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, #2c5236 0%, #1d3a26 72%);
+  border: 3px solid rgba(255,255,255,.45);
+  box-shadow: 0 3px 6px rgba(0,0,0,.45), inset 0 2px 10px rgba(0,0,0,.55);
+  touch-action: none; cursor: pointer;
 }
-#dpad .dbtn {
-  background: #24382a; border: 3px solid rgba(255,255,255,.45); color: #cfe8cf;
-  font-family: monospace; font-size: 13px; line-height: 1; cursor: pointer;
-  touch-action: none; box-shadow: 0 3px 6px rgba(0,0,0,.45); padding: 0;
+#stickKnob {
+  position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #4a7a56, #24382a 78%);
+  border: 3px solid rgba(255,255,255,.6);
+  box-shadow: 0 3px 6px rgba(0,0,0,.5);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
-#dpad .dbtn:active { filter: brightness(1.5); }
-#dpad .up { grid-area: 1 / 2; border-radius: 6px 6px 0 0; border-bottom: none; }
-#dpad .left { grid-area: 2 / 1; border-radius: 6px 0 0 6px; border-right: none; }
-#dpad .right { grid-area: 2 / 3; border-radius: 0 6px 6px 0; border-left: none; }
-#dpad .down { grid-area: 3 / 2; border-radius: 0 0 6px 6px; border-top: none; }
-#dpad .dhub { grid-area: 2 / 2; background: #24382a; border-top: 3px solid rgba(255,255,255,.45); border-bottom: 3px solid rgba(255,255,255,.45); }
+#stickBase .tick {
+  position: absolute; width: 7px; height: 11px; border-radius: 3px;
+  background: #cfe8cf; opacity: .4; pointer-events: none;
+}
+#stickBase .tick.up { left: 50%; top: 5px; transform: translateX(-50%); }
+#stickBase .tick.down { left: 50%; bottom: 5px; transform: translateX(-50%); }
+#stickBase .tick.left { left: 5px; top: 50%; transform: translateY(-50%) rotate(90deg); }
+#stickBase .tick.right { right: 5px; top: 50%; transform: translateY(-50%) rotate(90deg); }
+#stickBase .tick.on { background: #ffd94a; opacity: 1; box-shadow: 0 0 7px #ffd94a; }
 #btnMenu {
   flex: none; padding: 9px 16px; border-radius: 999px; cursor: pointer;
   background: rgba(255,255,255,.14); border: 3px solid rgba(255,255,255,.5);

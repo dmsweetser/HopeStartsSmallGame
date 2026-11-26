@@ -89,16 +89,28 @@ function dither(c, x, y, w, h, colA, colB) { // checkerboard dither fill
   }
 }
 const GRASS = '#58b93e', GRASS_D = '#3f9433', GRASS_L = '#7ed957';
+const SHADOW = '#357a2a'; // the one cast-shadow tone for everything standing on grass
 const TILES = {};
 TILES.grass = tileCanvas(c => {
   c.fillStyle = GRASS; c.fillRect(0, 0, 16, 16); c.fillStyle = GRASS_D;
   c.fillRect(2, 3, 1, 2); c.fillRect(3, 4, 1, 1); c.fillRect(11, 2, 1, 2); c.fillRect(12, 3, 1, 1);
   c.fillRect(6, 10, 1, 2); c.fillRect(7, 11, 1, 1); c.fillRect(13, 12, 1, 2); c.fillRect(14, 13, 1, 1);
+  c.fillStyle = GRASS_L;
+  c.fillRect(8, 6, 1, 1); c.fillRect(4, 13, 1, 1); c.fillRect(14, 7, 1, 1); c.fillRect(1, 8, 1, 1);
 });
 TILES.grass2 = tileCanvas(c => {
   c.fillStyle = GRASS; c.fillRect(0, 0, 16, 16); c.fillStyle = GRASS_L;
   c.fillRect(4, 6, 1, 2); c.fillRect(5, 7, 1, 1); c.fillRect(10, 11, 1, 2); c.fillRect(9, 12, 1, 1);
-  c.fillStyle = GRASS_D; c.fillRect(13, 4, 2, 1); c.fillRect(1, 13, 2, 1);
+  c.fillRect(2, 1, 1, 1); c.fillRect(13, 9, 1, 1); c.fillRect(7, 14, 1, 1);
+  c.fillStyle = GRASS_D; c.fillRect(13, 4, 2, 1); c.fillRect(1, 13, 2, 1); c.fillRect(8, 3, 1, 1);
+});
+TILES.grass4 = tileCanvas(c => { // a mowed, dithered patch: checker flecks of light and dark
+  c.fillStyle = GRASS; c.fillRect(0, 0, 16, 16);
+  for (let y = 0; y < 16; y += 2) for (let x = 0; x < 16; x += 2) {
+    c.fillStyle = ((x + y) % 4 === 0) ? GRASS_L : GRASS_D;
+    if ((x * 7 + y * 13) % 5 !== 0) c.fillRect(x + (y % 4 === 0 ? 0 : 1), y, 1, 1);
+  }
+  c.fillStyle = GRASS_D; c.fillRect(5, 9, 1, 2); c.fillRect(12, 4, 1, 2);
 });
 TILES.flower = tileCanvas(c => {
   c.drawImage(TILES.grass, 0, 0);
@@ -138,7 +150,7 @@ TILES.soil = tileCanvas(c => {
 const FW = '#f4f4f0', FS = '#c9ced4', FK = '#20242a';
 TILES.fenceH = tileCanvas(c => {
   c.drawImage(TILES.grass, 0, 0);
-  c.fillStyle = '#4cab36'; c.fillRect(0, 13, 16, 3); // ground shadow under the fence
+  c.fillStyle = SHADOW; c.fillRect(0, 13, 16, 3); // ground shadow under the fence
   c.fillStyle = FW; c.fillRect(0, 6, 16, 2); c.fillRect(0, 11, 16, 2); // rails
   c.fillStyle = FS; c.fillRect(0, 7, 16, 1); c.fillRect(0, 12, 16, 1);
   for (const x of [1, 6, 12]) { // pointed pickets with a shaded edge and nails
@@ -149,7 +161,7 @@ TILES.fenceH = tileCanvas(c => {
 });
 TILES.fenceV = tileCanvas(c => {
   c.drawImage(TILES.grass, 0, 0);
-  c.fillStyle = '#4cab36'; c.fillRect(10, 0, 6, 16); // ground shadow
+  c.fillStyle = SHADOW; c.fillRect(10, 0, 6, 16); // ground shadow
   c.fillStyle = FW; c.fillRect(4, 2, 2, 12); c.fillRect(11, 2, 2, 12); // side rails
   c.fillStyle = FW; c.fillRect(6, 1, 5, 14);
   c.fillStyle = FS; c.fillRect(9, 1, 2, 14);
@@ -161,15 +173,20 @@ TILES.gate = tileCanvas(c => {
   c.fillStyle = '#6f4520'; c.fillRect(7, 2, 2, 13);
   c.fillStyle = FK; c.fillRect(12, 8, 2, 2);
 });
-TILES.roof = tileCanvas(c => { // shingled: lit top edge, shadowed lip, offset joints per band
+TILES.roof = tileCanvas(c => { // shingles: fine bands, a bright ridge line at
+  // the top and a deep eave shadow at the bottom, so the row reads as a roof
   c.fillStyle = '#3f7fd8'; c.fillRect(0, 0, 16, 16);
+  c.fillStyle = '#7fb2e8'; c.fillRect(0, 0, 16, 1); // ridge highlight
   for (let b = 0; b < 4; b++) {
-    const y = b * 4;
+    const y = 1 + b * 3;
     c.fillStyle = '#5b9bf0'; c.fillRect(0, y, 16, 1);
-    c.fillStyle = '#2a5aa8'; c.fillRect(0, y + 3, 16, 1);
+    c.fillStyle = '#2a5aa8'; c.fillRect(0, y + 2, 16, 1);
     const off = (b % 2) * 4;
-    for (let x = off; x < 16; x += 8) c.fillRect(x, y, 1, 3);
+    c.fillStyle = '#2a5aa8';
+    for (let x = off; x < 16; x += 8) c.fillRect(x, y, 1, 2);
   }
+  c.fillStyle = '#1e4478'; c.fillRect(0, 13, 16, 2); // eave shadow
+  c.fillStyle = '#e8edf2'; c.fillRect(0, 15, 16, 1); // gutter line
 });
 TILES.chimney = tileCanvas(c => {
   c.drawImage(TILES.roof, 0, 0);
@@ -183,9 +200,17 @@ TILES.wall = tileCanvas(c => { // horizontal siding: lit top, shadow line under 
   c.fillStyle = '#8fc1f0'; c.fillRect(0, 0, 16, 16);
   for (let y = 0; y < 16; y += 4) {
     c.fillStyle = '#a8d0f7'; c.fillRect(0, y, 16, 1);
-    c.fillStyle = '#6ea3dd'; c.fillRect(0, y + 3, 16, 1);
+    c.fillStyle = '#5b93d6'; c.fillRect(0, y + 3, 16, 1);
   }
   c.fillStyle = '#7fb2e8'; c.fillRect(7, 1, 1, 2); c.fillRect(12, 5, 1, 2); c.fillRect(3, 9, 1, 2); c.fillRect(9, 13, 1, 2);
+});
+TILES.wallBase = tileCanvas(c => { // bottom wall row: siding over a stone foundation
+  c.drawImage(TILES.wall, 0, 0);
+  c.fillStyle = '#8a8f96'; c.fillRect(0, 10, 16, 6);
+  c.fillStyle = '#a8adb5'; c.fillRect(0, 10, 16, 1); c.fillRect(2, 11, 5, 2); c.fillRect(10, 13, 5, 2);
+  c.fillStyle = '#6f747c'; c.fillRect(0, 12, 16, 1); c.fillRect(0, 15, 16, 1);
+  c.fillRect(7, 10, 1, 2); c.fillRect(3, 13, 1, 2); c.fillRect(12, 10, 1, 2); c.fillRect(8, 13, 1, 2);
+  c.fillStyle = SHADOW; c.fillRect(0, 15, 16, 1);
 });
 TILES.window = tileCanvas(c => { // framed window: curtains, muntins, sill, flower box
   c.drawImage(TILES.wall, 0, 0);
@@ -242,6 +267,7 @@ TILES.bench = tileCanvas(c => {
   c.fillStyle = '#c08b4d'; c.fillRect(0, 3, 16, 1);
   c.fillStyle = '#a5713d'; c.fillRect(0, 4, 16, 2); c.fillRect(0, 7, 16, 2);
   c.fillStyle = '#8a5a30'; c.fillRect(0, 6, 16, 1); c.fillRect(0, 9, 16, 1);
+  c.fillStyle = '#6f4520'; c.fillRect(0, 4, 1, 5); c.fillRect(15, 4, 1, 5); // seams between bench sections
   c.fillStyle = '#6f4520'; c.fillRect(2, 10, 2, 2); c.fillRect(12, 10, 2, 2);
   c.fillStyle = '#6f4520'; c.fillRect(0, 12, 16, 4);
   c.fillStyle = '#8a5a30'; c.fillRect(2, 13, 2, 1); c.fillRect(8, 14, 2, 1); c.fillRect(13, 13, 2, 1);
@@ -275,6 +301,20 @@ TILES.flower3 = tileCanvas(c => { // blue / white / red bed
   const dots = [[4, 2, '#5b9bf0'], [11, 5, '#ffffff'], [6, 9, '#e0483e'], [13, 12, '#5b9bf0'], [2, 13, '#ffffff']];
   for (const [x, y, col] of dots) { c.fillStyle = col; c.fillRect(x, y, 2, 2); c.fillStyle = '#fff6b0'; c.fillRect(x, y, 1, 1); }
 });
+function bedTile(blooms) { // a real flower BED: mulch border, leafy fill, dense blooms
+  return tileCanvas(c => {
+    c.fillStyle = '#6f4520'; c.fillRect(0, 0, 16, 16);
+    c.fillStyle = '#8a5a30'; c.fillRect(1, 1, 14, 14);
+    c.fillStyle = '#5f3717'; c.fillRect(3, 4, 2, 1); c.fillRect(11, 9, 2, 1); c.fillRect(6, 13, 2, 1);
+    c.fillStyle = '#2f9e44';
+    c.fillRect(2, 2, 6, 5); c.fillRect(9, 2, 5, 4); c.fillRect(3, 8, 5, 5); c.fillRect(9, 8, 5, 6); c.fillRect(6, 5, 4, 4);
+    c.fillStyle = '#54c95e';
+    c.fillRect(3, 3, 3, 2); c.fillRect(10, 3, 2, 2); c.fillRect(4, 9, 3, 2); c.fillRect(11, 10, 2, 2); c.fillRect(7, 6, 2, 1);
+    for (const [x, y, col] of blooms) { c.fillStyle = col; c.fillRect(x, y, 2, 2); c.fillStyle = '#fff6b0'; c.fillRect(x, y, 1, 1); }
+  });
+}
+TILES.bedA = bedTile([[3, 3, '#ff5d8f'], [11, 4, '#ffffff'], [6, 9, '#ffd94a'], [12, 11, '#ff5d8f'], [4, 12, '#ffffff'], [8, 5, '#ff5d8f']]);
+TILES.bedB = bedTile([[4, 4, '#b07fe8'], [11, 3, '#ff9f43'], [6, 10, '#3ec6b8'], [12, 12, '#b07fe8'], [3, 11, '#ff9f43'], [9, 6, '#b07fe8']]);
 TILES.soilSprout = tileCanvas(c => { // tilled row with sproutlets coming up
   c.drawImage(TILES.soil, 0, 0);
   c.fillStyle = '#2f9e44';
@@ -303,12 +343,13 @@ TILES.bush = tileCanvas(c => { // a leafy bush with berries, on grass
 });
 TILES.birdbath = tileCanvas(c => { // stone birdbath on grass; the sparkle is animated at draw time
   c.drawImage(TILES.grass, 0, 0);
-  c.fillStyle = '#357a2a'; c.fillRect(3, 13, 10, 2);
-  c.fillStyle = '#8a8f96'; c.fillRect(6, 9, 4, 5); c.fillRect(4, 14, 8, 1);
-  c.fillStyle = '#c9ced4'; c.fillRect(2, 5, 12, 3); c.fillRect(3, 4, 10, 1);
-  c.fillStyle = '#5b9bf0'; c.fillRect(4, 5, 8, 1);
-  c.fillStyle = '#a8dcff'; c.fillRect(5, 5, 3, 1);
-  c.fillStyle = '#e8edf2'; c.fillRect(2, 7, 12, 1);
+  c.fillStyle = SHADOW; c.fillRect(3, 13, 10, 2);
+  c.fillStyle = '#8a8f96'; c.fillRect(7, 8, 3, 5); c.fillRect(5, 13, 7, 1); // pedestal and foot
+  c.fillStyle = '#6f747c'; c.fillRect(5, 8, 7, 1); // shadow under the basin
+  c.fillStyle = '#c9ced4'; c.fillRect(1, 4, 14, 3); c.fillRect(2, 3, 12, 1); // the wide basin
+  c.fillStyle = '#5b9bf0'; c.fillRect(3, 4, 10, 1); // water
+  c.fillStyle = '#a8dcff'; c.fillRect(4, 4, 4, 1);
+  c.fillStyle = '#e8edf2'; c.fillRect(1, 7, 14, 1); // lit rim underside
 });
 TILES.mailbox = tileCanvas(c => { // fence line with a mailbox by the gate, red flag up
   c.drawImage(TILES.fenceH, 0, 0);
@@ -558,11 +599,47 @@ const CONSTANCE_SIDE2 = makeSprite([
 '....ksskssk.....',
 '....kookook.....',
 ], CONSTANCE_PAL);
-const CONSTANCE_SET = { down: [CONSTANCE_DOWN, CONSTANCE_DOWN2], up: [CONSTANCE_DOWN, CONSTANCE_DOWN2], side: [CONSTANCE_SIDE, CONSTANCE_SIDE2] };
+const CONSTANCE_UP = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khhhhhhhhk...',
+'...khhhhhhhhk...',
+'...khhHHHhhhk...',
+'...khhhhhhhhk...',
+'....khhhhhk.....',
+'.....kkkkkk.....',
+'...kkddddddkk...',
+'...skddwwddks...',
+'...skddwwddks...',
+'...kdddddddDk...',
+'...kdddddddDk...',
+'....kdddkddk....',
+'....kookkook....',
+], CONSTANCE_PAL);
+const CONSTANCE_UP2 = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khhhhhhhhk...',
+'...khhhhhhhhk...',
+'...khhHHHhhhk...',
+'...khhhhhhhhk...',
+'....khhhhhk.....',
+'.....kkkkkk.....',
+'...kkddddddkk...',
+'...skddwwddks...',
+'...skddwwddks...',
+'...kdddddddDk...',
+'...kdddddddDk...',
+'.....kddkddk....',
+'.....ookook.....',
+], CONSTANCE_PAL);
+const CONSTANCE_SET = { down: [CONSTANCE_DOWN, CONSTANCE_DOWN2], up: [CONSTANCE_UP, CONSTANCE_UP2], side: [CONSTANCE_SIDE, CONSTANCE_SIDE2] };
 /* Alvin: tan short coat, floppy darker ears, green collar with a tag.
    Side sprite faces right (charSprite flips it for left); the two frames
    wag his tail and stride his legs. */
-const ALVIN_PAL = { k: '#20242a', t: '#d9a05a', T: '#b57f3d', d: '#8a5a2e', m: '#ecd3a0', n: '#20242a', g: '#37b24d', y: '#ffd94a', e: '#20242a' };
+const ALVIN_PAL = { k: '#20242a', t: '#d9a05a', T: '#b57f3d', d: '#8a5a2e', m: '#ecd3a0', n: '#20242a', g: '#37b24d', y: '#ffd94a', e: '#20242a', r: '#e88ca0' };
 const ALVIN_DOWN = makeSprite([
 '................',
 '................',
@@ -592,12 +669,48 @@ const ALVIN_DOWN2 = makeSprite([
 '...kkkttttkkk...',
 '....ktmmmmtk....',
 '....kmmnnmmk....',
-'.....mmmmmm.....',
+'.....mmrrmm.....',
 '....kggggggk....',
 '....kttgyttk....',
 '...Tkttttttk....',
 '....ktkttktk....',
 '....kkk.kkk.....',
+], ALVIN_PAL);
+const ALVIN_UP = makeSprite([
+'................',
+'................',
+'....kkkkkkkk....',
+'..kkkttttttkkk..',
+'..kddkttttkddk..',
+'..kddkttttkddk..',
+'..kddkttttkddk..',
+'...kkkttttkkk...',
+'....kggggggk....',
+'....kttttttk....',
+'....kttttttk....',
+'....kttTtttk....',
+'....ktkttktk....',
+'....kkkttkkk....',
+'.......tt.......',
+'................',
+], ALVIN_PAL);
+const ALVIN_UP2 = makeSprite([
+'................',
+'................',
+'....kkkkkkkk....',
+'..kkkttttttkkk..',
+'..kddkttttkddk..',
+'..kddkttttkddk..',
+'..kddkttttkddk..',
+'...kkkttttkkk...',
+'....kggggggk....',
+'....kttttttk....',
+'....kttttttk....',
+'....kttTtttk....',
+'....ktkttktk....',
+'....kkkttkkk....',
+'......tt........',
+'................',
 ], ALVIN_PAL);
 const ALVIN_SIDE = makeSprite([
 '................',
@@ -635,7 +748,7 @@ const ALVIN_SIDE2 = makeSprite([
 '..kkk...kkk.....',
 '................',
 ], ALVIN_PAL);
-const ALVIN_SET = { down: [ALVIN_DOWN, ALVIN_DOWN2], up: [ALVIN_DOWN, ALVIN_DOWN2], side: [ALVIN_SIDE, ALVIN_SIDE2] };
+const ALVIN_SET = { down: [ALVIN_DOWN, ALVIN_DOWN2], up: [ALVIN_UP, ALVIN_UP2], side: [ALVIN_SIDE, ALVIN_SIDE2] };
 /* small deer for the yard */
 const DEER_SMALL = makeSprite([
 '..a..........a..',
@@ -734,12 +847,12 @@ const DEER_BIG = makeSprite([
 '...bbwbbbbbbwbbbbbbbbbb.',
 '...bbbbbbbbbbbbbbbbbbbb.',
 '....BBBBBBBBBBBBBBBB....',
-'....bb...bb....bb...bb..',
-'....bb...bb....bb...bb..',
-'....bb...bb....bb...bb..',
-'....bb...bb....bb...bb..',
-'....bb...bb....bb...bb..',
-'....bb...bb....bb...bb..',
+'....bb...BB....bb...BB..',
+'....bb...BB....bb...BB..',
+'....bb...BB....bb...BB..',
+'....bb...BB....bb...BB..',
+'....bb...BB....bb...BB..',
+'....bb...BB....bb...BB..',
 '...lll...lll...lll..lll.',
 ], { a: '#8a5a2e', h: '#caa06a', e: '#20242a', b: '#b07a45', B: '#8a5a2e', w: '#e8dcc0', t: '#8a5a2e', l: '#8a5a2e' });
 /* Alvin, big front view for the trial screen (24x20, drawn at 2x): floppy
@@ -753,8 +866,8 @@ const ALVIN_BIG = makeSprite([
 '..kdddkttttttttkdddk....',
 '..kdddkkttttttkkdddk....',
 '...kkkkmmmmmmmmkkkk.....',
-'.....kmmmnnnnmmmk.......',
-'.....kmmmmmmmmmmk....t..',
+'.....kmmmmnnmmmmk.......',
+'.....kmmmmrrmmmmk....t..',
 '......kkkkkkkkkk....tt..',
 '...kkggggggggggk...tTt..',
 '..kttktttggytttkttktt...',
@@ -766,7 +879,7 @@ const ALVIN_BIG = makeSprite([
 '..kkkk.kkkkkkkk.kkkk....',
 '........................',
 ], ALVIN_PAL);
-/* a butterfly that wanders the yard (ambient, never saved) */
+/* butterflies that wander the yard (ambient, never saved) */
 const BUTTERFLY_A = makeSprite([
 'w......w',
 'ww....ww',
@@ -781,6 +894,20 @@ const BUTTERFLY_B = makeSprite([
 'wwwbbwww',
 'ww....ww',
 ], { w: '#ffb347', b: '#20242a' });
+const BUTTERFLY2_A = makeSprite([
+'w......w',
+'ww....ww',
+'wwwbbwww',
+'..bbbb..',
+'........',
+], { w: '#b07fe8', b: '#20242a' });
+const BUTTERFLY2_B = makeSprite([
+'........',
+'...bb...',
+'..bbbb..',
+'wwwbbwww',
+'ww....ww',
+], { w: '#b07fe8', b: '#20242a' });
 /* ============================== MAP: DEERBROOK BACKYARD (24x18) ============================== */
 /* l lawn(neighbour) f fenceV v fenceVine H fenceH F fenceBloom G gate T tree U bush
    R roof c chimney W wall i window D door g grass u grass2 o/O/Q flower beds p path
@@ -793,16 +920,16 @@ const MAP = [
 'nnnnnnnnnnnnnnnnnnnnnnnn',
 'nfRRRRcRRRRRRRRRRRRRRRfn',
 'nfWWiWWWWWWWWWWiWWWWWWfn',
-'nfWWWWWWWWWDWWWWWWWWWWfn',
+'nfEEEEEEEEEDEEEEEEEEEEfn',
 'nfOoQgogouoPoouoQgouoofn',
-'nfugogugQggpgugogugggofn',
-'nfggTggugggpggguggOgogfn',
-'nfgugggggoopggggugggTgfn',
-'nfoogugggggjggggguggogfn',
-'nvoggggugggpgugggggOgufn',
+'nfAAogugQggpgugoguYYgofn',
+'nfAATggugggpggguggYYogfn',
+'nfgugggAAoopgggYYgggTgfn',
+'nfoogugggggjgQggguggogfn',
+'nvogggougggpgugggggOgufn',
 'nfQogggggBBBBBBggggoggfn',
-'nfoguggggggpgggwggggCgfn',
-'nfggUggooggpgggguggggKfn',
+'nfoguYYggggpgggwggggCgfn',
+'nfggUggooggpggggAAgggKfn',
 'nfgsSsSggggpggugggUgggfn',
 'nfgSsSsgoogpggggggooggvn',
 'nfuggugggggjggggggguggfn',
@@ -810,19 +937,48 @@ const MAP = [
 'nfFFFFHHHHMGGHHHHHHHHFfn',
 ];
 const MAP_W = 24, MAP_H = 18;
-const TILEMAP = { n: 'lawn', f: 'fenceV', v: 'fenceVine', H: 'fenceH', F: 'fenceBloom', G: 'gate', R: 'roof', c: 'chimney', W: 'wall', i: 'window', D: 'door', g: 'grass', u: 'grass2', o: 'flower', O: 'flower2', Q: 'flower3', p: 'path', j: 'pathStone', P: 'porch', B: 'bench', C: 'compost', T: 'grass', s: 'soil', S: 'soilSprout', U: 'bush', b: 'birdbath', M: 'mailbox', K: 'crate', w: 'can' };
-const SOLID = new Set(['n', 'f', 'v', 'H', 'F', 'G', 'R', 'c', 'W', 'i', 'D', 'B', 'C', 'T', 'U', 'b', 'M', 'K']);
+const TILEMAP = { n: 'lawn', f: 'fenceV', v: 'fenceVine', H: 'fenceH', F: 'fenceBloom', G: 'gate', R: 'roof', c: 'chimney', W: 'wall', E: 'wallBase', i: 'window', D: 'door', g: 'grass', u: 'grass2', o: 'flower', O: 'flower2', Q: 'flower3', p: 'path', j: 'pathStone', P: 'porch', B: 'bench', C: 'compost', T: 'grass', s: 'soil', S: 'soilSprout', U: 'bush', b: 'birdbath', M: 'mailbox', K: 'crate', w: 'can', A: 'bedA', Y: 'bedB' };
+const SOLID = new Set(['n', 'f', 'v', 'H', 'F', 'G', 'R', 'c', 'W', 'E', 'i', 'D', 'B', 'C', 'T', 'U', 'b', 'M', 'K']);
 function mapChar(x, y) { if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return 'f'; return MAP[y][x]; }
 function isSolid(x, y) { return SOLID.has(mapChar(x, y)); }
 
 /* ============================== STATE ============================== */
 const STAGE_NAMES = ['EMPTY', 'SEED', 'SPROUT', 'SEEDLING'];
 const MAX_VIGOR = [0, 0, 22, 28];
+/* Every plant is an individual with a name Frank gave it (roll call order —
+   Constance noted, correctly, that it is alphabetical). A plant lives on the
+   bench; the register is a journal of lives, never a storage box. */
+const PLANT_NAMES = ['ADMIRAL', 'CAPTAIN', 'GENERAL', 'HOPE', 'PATIENCE', 'PROFESSOR'];
+function freshPot(i) {
+  return {
+    name: PLANT_NAMES[i], stage: 0, wateredDays: 0, watered: false, vigor: 0, tended: 0,
+    sownDay: null, sproutedDay: null, seedlingDay: null, location: 'BENCH',
+  };
+}
+/* Old saves stored pots as bare stage ints, then as {stage, waterDays, ...}
+   objects. Bring any of them up to the named-plant shape, inventing nothing
+   the player did: stage days fall back to day 1, names to the roll call. */
+function migratePot(p, i) {
+  if (typeof p === 'number') p = { stage: p };
+  p = p || {};
+  const st = p.stage | 0;
+  return {
+    name: (typeof p.name === 'string' && p.name.trim()) ? p.name : PLANT_NAMES[i],
+    stage: st,
+    wateredDays: p.wateredDays != null ? p.wateredDays : (p.waterDays || 0),
+    watered: !!p.watered, vigor: p.vigor || 0, tended: p.tended || 0,
+    sownDay: p.sownDay != null ? p.sownDay : (st >= 1 ? 1 : null),
+    sproutedDay: p.sproutedDay != null ? p.sproutedDay : (st >= 2 ? 1 : null),
+    seedlingDay: p.seedlingDay != null ? p.seedlingDay : (st >= 3 ? 1 : null),
+    location: 'BENCH',
+  };
+}
+function migrateSave(s) { s.pots = s.pots.map((p, i) => migratePot(p, i)); return s; }
 let G = null; // game state (serializable part in G.save)
 function newSave() {
   return {
     v: 1, day: 1, seedsLeft: 6, tea: 3, teaBrewedDay: 0,
-    pots: Array.from({ length: 6 }, () => ({ stage: 0, waterDays: 0, watered: false, vigor: 0 })),
+    pots: PLANT_NAMES.map((n, i) => freshPot(i)),
     dex: { blueberry: [] },
     deerBeaten: false, deerPresent: false, chapterDone: false,
     tutorial: 0, // 0 intro dialogue, 1 plant, 2 water, 3 done
@@ -832,7 +988,7 @@ function newSave() {
 }
 function saveGame() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(G.save)); } catch (e) {} }
 function loadSave() {
-  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1 && Array.isArray(s.pots)) return s; } catch (e) {}
+  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1 && Array.isArray(s.pots)) return migrateSave(s); } catch (e) {}
   return null;
 }
 function dexAdd(stageName) {
@@ -849,13 +1005,13 @@ function strongestPot() {
 /* Persisted separately from the game save, so starting a New Game (which
    overwrites the save) never resets the player's control preferences. */
 const SETTINGS_KEY = 'hss-settings-v1';
-const settings = { pad: 'auto' }; // auto | always | off
+const settings = { stick: 'auto' }; // auto | always | off
 try {
   const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-  const v = s && (s.pad || s.stick); // 'stick' was the pre-D-pad field name
-  if (['auto', 'always', 'off'].includes(v)) settings.pad = v;
+  const v = s && (s.stick || s.pad); // 'pad' was the D-pad-era field name; migrate it forward
+  if (['auto', 'always', 'off'].includes(v)) settings.stick = v;
 } catch (e) {}
-function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
+function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ stick: settings.stick })); } catch (e) {} }
 
 /* ============================== INPUT ============================== */
 const keys = {};
@@ -881,7 +1037,7 @@ const Input = {
       if (ax < -0.4) x -= 1; if (ax > 0.4) x += 1; if (ay < -0.4) y -= 1; if (ay > 0.4) y += 1;
       padA = b(0); padB = b(1); padStart = b(9);
     }
-    // the on-screen D-pad is a classic 4-way cross: it feeds the same axes
+    // the on-screen stick commits to a single cardinal: it feeds the same axes
     if (x === 0 && y === 0 && (padDir.x || padDir.y)) { x = padDir.x; y = padDir.y; }
     // diagonals from any source collapse to one axis (tile movement is 4-way)
     if (x !== 0 && y !== 0) { if (this.dir.x !== 0 && this.dir.y === 0) y = 0; else x = 0; }
@@ -907,35 +1063,83 @@ window.addEventListener('keyup', e => {
 });
 let padToastShown = false;
 window.addEventListener('gamepadconnected', () => { if (!padToastShown) { padToastShown = true; toast('GAMEPAD CONNECTED'); } });
-/* Touch controls: a classic cross D-PAD + a MENU button + A/B buttons in
-   the page deck below the screen (never over the canvas, so they can't
-   cover dialogue). Visibility follows settings.pad: always | off | auto. */
+/* Touch controls: an ANALOG STICK + a MENU button + A/B buttons in the page
+   deck below the screen (never over the canvas, so they can't cover
+   dialogue). Visibility follows settings.stick: always | off | auto.
+   The stick is rigorous about direction: it reads a continuous vector, but
+   movement only ever commits to ONE cardinal —
+     · magnitude < 0.35 (deadzone): no movement, commitment cleared;
+     · magnitude >= 0.5: commit to the nearest cardinal (90° sectors);
+     · hysteresis: a commitment holds until the angle moves at least 15°
+       past the sector boundary (60° from the committed sector's centre),
+       so jitter near a boundary never flickers the direction;
+     · diagonals never reach the game; release stops movement at once. */
 const deckEl = document.getElementById('deck');
 const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 let touchSeen = false;
-function padShouldShow() {
-  return settings.pad === 'always' || (settings.pad === 'auto' && (touchSeen || coarsePointer));
+const stickDebug = { dir: null, mag: 0 }; // exposed via __hss for the smoke test
+function stickShouldShow() {
+  return settings.stick === 'always' || (settings.stick === 'auto' && (touchSeen || coarsePointer));
 }
-function applyPadPref() { deckEl.hidden = !padShouldShow(); }
-window.addEventListener('touchstart', () => { if (!touchSeen) { touchSeen = true; applyPadPref(); } }, { passive: true });
+function applyStickPref() { deckEl.hidden = !stickShouldShow(); }
+window.addEventListener('touchstart', () => { if (!touchSeen) { touchSeen = true; applyStickPref(); } }, { passive: true });
 (function () {
-  const dpadState = { up: false, down: false, left: false, right: false };
-  function syncPadDir() {
-    padDir = { x: (dpadState.right ? 1 : 0) - (dpadState.left ? 1 : 0), y: (dpadState.down ? 1 : 0) - (dpadState.up ? 1 : 0) };
-  }
-  const bindDir = (id, key) => {
-    const el = document.getElementById(id);
-    el.addEventListener('pointerdown', e => {
-      e.preventDefault();
-      try { el.setPointerCapture(e.pointerId); } catch (err) {}
-      dpadState[key] = true; syncPadDir();
-    });
-    const off = () => { dpadState[key] = false; syncPadDir(); };
-    el.addEventListener('pointerup', off);
-    el.addEventListener('pointercancel', off);
-    el.addEventListener('lostpointercapture', off);
+  const base = document.getElementById('stickBase');
+  const knob = document.getElementById('stickKnob');
+  const ticks = {
+    up: base.querySelector('.tick.up'), right: base.querySelector('.tick.right'),
+    down: base.querySelector('.tick.down'), left: base.querySelector('.tick.left'),
   };
-  bindDir('dpUp', 'up'); bindDir('dpDown', 'down'); bindDir('dpLeft', 'left'); bindDir('dpRight', 'right');
+  const DEAD = 0.35, COMMIT = 0.5, HYST = (45 + 15) * Math.PI / 180; // 15° past the boundary
+  const SECTORS = ['right', 'down', 'left', 'up']; // index = round(angle / 90°), screen coords (y down)
+  const CENTER = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
+  const UNIT = { right: { x: 1, y: 0 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, up: { x: 0, y: -1 } };
+  let active = false, committed = null;
+  function sectorOf(a) { let i = Math.round(a / (Math.PI / 2)) % 4; if (i < 0) i += 4; return SECTORS[i]; }
+  function angDist(a, b) { const d = Math.abs(a - b) % (Math.PI * 2); return d > Math.PI ? Math.PI * 2 - d : d; }
+  function showTicks() { for (const k in ticks) ticks[k].classList.toggle('on', k === committed); }
+  function setKnob(x, y) { knob.style.transform = 'translate(-50%,-50%) translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)'; }
+  function updateStick(cx, cy) {
+    const r = base.getBoundingClientRect(), rad = r.width / 2;
+    const dx = cx - (r.left + rad), dy = cy - (r.top + rad);
+    const dist = Math.hypot(dx, dy), mag = Math.min(1, dist / rad), ang = Math.atan2(dy, dx);
+    if (mag < DEAD) committed = null;
+    else if (mag >= COMMIT) {
+      const cand = sectorOf(ang);
+      if (!committed) committed = cand;
+      else if (cand !== committed && angDist(ang, CENTER[committed]) > HYST) committed = cand;
+    }
+    // 0.35..0.5 is the grey band: an existing commitment holds, none is created
+    padDir = committed ? UNIT[committed] : { x: 0, y: 0 };
+    stickDebug.dir = committed; stickDebug.mag = Math.round(mag * 100) / 100;
+    // the knob follows the thumb, clamped to the base; once a direction is
+    // committed its offset snaps toward that cardinal (cross-axis damped)
+    const travel = Math.max(4, rad - 25);
+    let kx = dx, ky = dy;
+    if (dist > travel) { kx = dx / dist * travel; ky = dy / dist * travel; }
+    if (committed) {
+      const u = UNIT[committed];
+      const par = kx * u.x + ky * u.y;        // along the committed axis
+      const per = kx * -u.y + ky * u.x;       // across it
+      kx = u.x * par + -u.y * per * 0.3;
+      ky = u.y * par + u.x * per * 0.3;
+    }
+    setKnob(kx, ky); showTicks();
+  }
+  function endStick() {
+    active = false; committed = null; padDir = { x: 0, y: 0 };
+    stickDebug.dir = null; stickDebug.mag = 0;
+    setKnob(0, 0); showTicks();
+  }
+  base.addEventListener('pointerdown', e => {
+    e.preventDefault(); active = true;
+    try { base.setPointerCapture(e.pointerId); } catch (err) {}
+    updateStick(e.clientX, e.clientY);
+  });
+  base.addEventListener('pointermove', e => { if (active) updateStick(e.clientX, e.clientY); });
+  base.addEventListener('pointerup', endStick);
+  base.addEventListener('pointercancel', endStick);
+  base.addEventListener('lostpointercapture', endStick);
   const bind = (id, set) => {
     const el = document.getElementById(id);
     el.addEventListener('pointerdown', e => { e.preventDefault(); set(true); });
@@ -946,11 +1150,11 @@ window.addEventListener('touchstart', () => { if (!touchSeen) { touchSeen = true
   bind('btnA', v => touchA = v); bind('btnB', v => touchB = v);
   // the deck's MENU button is a Start press: P and gamepad Start still work
   document.getElementById('btnMenu').addEventListener('pointerdown', e => { e.preventDefault(); menuBtnHit = true; });
-  applyPadPref();
+  applyStickPref();
 })();
 
 /* ============================== RUNTIME / UI STATE ============================== */
-let mode = 'title'; // title | chapters | overworld | dialogue | trial | card | dex | menu | controls
+let mode = 'title'; // title | chapters | overworld | dialogue | trial | card | register | menu | controls
 let titleSel = 0, chapterSel = 0, fade = 0, fading = null;
 let toastMsg = '', toastT = 0;
 function toast(m) { toastMsg = m; toastT = 2.2; }
@@ -997,6 +1201,15 @@ function endDlg(which) {
 function drawBox(y, h) {
   ctx.fillStyle = '#20242a'; ctx.fillRect(2, y, VW - 4, h);
   ctx.fillStyle = '#f8f8f8'; ctx.fillRect(4, y + 2, VW - 8, h - 4);
+  ctx.fillStyle = '#dfe9f5'; ctx.fillRect(4, y + 2, VW - 8, 1); // a breath of shadow under the top edge
+  ctx.fillStyle = '#20242a'; // corner rivets
+  ctx.fillRect(6, y + 4, 1, 1); ctx.fillRect(VW - 7, y + 4, 1, 1);
+  ctx.fillRect(6, y + h - 5, 1, 1); ctx.fillRect(VW - 7, y + h - 5, 1, 1);
+}
+function drawPanel(x, y, w, h) { // the house panel: dark frame, gold trim, paper face
+  ctx.fillStyle = '#20242a'; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
+  ctx.fillStyle = '#f8f8f8'; ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
 }
 function drawDlg() {
   drawBox(102, 40);
@@ -1128,6 +1341,9 @@ function interact() {
   if (f.x === 11 && f.y === 3) { // house door
     return say('REST UNTIL MORNING?', which => { if (which === 0) restDay(); }, ['REST', 'NOT YET']);
   }
+  if (f.x === 11 && f.y === 4) { // Frank's garden journal sits on the porch
+    return openRegister();
+  }
   if (f.x === constance.tx && f.y === constance.ty) {
     const line = CONSTANCE_LINES[s.constanceLine % CONSTANCE_LINES.length]; s.constanceLine++;
     return say(line);
@@ -1148,8 +1364,17 @@ function potInteract(pi) {
   const s = G.save, p = s.pots[pi];
   if (p.stage === 0) {
     if (s.seedsLeft <= 0) return say('NO SEEDS LEFT IN THE PACKET.');
-    p.stage = 1; s.seedsLeft--; dexAdd('SEED'); saveGame();
-    if (s.tutorial === 1 && s.pots.every(q => q.stage >= 1)) { s.tutorial = 2; saveGame(); return say(['PLANTED! SIX LITTLE PROMISES IN PEAT.', 'A DRINK FOR EACH NEW FRIEND: PRESS A AT A POT TO WATER IT.']); }
+    p.stage = 1; p.sownDay = s.day; s.seedsLeft--; dexAdd('SEED'); saveGame();
+    if (s.tutorial === 1 && s.pots.every(q => q.stage >= 1)) {
+      s.tutorial = 2; saveGame();
+      return say([
+        'PLANTED! SIX LITTLE PROMISES IN PEAT.',
+        'FRANK: AND EVERY PROMISE NEEDS A NAME. I HAVE GIVEN THIS SOME THOUGHT.',
+        'FRANK: ADMIRAL! CAPTAIN! GENERAL! HOPE! PATIENCE! PROFESSOR! ROLL CALL COMPLETE.',
+        'CONSTANCE: HE NAMED THE SEEDS, ALVIN. ALPHABETICALLY. THERE WAS A ROSTER.',
+        'A DRINK FOR EACH NEW FRIEND: PRESS A AT A POT TO WATER IT.',
+      ]);
+    }
     return say('YOU PLANT A BLUEBERRY SEED. SMALL AS A SECRET.');
   }
   if (!p.watered) {
@@ -1170,9 +1395,9 @@ function dawn() {
   const s = G.save; s.day++;
   let sprouted = false, seedled = false;
   for (const p of s.pots) {
-    if (p.watered) { p.waterDays++; p.watered = false; }
-    if (p.stage === 1 && p.waterDays >= 2) { p.stage = 2; p.waterDays = 0; sprouted = true; dexAdd('SPROUT'); }
-    else if (p.stage === 2 && p.waterDays >= 3) { p.stage = 3; p.waterDays = 0; seedled = true; dexAdd('SEEDLING'); }
+    if (p.watered) { p.wateredDays++; p.tended++; p.watered = false; }
+    if (p.stage === 1 && p.wateredDays >= 2) { p.stage = 2; p.wateredDays = 0; p.sproutedDay = s.day; sprouted = true; dexAdd('SPROUT'); }
+    else if (p.stage === 2 && p.wateredDays >= 3) { p.stage = 3; p.wateredDays = 0; p.seedlingDay = s.day; seedled = true; dexAdd('SEEDLING'); }
     p.vigor = MAX_VIGOR[p.stage] || 0;
   }
   if (sprouted && !s.deerBeaten && !s.deerPresent) s.deerPresent = true;
@@ -1322,7 +1547,8 @@ function endTrial() {
     say('THE YARD IS SAFE. ALVIN TAKES A SMALL, PROUD BOW. THE SPROUTS STAND TALL. WELL. TALL-ISH.', () => { checkChapter(); });
   } else if (t.result === 'lose') {
     const p = s.pots[t.pot];
-    if (p.stage > 1) p.stage--; p.waterDays = 0; p.vigor = MAX_VIGOR[p.stage] || 0;
+    if (p.stage > 1) { p.stage--; if (p.stage < 3) p.seedlingDay = null; if (p.stage < 2) p.sproutedDay = null; }
+    p.wateredDays = 0; p.vigor = MAX_VIGOR[p.stage] || 0;
     saveGame();
     say('THE DEER GOT PAST ALVIN AND NIBBLED THE SPROUT BACK. IT WILL TRY AGAIN. SO WILL YOU.', () => { fading = 'dawn'; fade = 1; setTimeout(dawn, 350); });
   }
@@ -1330,7 +1556,7 @@ function endTrial() {
 function trialSnapshot() {
   if (!trial) return null;
   const p = G.save.pots[trial.pot];
-  return { actor: 'ALVIN', pressure: trial.pressure, vigor: trial.vigor, maxVigor: trial.maxVigor, pot: trial.pot, stage: p.stage, phase: trial.phase, over: trial.over, result: trial.result, msg: trial.msg };
+  return { actor: 'ALVIN', pressure: trial.pressure, vigor: trial.vigor, maxVigor: trial.maxVigor, pot: trial.pot, stage: p.stage, phase: trial.phase, over: trial.over, result: trial.result, msg: trial.msg, plants: G.save.pots.map(q => q.name + ':' + q.stage) };
 }
 
 /* ============================== RENDER: TITLE / CHAPTERS ============================== */
@@ -1376,10 +1602,13 @@ function drawSceneBanner(y0, seedling) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(52, y0 + 5, 20, 4); ctx.fillRect(56, y0 + 3, 11, 2); ctx.fillRect(104, y0 + 10, 15, 3);
   ctx.fillStyle = '#dfe9f5'; ctx.fillRect(52, y0 + 9, 20, 1); ctx.fillRect(104, y0 + 13, 15, 1);
-  // sun
-  ctx.fillStyle = '#ffd94a'; ctx.fillRect(138, y0 + 4, 13, 13);
-  ctx.fillStyle = '#ffec9e'; ctx.fillRect(141, y0 + 7, 7, 7);
-  // the little blue house, left
+  // sun (top-centre, clear of the tree)
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(76, y0 + 2, 12, 12);
+  ctx.fillStyle = '#ffec9e'; ctx.fillRect(79, y0 + 5, 6, 6);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(81, y0, 2, 2); ctx.fillRect(81, y0 + 14, 2, 2); ctx.fillRect(72, y0 + 7, 2, 2); ctx.fillRect(90, y0 + 7, 2, 2);
+  // the little blue house, left — with a chimney and its first smoke
+  ctx.fillStyle = '#b0552f'; ctx.fillRect(36, y0 + 2, 5, 7);
+  ctx.fillStyle = '#e8edf2'; ctx.fillRect(42, y0 + 1, 3, 2); ctx.fillRect(46, y0 + 2, 2, 2);
   ctx.fillStyle = '#2f56b8'; ctx.fillRect(4, y0 + 12, 40, 4); ctx.fillRect(8, y0 + 8, 32, 4); ctx.fillRect(14, y0 + 4, 20, 4);
   ctx.fillStyle = '#7fb2e8'; ctx.fillRect(7, y0 + 16, 34, 22);
   ctx.fillStyle = '#5b93d6'; ctx.fillRect(7, y0 + 21, 34, 1); ctx.fillRect(7, y0 + 27, 34, 1); ctx.fillRect(7, y0 + 33, 34, 1);
@@ -1387,23 +1616,31 @@ function drawSceneBanner(y0, seedling) {
   ctx.fillStyle = '#ffe9a8'; ctx.fillRect(12, y0 + 21, 5, 5); ctx.fillRect(31, y0 + 21, 5, 5);
   ctx.fillStyle = '#8a5a2e'; ctx.fillRect(20, y0 + 26, 8, 12);
   ctx.fillStyle = '#ffd94a'; ctx.fillRect(26, y0 + 31, 1, 1);
-  // a tree, right
+  // a tree, right — a rounder, two-blob canopy with lit patches
   ctx.fillStyle = '#7a4a21'; ctx.fillRect(130, y0 + 26, 4, 12);
-  ctx.fillStyle = '#2f9e44'; ctx.fillRect(122, y0 + 12, 20, 13); ctx.fillRect(126, y0 + 8, 12, 5);
-  ctx.fillStyle = '#54c95e'; ctx.fillRect(125, y0 + 14, 8, 5); ctx.fillRect(133, y0 + 18, 6, 4);
+  ctx.fillStyle = '#2f9e44'; ctx.fillRect(120, y0 + 13, 24, 12); ctx.fillRect(124, y0 + 8, 16, 6); ctx.fillRect(117, y0 + 17, 5, 6); ctx.fillRect(142, y0 + 17, 5, 6);
+  ctx.fillStyle = '#54c95e'; ctx.fillRect(124, y0 + 11, 7, 4); ctx.fillRect(133, y0 + 16, 7, 5); ctx.fillRect(121, y0 + 19, 5, 3);
+  ctx.fillStyle = '#7ed957'; ctx.fillRect(126, y0 + 10, 3, 2); ctx.fillRect(136, y0 + 15, 3, 2);
   // ground + picket fence line
   ctx.fillStyle = '#58b93e'; ctx.fillRect(0, y0 + 38, VW, 26);
   ctx.fillStyle = '#3f9433'; ctx.fillRect(0, y0 + 56, VW, 8);
+  // a scatter of little flowers and tufts in the banner grass
+  for (const [fx, fc] of [[8, '#ff5d8f'], [52, '#ffd94a'], [66, '#ffffff'], [104, '#ff5d8f'], [148, '#ffd94a']]) {
+    ctx.fillStyle = fc; ctx.fillRect(fx, y0 + 51, 2, 2);
+  }
+  ctx.fillStyle = '#3f9433';
+  for (const tx of [22, 44, 88, 118, 138]) { ctx.fillRect(tx, y0 + 46, 1, 2); ctx.fillRect(tx + 2, y0 + 47, 1, 2); }
   ctx.fillStyle = '#f4f4f0';
   for (let x = 2; x < VW; x += 12) { ctx.fillRect(x, y0 + 34, 3, 6); }
   ctx.fillRect(0, y0 + 36, VW, 1);
-  for (let i = 0; i < 3; i++) ctx.drawImage(seedling ? POT_SEEDLING : POT_SPROUT, 34 + i * 36, y0 + 42);
+  for (let i = 0; i < 6; i++) ctx.drawImage(seedling ? POT_SEEDLING : POT_SPROUT, 14 + i * 17, y0 + 44, 13, 13);
   ctx.drawImage(ALVIN_DOWN, 122, y0 + 44);
 }
 function renderTitle() {
   ctx.fillStyle = '#274e13'; ctx.fillRect(0, 0, VW, VH);
   drawSceneBanner(0, false);
-  ctx.fillStyle = 'rgba(20,40,20,0.85)'; ctx.fillRect(14, 64, 132, 34);
+  ctx.fillStyle = '#14251a'; ctx.fillRect(14, 64, 132, 34);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(14, 64, 132, 1); ctx.fillRect(14, 97, 132, 1); ctx.fillRect(14, 64, 1, 34); ctx.fillRect(145, 64, 1, 34);
   drawText('HOPE STARTS', 80 - textW('HOPE STARTS', 2) / 2 + 1, 69, '#14251a', 2);
   drawText('HOPE STARTS', 80 - textW('HOPE STARTS', 2) / 2, 68, '#ffffff', 2);
   drawText('SMALL', 80 - textW('SMALL', 2) / 2 + 1, 83, '#7a4a21', 2);
@@ -1430,7 +1667,9 @@ function renderChapters() {
   drawBox(30, 30); drawText('1 · SEEDS', 10, 36, '#20242a', 1);
   drawText(G.save.chapterDone ? 'COMPLETE' : (hasSaveFile() ? 'IN PROGRESS' : 'NEW'), 96, 36, '#2e8b3a', 1);
   drawText('SIX POTS. NO LAND. YET.', 10, 47, '#5a6270', 1);
+  ctx.drawImage(POT_SEEDLING, 140, 36, 13, 13);
   drawBox(66, 30); drawText('2 · SPROUTS', 10, 72, '#8a919c', 1);
+  ctx.globalAlpha = 0.45; ctx.drawImage(POT_SEED, 140, 72, 13, 13); ctx.globalAlpha = 1;
   drawText('COMING SOON', 96, 72, '#8a919c', 1);
   drawText('THE FIELD IS OUT THERE,', 10, 83, '#8a919c', 1);
   drawText('WAITING FOR ITS DAY.', 10, 91, '#8a919c', 1);
@@ -1462,12 +1701,22 @@ function renderOverworld() {
     // neighbouring tiles out of phase so the yard shimmers instead of pulsing
     const sway = (Math.floor(perfNow * 1.5) + tx + ty) % 2 === 0;
     let base = TILES.grass; // plain grass tiles get a hashed variety so the lawn isn't flat
-    if (ch === 'g') { const h = (tx * 31 + ty * 17) % 9; base = h === 0 ? (sway ? TILES.tuftB : TILES.tuft) : h === 4 ? TILES.grass3 : TILES.grass; }
+    if (ch === 'g') { const h = (tx * 31 + ty * 17) % 9; base = h === 0 ? (sway ? TILES.tuftB : TILES.tuft) : h === 4 ? TILES.grass3 : h === 6 ? TILES.grass4 : h === 7 ? TILES.grass2 : TILES.grass; }
     ctx.drawImage(base, sx, sy);
     let t = TILES[TILEMAP[ch]];
     if (ch === 'o') t = sway ? TILES.flowerB : TILES.flower;
     if (t && TILEMAP[ch] !== 'grass') ctx.drawImage(t, sx, sy);
-    if (ch === 'T') ctx.drawImage(TREE, sx, sy);
+    if (ch === 'T') {
+      ctx.fillStyle = SHADOW; ctx.fillRect(sx + 2, sy + 13, 12, 2); ctx.fillRect(sx + 3, sy + 15, 10, 1); // the canopy's ground shadow
+      ctx.drawImage(TREE, sx, sy);
+      // now and then a leaf lets go and spirals down the canopy
+      const lt = (perfNow * 0.22 + tx * 0.37 + ty * 0.11) % 1;
+      if (lt < 0.7) {
+        const lx = Math.round(sx + 8 + Math.sin(lt * 9 + tx) * 4), ly = Math.round(sy + 5 + lt * 10);
+        ctx.fillStyle = lt < 0.35 ? '#54c95e' : '#7ed957';
+        ctx.fillRect(lx, ly, 2, 1); ctx.fillRect(lx, ly + 1, 1, 1);
+      }
+    }
     if (ch === 'c') { // chimney smoke: three puffs rising, growing, drifting off
       for (let i = 0; i < 3; i++) {
         const ph = (perfNow * 0.45 + i / 3) % 1;
@@ -1478,34 +1727,71 @@ function renderOverworld() {
         ctx.fillRect(px, py, sz, sz);
       }
     }
-    if (ch === 'b' && (Math.floor(perfNow * 2) + tx * 3 + ty) % 3 === 0) { // birdbath sparkle
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(sx + 7, sy + 3, 1, 3); ctx.fillRect(sx + 6, sy + 4, 3, 1);
+    if (ch === 'b') { // birdbath: a sparkle, then a ripple, then still water
+      const ph = (Math.floor(perfNow * 2) + tx * 3 + ty) % 3;
+      if (ph === 0) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(sx + 7, sy + 3, 1, 3); ctx.fillRect(sx + 6, sy + 4, 3, 1);
+      } else if (ph === 1) {
+        ctx.fillStyle = '#a8dcff';
+        ctx.fillRect(sx + 5, sy + 5, 6, 1); ctx.fillRect(sx + 6, sy + 4, 4, 1);
+      }
     }
   }
+  // Frank's garden journal, lying open on the porch boards by the door —
+  // small and flat, tucked to the side of the walkway, pencil beside it
+  {
+    const jx = 11 * TILE - camX + 1, jy = 4 * TILE - camY + 9;
+    ctx.fillStyle = '#96682f'; ctx.fillRect(jx, jy + 4, 10, 2); // porch-board shadow under the book
+    ctx.fillStyle = '#8a2f2a'; ctx.fillRect(jx, jy, 9, 5); // red-cloth cover
+    ctx.fillStyle = '#f8f0d8'; ctx.fillRect(jx + 1, jy + 1, 7, 3); // the open pages
+    ctx.fillStyle = '#8a919c'; ctx.fillRect(jx + 2, jy + 2, 5, 1); // a line of his handwriting
+    ctx.fillStyle = '#ffd94a'; ctx.fillRect(jx + 10, jy + 3, 3, 1); ctx.fillRect(jx + 13, jy + 3, 1, 1); // the pencil
+  }
+  // the bench throws a soft shadow onto the grass below it
+  ctx.fillStyle = SHADOW; ctx.fillRect(9 * TILE - camX, 11 * TILE - camY, 6 * TILE, 2);
   // pots on the bench
   G.save.pots.forEach((p, i) => {
     const sx = (9 + i) * TILE - camX, sy = 10 * TILE - camY;
+    ctx.fillStyle = '#8a5a30'; ctx.fillRect(sx + 3, sy + 9, 10, 2); // the pot's shadow on the bench slats
     ctx.drawImage(POT_SPRITES[p.stage], sx, sy - 2);
-    if (p.watered) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(sx + 12, sy - 6 + (Math.floor(perfNow * 2) % 2), 2, 3); }
+    if (p.watered) { // a fat droplet, still beaded on the soil, with a glint
+      const bob = Math.floor(perfNow * 2) % 2;
+      ctx.fillStyle = '#3b6fe0';
+      ctx.fillRect(sx + 12, sy - 5 + bob, 2, 3); ctx.fillRect(sx + 13, sy - 7 + bob, 1, 2);
+      ctx.fillStyle = '#a8dcff'; ctx.fillRect(sx + 12, sy - 4 + bob, 1, 1);
+    }
   });
-  // entities sorted by y
+  // entities sorted by y — each stands on a soft contact shadow
+  const contactShadow = (px, py) => {
+    ctx.fillStyle = SHADOW;
+    ctx.fillRect(Math.round(px - camX) + 3, Math.round(py - camY) + 13, 10, 2);
+    ctx.fillRect(Math.round(px - camX) + 2, Math.round(py - camY) + 14, 12, 1);
+  };
   const ents = [];
-  ents.push({ y: constance.py, draw: () => charSprite({ px: constance.tx * TILE, py: constance.ty * TILE, dir: constance.dir, moving: false }, CONSTANCE_SET) });
-  if (G.save.deerPresent && !G.save.deerBeaten) ents.push({ y: DEER_POS.y * TILE, draw: () => { const bob = Math.floor(perfNow * 1.5) % 2; ctx.drawImage(DEER_SMALL, DEER_POS.x * TILE - camX, DEER_POS.y * TILE - camY + bob); } });
-  ents.push({ y: alvin.py, draw: () => charSprite(alvin, ALVIN_SET) });
-  ents.push({ y: player.py, draw: () => charSprite(player, FRANK_SET) });
+  ents.push({ y: constance.py, draw: () => { contactShadow(constance.tx * TILE, constance.ty * TILE); charSprite({ px: constance.tx * TILE, py: constance.ty * TILE, dir: constance.dir, moving: false }, CONSTANCE_SET); } });
+  if (G.save.deerPresent && !G.save.deerBeaten) ents.push({ y: DEER_POS.y * TILE, draw: () => { contactShadow(DEER_POS.x * TILE, DEER_POS.y * TILE); const bob = Math.floor(perfNow * 1.5) % 2; ctx.drawImage(DEER_SMALL, DEER_POS.x * TILE - camX, DEER_POS.y * TILE - camY + bob); } });
+  ents.push({ y: alvin.py, draw: () => { contactShadow(alvin.px, alvin.py); charSprite(alvin, ALVIN_SET); } });
+  ents.push({ y: player.py, draw: () => { contactShadow(player.px, player.py); charSprite(player, FRANK_SET); } });
   ents.sort((a, b) => a.y - b.y).forEach(e => e.draw());
-  // a butterfly wanders the flower beds in the south-west (pure ambience)
-  {
-    const bx = Math.round((7.5 + Math.sin(perfNow * 0.33) * 3.2) * TILE - camX);
-    const by = Math.round((13.5 + Math.cos(perfNow * 0.47) * 1.4) * TILE - camY - 8 + Math.sin(perfNow * 2.2) * 2);
-    if (bx > -10 && by > -10 && bx < VW && by < VH) ctx.drawImage(Math.floor(perfNow * 6) % 2 ? BUTTERFLY_A : BUTTERFLY_B, bx, by);
+  // two butterflies wander the flower beds (pure ambience), each with the
+  // little shadow that gives its flutter height
+  for (const bf of [
+    { cx: 7.5, cy: 13.5, s1: 0.33, s2: 0.47, ph: 0, A: BUTTERFLY_A, B: BUTTERFLY_B },
+    { cx: 17.5, cy: 12.0, s1: 0.27, s2: 0.39, ph: 2.4, A: BUTTERFLY2_A, B: BUTTERFLY2_B },
+  ]) {
+    const bx = Math.round((bf.cx + Math.sin(perfNow * bf.s1 + bf.ph) * 3.2) * TILE - camX);
+    const by = Math.round((bf.cy + Math.cos(perfNow * bf.s2 + bf.ph) * 1.4) * TILE - camY - 8 + Math.sin(perfNow * 2.2 + bf.ph) * 2);
+    if (bx > -10 && by > -10 && bx < VW && by < VH) {
+      ctx.fillStyle = '#4cab36'; ctx.fillRect(bx + 1, by + 12, 5, 1);
+      ctx.drawImage(Math.floor(perfNow * 6 + bf.ph) % 2 ? bf.A : bf.B, bx, by);
+    }
   }
   // HUD (no persistent objective banner: it overlapped the bench/pots at the
   // bottom of the frame. The objective lives in the pause menu, and the
   // tutorial steps are taught through dialogue.)
   ctx.fillStyle = 'rgba(20,26,20,0.8)'; ctx.fillRect(2, 2, 34, 9);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(2, 10, 34, 1); // gold trim, matching the panels
   drawText('DAY ' + G.save.day, 4, 4, '#ffffff', 1);
 }
 
@@ -1525,6 +1811,11 @@ function renderTrial() {
   ctx.fillStyle = '#7ec8f7'; ctx.fillRect(0, 0, VW, 62);
   ctx.fillStyle = '#a8dcff'; ctx.fillRect(0, 56, VW, 6);
   ctx.fillStyle = '#58b93e'; ctx.fillRect(0, 62, VW, 82);
+  // soft two-tone patches so the ground reads as turf, not a flat fill
+  ctx.fillStyle = '#54b04a';
+  for (const [px, py, pw] of [[8, 70, 26], [58, 88, 34], [118, 68, 30], [30, 96, 22], [96, 94, 26], [140, 86, 18]]) {
+    ctx.fillRect(px, py, pw, 4); ctx.fillRect(px + 3, py - 2, pw - 6, 2); ctx.fillRect(px + 3, py + 4, pw - 6, 2);
+  }
   ctx.fillStyle = '#4cab36'; for (let i = 0; i < 40; i++) ctx.fillRect((i * 37) % 160, 66 + (i * 23) % 34, 2, 2);
   // clouds and a low hill line on the horizon
   ctx.fillStyle = '#ffffff';
@@ -1541,7 +1832,12 @@ function renderTrial() {
   // the deer idles with a slow bob
   const dbob = Math.floor(perfNow * 1.5) % 2;
   ctx.drawImage(DEER_BIG, 94, 11 + dbob, 48, 42);
-  // what Alvin defends: the garden bench with all six pots, as scenery
+  // what Alvin defends: the garden bench with all six pots, as scenery —
+  // the yard's picket fence peeks over the bench, and the bench casts a shadow
+  ctx.fillStyle = '#f4f4f0';
+  for (let x = 0; x < 54; x += 8) { ctx.fillRect(x, 88, 3, 5); }
+  ctx.fillRect(0, 91, 54, 1);
+  ctx.fillStyle = SHADOW; ctx.fillRect(0, 106, 52, 3);
   for (let i = 0; i < 3; i++) ctx.drawImage(TILES.bench, 2 + i * 16, 92);
   G.save.pots.forEach((p, i) => ctx.drawImage(POT_SPRITES[p.stage], 4 + i * 10, 84, 10, 10));
   // Alvin, the only actor on this side — he hops forward on LUNGE, pops up on BARK
@@ -1554,10 +1850,12 @@ function renderTrial() {
   ctx.drawImage(ALVIN_BIG, ax, ay, 48, 40);
   // status boxes: DEER pressure above, ALVIN's HP below — one box per side
   ctx.fillStyle = '#20242a'; ctx.fillRect(3, 5, 76, 25); ctx.fillStyle = '#f8f8f8'; ctx.fillRect(5, 7, 72, 21);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(5, 27, 72, 1); // gold trim, as on the panels
   drawText('DEER', 8, 9, '#20242a', 1);
   drawText('PRESSURE', 8, 17, '#5a6270', 1);
   drawBar(8, 23, 62, t.pressure / 30, t.pressure > 10 ? '#37b24d' : '#e0483e');
   ctx.fillStyle = '#20242a'; ctx.fillRect(81, 66, 76, 27); ctx.fillStyle = '#f8f8f8'; ctx.fillRect(83, 68, 72, 23);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(83, 90, 72, 1);
   drawText('ALVIN', 86, 70, '#20242a', 1);
   drawText('HP', 86, 79, '#5a6270', 1);
   drawBar(94, 80, 38, t.vigor / t.maxVigor, t.vigor > 8 ? '#37b24d' : '#e0483e');
@@ -1579,8 +1877,8 @@ function renderTrial() {
     if (t.phase === 'plants') {
       drawText('THE GARDEN ALVIN GUARDS:', 7, 107, '#20242a', 1);
       G.save.pots.forEach((q, i) => {
-        const x = 10 + (i % 2) * 74, y = 117 + Math.floor(i / 2) * 8;
-        drawText('POT ' + (i + 1) + ': ' + STAGE_NAMES[q.stage], x, y, '#20242a', 1);
+        const x = 7 + (i % 2) * 78, y = 117 + Math.floor(i / 2) * 8;
+        drawText((q.name || '').slice(0, 9) + ' ' + STAGE_NAMES[q.stage], x, y, '#20242a', 1);
       });
       drawText('A/B: BACK', 10, 133, '#5a6270', 1);
     } else {
@@ -1600,15 +1898,23 @@ function cardUpdate() {
 }
 function renderCard() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
-  drawSceneBanner(6, true);
-  drawText('CHAPTER COMPLETE', 80 - textW('CHAPTER COMPLETE', 1) / 2, 78, '#cfe8cf', 1);
-  drawText('SEEDS', 80 - textW('SEEDS', 2) / 2, 87, '#ffd94a', 2);
+  drawSceneBanner(2, true);
+  drawText('CHAPTER COMPLETE', 80 - textW('CHAPTER COMPLETE', 1) / 2, 70, '#cfe8cf', 1);
+  drawText('SEEDS', 80 - textW('SEEDS', 2) / 2, 78, '#ffd94a', 2);
   const teaser = wrapText('SIX POTS. NO LAND. ONE VERY PATIENT BEGINNING.', 34);
-  teaser.forEach((l, i) => drawText(l, 80 - textW(l, 1) / 2, 99 + i * 8, '#ffffff', 1));
+  teaser.forEach((l, i) => drawText(l, 80 - textW(l, 1) / 2, 91 + i * 7, '#ffffff', 1));
+  // the roll call: the six, named, cycling two at a time so it never crowds
+  const names = G.save.pots.map(p => p.name);
+  const pair = Math.floor(perfNow / 2.5) % 3;
+  const roll = names[pair * 2] + ' · ' + names[pair * 2 + 1];
+  const pre = 'THE SIX: ';
+  const rx = 80 - (textW(pre, 1) + textW(roll, 1)) / 2;
+  drawText(pre, rx, 106, '#cfe8cf', 1);
+  drawText(roll, rx + textW(pre, 1), 106, '#ffd94a', 1);
   const l = 'KEEP TENDING (A)';
-  ctx.fillStyle = '#ffd94a'; ctx.fillRect(Math.round(80 - textW(l, 1) / 2 - 4), 114, textW(l, 1) + 8, 9);
-  drawText(l, 80 - textW(l, 1) / 2, 116, '#20242a', 1);
-  drawText('HEAR CHAPTER 1:', 80 - textW('HEAR CHAPTER 1:', 1) / 2, 127, '#cfe8cf', 1);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(Math.round(80 - textW(l, 1) / 2 - 4), 113, textW(l, 1) + 8, 9);
+  drawText(l, 80 - textW(l, 1) / 2, 115, '#20242a', 1);
+  drawText('HEAR CHAPTER 1:', 80 - textW('HEAR CHAPTER 1:', 1) / 2, 126, '#cfe8cf', 1);
 }
 const MENU_ITEMS = ['RESUME', 'CONTROLS', 'SAVE & QUIT'];
 function menuUpdate() {
@@ -1628,7 +1934,7 @@ function menuUpdate() {
 function renderMenu() {
   renderOverworld();
   ctx.fillStyle = 'rgba(10,16,10,0.55)'; ctx.fillRect(0, 0, VW, VH);
-  ctx.fillStyle = '#20242a'; ctx.fillRect(24, 18, 112, 108); ctx.fillStyle = '#f8f8f8'; ctx.fillRect(26, 20, 108, 104);
+  drawPanel(24, 18, 112, 108);
   // display-only info: day, objective, Berrydex summary, tea
   drawText('DAY ' + G.save.day, 32, 26, '#20242a', 1);
   wrapText(objective(), 24).slice(0, 3).forEach((l, i) => drawText(l, 32, 36 + i * 7, '#5a6270', 1));
@@ -1643,28 +1949,27 @@ function renderMenu() {
 }
 
 /* ============================== CONTROLS SCREEN ============================== */
-let controlsFrom = 'title', controlsSel = 0; // row 0: D-pad setting, row 1: back
+let controlsFrom = 'title', controlsSel = 0; // row 0: stick setting, row 1: back
 const PAD_MODES = ['AUTO', 'ALWAYS', 'OFF'];
 function openControls(from) { controlsFrom = from; controlsSel = 0; mode = 'controls'; }
-function cyclePad(d) {
-  const cur = PAD_MODES.indexOf(settings.pad.toUpperCase());
-  settings.pad = PAD_MODES[(cur + d + PAD_MODES.length) % PAD_MODES.length].toLowerCase();
-  saveSettings(); applyPadPref();
+function cycleStick(d) {
+  const cur = PAD_MODES.indexOf(settings.stick.toUpperCase());
+  settings.stick = PAD_MODES[(cur + d + PAD_MODES.length) % PAD_MODES.length].toLowerCase();
+  saveSettings(); applyStickPref();
 }
 function controlsUpdate() {
   if (Input.bHit) { mode = controlsFrom; return; }
   if (controlsFrom === 'menu' && Input.startHit) { mode = 'menu'; return; }
   if (menuNavHit('up') || menuNavHit('down')) controlsSel = 1 - controlsSel;
   if (controlsSel === 0) {
-    if (menuNavHit('left')) cyclePad(-1);
-    if (menuNavHit('right')) cyclePad(1);
-    if (Input.aHit) cyclePad(1);
+    if (menuNavHit('left')) cycleStick(-1);
+    if (menuNavHit('right')) cycleStick(1);
+    if (Input.aHit) cycleStick(1);
   } else if (Input.aHit) mode = controlsFrom;
 }
 function renderControls() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
-  ctx.fillStyle = '#20242a'; ctx.fillRect(4, 4, 152, 136);
-  ctx.fillStyle = '#f8f8f8'; ctx.fillRect(6, 6, 148, 132);
+  drawPanel(4, 4, 152, 136);
   drawText('CONTROLS', 80 - textW('CONTROLS', 2) / 2, 10, '#20242a', 2);
   const head = (t, y) => drawText(t, 12, y, '#2e8b3a', 1);
   const row = (t, y) => drawText(t, 12, y, '#20242a', 1);
@@ -1676,31 +1981,87 @@ function renderControls() {
   row('STICK OR D-PAD: MOVE', 74);
   row('A: OK · B: BACK · START: MENU', 82);
   head('TOUCH', 94);
-  row('D-PAD MOVE · ON-SCREEN A/B', 103);
+  row('STICK MOVE · ON-SCREEN A/B', 103);
   ctx.fillStyle = '#c9ced4'; ctx.fillRect(12, 112, 136, 1);
   if (controlsSel === 0) drawText('▶', 12, 118, '#b03030', 1);
-  drawText('SHOW PAD: < ' + settings.pad.toUpperCase() + ' >', 20, 118, '#20242a', 1);
+  drawText('SHOW STICK: < ' + settings.stick.toUpperCase() + ' >', 20, 118, '#20242a', 1);
   if (controlsSel === 1) drawText('▶', 12, 128, '#b03030', 1);
   drawText('BACK', 20, 128, '#20242a', 1);
 }
-function dexUpdate() { if (Input.bHit || Input.aHit) mode = 'menu'; }
-function renderDex() {
+/* ============================== PLANT REGISTER ============================== */
+/* Frank's garden journal lives on the porch. It is a JOURNAL, not storage:
+   every plant is an individual who lives on the bench, and the register
+   simply remembers their lives — the Berrydex, kept by hand. Progress is
+   the stages witnessed across the six lives (G.save.dex). */
+let regView = 'list', regSel = 0, regCardSel = 0;
+function openRegister() { regView = 'list'; regSel = 0; mode = 'register'; }
+function renamePlant(i) {
+  const p = G.save.pots[i];
+  let v = null;
+  try { v = window.prompt('A NAME FOR THIS PLANT:', p.name); } catch (e) {}
+  if (v == null) return; // blank/cancel keeps the name Frank gave
+  v = String(v).trim().toUpperCase().replace(/[^A-Z0-9 .,'&!?-]/g, '').slice(0, 10).trim();
+  if (v) { p.name = v; saveGame(); toast('RENAMED: ' + v); }
+}
+function registerUpdate() {
+  if (regView === 'list') {
+    if (Input.bHit) { mode = 'overworld'; return; }
+    if (menuNavHit('up')) regSel = (regSel + 5) % 6;
+    if (menuNavHit('down')) regSel = (regSel + 1) % 6;
+    if (Input.aHit) { regView = 'card'; regCardSel = 0; }
+  } else {
+    if (Input.bHit) { regView = 'list'; return; }
+    if (menuNavHit('up') || menuNavHit('down')) regCardSel = 1 - regCardSel;
+    if (Input.aHit) {
+      if (regCardSel === 0) renamePlant(regSel);
+      else regView = 'list';
+    }
+  }
+}
+function dayOr(day, none) { return day != null ? 'DAY ' + day : none; }
+function renderRegister() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
-  drawText('BERRYDEX', 80 - textW('BERRYDEX', 2) / 2, 8, '#ffffff', 2);
-  const seen = G.save.dex.blueberry;
-  const rows = [
-    ['BLUEBERRY · SEED', seen.includes('SEED')], ['BLUEBERRY · SPROUT', seen.includes('SPROUT')],
-    ['BLUEBERRY · SEEDLING', seen.includes('SEEDLING')], ['BLUEBERRY · BUSH', false],
-    ['BLUEBERRY · BLOSSOM', false], ['BLUEBERRY · FRUITING', false],
-    ['FORSYTHIA', false], ['STRAWBERRY', false], ['RASPBERRY', false],
-  ];
-  rows.forEach(([name, got], i) => {
-    const y = 30 + i * 11;
-    ctx.fillStyle = got ? '#f8f8f8' : 'rgba(248,248,248,0.35)'; ctx.fillRect(14, y - 2, 132, 10);
-    drawText(got ? name : (i < 3 ? name : '??? · NO DATA YET'), 18, y, got ? '#20242a' : '#5a6270', 1);
-    if (got) drawText('SEEN', 128, y, '#2e8b3a', 1);
-  });
-  drawText('B: BACK', 8, 134, '#9fc79f', 1);
+  drawPanel(4, 4, 152, 136);
+  const s = G.save;
+  if (regView === 'list') {
+    drawText('PLANT REGISTER', 80 - textW('PLANT REGISTER', 2) / 2, 10, '#20242a', 2);
+    drawText('THE BERRYDEX · KEPT BY HAND', 80 - textW('THE BERRYDEX · KEPT BY HAND', 1) / 2, 24, '#2e8b3a', 1);
+    s.pots.forEach((p, i) => {
+      const y = 36 + i * 15;
+      if (i === regSel) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(9, y - 3, 142, 12); drawText('▶', 11, y, '#b03030', 1); }
+      ctx.fillStyle = '#dfe9f5'; ctx.fillRect(12, y + 9, 136, 1); // a ruled line under each journal entry
+      ctx.drawImage(POT_SPRITES[p.stage], 20, y - 4, 12, 12);
+      drawText(p.name, 36, y, '#20242a', 1);
+      drawText(STAGE_NAMES[p.stage], 82, y, '#5a6270', 1);
+      const st = p.stage === 0 ? '-' : (p.watered ? 'WET' : 'DRY');
+      drawText(st, 128, y, p.watered ? '#3b6fe0' : '#b07f2a', 1);
+    });
+    const seen = s.dex.blueberry;
+    drawText('STAGES SEEN: ' + (seen.length ? seen.join(' · ') : 'NONE YET'), 12, 129, '#5a6270', 1);
+  } else {
+    const p = s.pots[regSel];
+    drawText(p.name, 14, 11, '#20242a', 2);
+    ctx.fillStyle = '#dfe9f5'; ctx.fillRect(14, 22, 100, 1); // ruled line under the name, as in the list
+    ctx.drawImage(POT_SPRITES[p.stage], 122, 8, 30, 30);
+    drawText('BLUEBERRY · ' + STAGE_NAMES[p.stage], 14, 25, '#2e8b3a', 1);
+    drawText('LIVES AT: THE BENCH', 14, 34, '#5a6270', 1);
+    const rows = [
+      'SOWN: ' + dayOr(p.sownDay, 'NOT YET'),
+      'SPROUTED: ' + dayOr(p.sproutedDay, 'NOT YET'),
+      'SEEDLING: ' + dayOr(p.seedlingDay, 'NOT YET'),
+      'DAYS TENDED: ' + p.tended,
+      'TODAY: ' + (p.stage === 0 ? '-' : (p.watered ? 'WATERED' : 'THIRSTY')),
+    ];
+    rows.forEach((r, i) => drawText(r, 14, 48 + i * 9, '#20242a', 1));
+    const seen = s.dex.blueberry;
+    wrapText('BERRYDEX: ' + (seen.length ? seen.join(' · ') + ' SEEN' : 'NOTHING SEEN YET'), 34)
+      .slice(0, 2).forEach((l, i) => drawText(l, 14, 96 + i * 8, '#5a6270', 1));
+    ['RENAME', 'BACK'].forEach((l, i) => {
+      const y = 114 + i * 11;
+      if (i === regCardSel) drawText('▶', 14, y, '#b03030', 1);
+      drawText(l, 22, y, '#20242a', 1);
+    });
+  }
 }
 
 /* ============================== MAIN LOOP ============================== */
@@ -1718,7 +2079,7 @@ function update(dt) {
     case 'trial': trialUpdate(dt); break;
     case 'card': cardUpdate(); break;
     case 'menu': menuUpdate(); break;
-    case 'dex': dexUpdate(); break;
+    case 'register': registerUpdate(); break;
     case 'controls': controlsUpdate(); break;
   }
   audibleBtn.hidden = !(mode === 'title' || mode === 'card');
@@ -1731,7 +2092,7 @@ function render() {
     case 'trial': renderTrial(); break;
     case 'card': renderCard(); break;
     case 'menu': renderMenu(); break;
-    case 'dex': renderDex(); break;
+    case 'register': renderRegister(); break;
     case 'controls': renderControls(); break;
   }
   if (fade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, fade)})`; ctx.fillRect(0, 0, VW, VH); }
@@ -1759,11 +2120,13 @@ window.__hss = {
   state() {
     return {
       mode, day: G.save.day, tutorial: G.save.tutorial, seedsLeft: G.save.seedsLeft, tea: G.save.tea,
-      pots: G.save.pots.map(p => ({ stage: p.stage, waterDays: p.waterDays, watered: p.watered, vigor: p.vigor })),
+      pots: G.save.pots.map(p => ({ name: p.name, stage: p.stage, wateredDays: p.wateredDays, watered: p.watered, vigor: p.vigor, tended: p.tended, sownDay: p.sownDay, sproutedDay: p.sproutedDay, seedlingDay: p.seedlingDay, location: p.location })),
+      register: { view: regView, sel: regSel, cardSel: regCardSel },
       dex: JSON.parse(JSON.stringify(G.save.dex)), deerBeaten: G.save.deerBeaten, deerPresent: G.save.deerPresent,
       chapterDone: G.save.chapterDone, player: { x: player.tx, y: player.ty, dir: player.dir },
       alvin: { x: alvin.tx, y: alvin.ty }, trial: trialSnapshot(),
-      settings: { pad: settings.pad }, padVisible: !deckEl.hidden, menuSel,
+      settings: { stick: settings.stick }, padVisible: !deckEl.hidden, menuSel,
+      stick: { dir: stickDebug.dir, mag: stickDebug.mag },
     };
   },
   advanceDay() {
@@ -1774,10 +2137,11 @@ window.__hss = {
   },
   waterAll() { G.save.pots.forEach(p => { if (p.stage >= 1) p.watered = true; }); saveGame(); },
   plantAll() {
-    G.save.pots.forEach(p => { if (p.stage === 0 && G.save.seedsLeft > 0) { p.stage = 1; G.save.seedsLeft--; dexAdd('SEED'); } });
+    G.save.pots.forEach(p => { if (p.stage === 0 && G.save.seedsLeft > 0) { p.stage = 1; if (p.sownDay == null) p.sownDay = G.save.day; G.save.seedsLeft--; dexAdd('SEED'); } });
     if (G.save.tutorial === 1) G.save.tutorial = 2;
     saveGame();
   },
+  openRegister() { openRegister(); },
   skipIntro() { dlg = null; if (G.save.tutorial === 0) G.save.tutorial = 1; if (mode === 'dialogue') mode = 'overworld'; saveGame(); },
   startTrial() { if (G.save.deerPresent && !G.save.deerBeaten && strongestPot() >= 0) startTrial(); },
   warp(x, y) { player.tx = x; player.ty = y; syncPixels(player); alvin.tx = x; alvin.ty = y + 1; syncPixels(alvin); },
