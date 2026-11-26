@@ -13,14 +13,20 @@
       <a id="audibleBtn" href="https://www.audible.com/pd/Hope-Starts-Small-Audiobook/B0DZPCHT4M" target="_blank" rel="noopener" hidden>&#9834; LISTEN ON AUDIBLE</a>
     </div>
     <div id="deck" hidden>
-      <div id="stickPad"><div id="stickBase"><div id="stickKnob"></div></div></div>
+      <div id="dpad">
+        <button id="dpUp" class="dbtn up" type="button" aria-label="D-pad up">&#9650;</button>
+        <button id="dpLeft" class="dbtn left" type="button" aria-label="D-pad left">&#9664;</button>
+        <span class="dhub"></span>
+        <button id="dpRight" class="dbtn right" type="button" aria-label="D-pad right">&#9654;</button>
+        <button id="dpDown" class="dbtn down" type="button" aria-label="D-pad down">&#9660;</button>
+      </div>
+      <button id="btnMenu" type="button" aria-label="Menu">MENU</button>
       <div id="touchBtns">
         <button id="btnB" type="button" aria-label="B button">B</button>
         <button id="btnA" type="button" aria-label="A button">A</button>
       </div>
     </div>
   </div>
-  <p id="hint">Arrows / WASD move &middot; Z or Enter = A &middot; X or Esc = B &middot; P = menu &middot; gamepad &amp; touch supported &middot; full list in the in-game CONTROLS menu</p>
   <script src="game.js"></script>
 </body>
 </html>

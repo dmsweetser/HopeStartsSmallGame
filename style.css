@@ -37,19 +37,29 @@ canvas#game {
   touch-action: none;
 }
 #deck[hidden] { display: none; }
-#stickPad { position: relative; width: 98px; height: 98px; flex: none; touch-action: none; cursor: pointer; }
-#stickBase {
-  position: absolute; inset: 5px; border-radius: 50%;
-  border: 3px solid rgba(255,255,255,.5); background: rgba(255,255,255,.12);
-  box-shadow: inset 0 0 0 3px rgba(0,0,0,.25), 0 3px 8px rgba(0,0,0,.4);
-  pointer-events: none;
+/* classic cross D-pad: a 3x3 grid, arms on the edges, hub in the middle */
+#dpad {
+  display: grid; flex: none; touch-action: none;
+  grid-template-columns: repeat(3, 32px); grid-template-rows: repeat(3, 32px);
 }
-#stickKnob {
-  position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; border-radius: 50%;
-  background: rgba(255,255,255,.55); border: 3px solid rgba(255,255,255,.85);
-  box-shadow: 0 3px 6px rgba(0,0,0,.45);
-  transform: translate(-50%, -50%); pointer-events: none;
+#dpad .dbtn {
+  background: #24382a; border: 3px solid rgba(255,255,255,.45); color: #cfe8cf;
+  font-family: monospace; font-size: 13px; line-height: 1; cursor: pointer;
+  touch-action: none; box-shadow: 0 3px 6px rgba(0,0,0,.45); padding: 0;
 }
+#dpad .dbtn:active { filter: brightness(1.5); }
+#dpad .up { grid-area: 1 / 2; border-radius: 6px 6px 0 0; border-bottom: none; }
+#dpad .left { grid-area: 2 / 1; border-radius: 6px 0 0 6px; border-right: none; }
+#dpad .right { grid-area: 2 / 3; border-radius: 0 6px 6px 0; border-left: none; }
+#dpad .down { grid-area: 3 / 2; border-radius: 0 0 6px 6px; border-top: none; }
+#dpad .dhub { grid-area: 2 / 2; background: #24382a; border-top: 3px solid rgba(255,255,255,.45); border-bottom: 3px solid rgba(255,255,255,.45); }
+#btnMenu {
+  flex: none; padding: 9px 16px; border-radius: 999px; cursor: pointer;
+  background: rgba(255,255,255,.14); border: 3px solid rgba(255,255,255,.5);
+  color: #fff; font-family: monospace; font-weight: bold; font-size: 13px;
+  letter-spacing: 2px; touch-action: none; box-shadow: 0 3px 6px rgba(0,0,0,.45);
+}
+#btnMenu:active { filter: brightness(1.5); }
 #touchBtns { display: flex; gap: 14px; align-items: flex-end; flex: none; }
 #touchBtns button {
   width: 58px; height: 58px; border-radius: 50%; border: 3px solid rgba(255,255,255,.7);
@@ -59,4 +69,3 @@ canvas#game {
 }
 #touchBtns #btnB { background: rgba(70, 90, 200, .6); margin-bottom: -10px; }
 #touchBtns button:active { filter: brightness(1.4); }
-#hint { margin-top: 10px; font-size: 12px; opacity: .75; text-align: center; max-width: 720px; }

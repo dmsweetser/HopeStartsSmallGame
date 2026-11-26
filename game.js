@@ -187,17 +187,25 @@ TILES.wall = tileCanvas(c => { // horizontal siding: lit top, shadow line under 
   }
   c.fillStyle = '#7fb2e8'; c.fillRect(7, 1, 1, 2); c.fillRect(12, 5, 1, 2); c.fillRect(3, 9, 1, 2); c.fillRect(9, 13, 1, 2);
 });
-TILES.window = tileCanvas(c => { // framed window: white frame, muntins, sill, warm glass
+TILES.window = tileCanvas(c => { // framed window: curtains, muntins, sill, flower box
   c.drawImage(TILES.wall, 0, 0);
   c.fillStyle = '#f4f4f0'; c.fillRect(2, 2, 12, 11);
   c.fillStyle = '#ffe9a8'; c.fillRect(4, 4, 8, 7);
-  c.fillStyle = '#fff6cf'; c.fillRect(5, 5, 3, 3);
+  c.fillStyle = '#fff6cf'; c.fillRect(6, 5, 2, 3);
+  // pink curtains hanging at both sides of the glass, with a shaded fold
+  c.fillStyle = '#f2a7bb'; c.fillRect(4, 4, 2, 7); c.fillRect(10, 4, 2, 7);
+  c.fillStyle = '#d97b96'; c.fillRect(5, 4, 1, 7); c.fillRect(10, 4, 1, 7);
   c.fillStyle = '#f4f4f0'; c.fillRect(7, 4, 2, 7); c.fillRect(4, 7, 8, 1);
   c.fillStyle = FK; c.fillRect(2, 2, 12, 1); c.fillRect(2, 12, 12, 1); c.fillRect(2, 2, 1, 11); c.fillRect(13, 2, 1, 11);
   c.fillStyle = '#e0e4ea'; c.fillRect(1, 13, 14, 2);
   c.fillStyle = '#6ea3dd'; c.fillRect(1, 15, 14, 1);
+  // a flower box on the sill: green tufts and three bright blooms
+  c.fillStyle = '#2f9e44'; c.fillRect(3, 12, 10, 1);
+  c.fillStyle = '#ff5d8f'; c.fillRect(4, 11, 1, 1); c.fillRect(11, 11, 1, 1);
+  c.fillStyle = '#ffd94a'; c.fillRect(7, 11, 2, 1);
+  c.fillStyle = '#ffffff'; c.fillRect(9, 12, 1, 1);
 });
-TILES.door = tileCanvas(c => { // paneled door under a little green porch awning
+TILES.door = tileCanvas(c => { // paneled door: awning, porch posts, wreath, hanging basket
   c.drawImage(TILES.wall, 0, 0);
   c.fillStyle = '#37b24d'; c.fillRect(0, 0, 16, 2);
   c.fillStyle = '#2b8a3e'; c.fillRect(0, 2, 16, 1); c.fillRect(2, 3, 2, 1); c.fillRect(7, 3, 2, 1); c.fillRect(12, 3, 2, 1);
@@ -206,6 +214,17 @@ TILES.door = tileCanvas(c => { // paneled door under a little green porch awning
   c.fillStyle = '#ffe9a8'; c.fillRect(5, 5, 6, 3);
   c.fillStyle = '#8a4f1f'; c.fillRect(5, 9, 6, 2); c.fillRect(5, 12, 6, 3);
   c.fillStyle = '#ffd94a'; c.fillRect(10, 10, 2, 2);
+  // a wreath on the door: green ring with red berries
+  c.fillStyle = '#2f9e44'; c.fillRect(6, 9, 3, 1); c.fillRect(6, 11, 3, 1); c.fillRect(6, 10, 1, 1); c.fillRect(8, 10, 1, 1);
+  c.fillStyle = '#e0483e'; c.fillRect(6, 9, 1, 1); c.fillRect(8, 11, 1, 1);
+  // porch posts flanking the door frame
+  c.fillStyle = '#f4f4f0'; c.fillRect(0, 4, 1, 12); c.fillRect(15, 4, 1, 12);
+  c.fillStyle = '#c9ced4'; c.fillRect(1, 4, 1, 12); c.fillRect(14, 8, 1, 8);
+  // hanging flower basket at the top-right, on a little chain
+  c.fillStyle = FK; c.fillRect(13, 3, 1, 1);
+  c.fillStyle = '#ff5d8f'; c.fillRect(12, 4, 1, 1); c.fillRect(14, 4, 1, 1);
+  c.fillStyle = '#2f9e44'; c.fillRect(12, 5, 3, 1);
+  c.fillStyle = '#8a5a30'; c.fillRect(12, 6, 3, 2);
 });
 TILES.porch = tileCanvas(c => { // wooden deck boards in front of the door, with a welcome mat
   c.fillStyle = '#b5854d'; c.fillRect(0, 0, 16, 16);
@@ -234,6 +253,104 @@ TILES.compost = tileCanvas(c => {
   c.fillStyle = '#4a7c2f'; c.fillRect(4, 2, 3, 3); c.fillRect(9, 1, 4, 3); c.fillRect(12, 3, 2, 2);
   c.fillStyle = '#5da244'; c.fillRect(5, 1, 2, 2); c.fillRect(10, 0, 2, 2);
 });
+/* ---- pass 3 dressing: sway frames, garden plot, props, dressed fences ---- */
+TILES.flowerB = tileCanvas(c => { // flower frame B: blooms leaned 1px the other way (sway)
+  c.drawImage(TILES.grass, 0, 0);
+  const dots = [[4, 3, '#ff5d8f'], [12, 6, '#ffd94a'], [7, 12, '#ff5d8f'], [14, 13, '#ffffff']];
+  for (const [x, y, col] of dots) { c.fillStyle = col; c.fillRect(x, y, 2, 2); c.fillStyle = '#fff6b0'; c.fillRect(x, y, 1, 1); }
+  c.fillStyle = GRASS_D; c.fillRect(3, 5, 1, 2); c.fillRect(11, 8, 1, 2); c.fillRect(6, 14, 1, 1);
+});
+TILES.tuftB = tileCanvas(c => {
+  c.drawImage(TILES.grass, 0, 0); c.fillStyle = GRASS_D;
+  c.fillRect(7, 5, 1, 4); c.fillRect(9, 4, 1, 5); c.fillRect(11, 5, 1, 4); c.fillRect(8, 7, 3, 1);
+  c.fillStyle = GRASS_L; c.fillRect(9, 4, 1, 1); c.fillRect(7, 5, 1, 1); c.fillRect(11, 5, 1, 1);
+});
+TILES.flower2 = tileCanvas(c => { // purple / orange / teal bed
+  c.drawImage(TILES.grass, 0, 0);
+  const dots = [[2, 4, '#b07fe8'], [9, 2, '#ff9f43'], [5, 10, '#3ec6b8'], [12, 12, '#b07fe8'], [13, 6, '#ff9f43']];
+  for (const [x, y, col] of dots) { c.fillStyle = col; c.fillRect(x, y, 2, 2); c.fillStyle = '#fff6b0'; c.fillRect(x, y, 1, 1); }
+});
+TILES.flower3 = tileCanvas(c => { // blue / white / red bed
+  c.drawImage(TILES.grass, 0, 0);
+  const dots = [[4, 2, '#5b9bf0'], [11, 5, '#ffffff'], [6, 9, '#e0483e'], [13, 12, '#5b9bf0'], [2, 13, '#ffffff']];
+  for (const [x, y, col] of dots) { c.fillStyle = col; c.fillRect(x, y, 2, 2); c.fillStyle = '#fff6b0'; c.fillRect(x, y, 1, 1); }
+});
+TILES.soilSprout = tileCanvas(c => { // tilled row with sproutlets coming up
+  c.drawImage(TILES.soil, 0, 0);
+  c.fillStyle = '#2f9e44';
+  c.fillRect(3, 2, 1, 2); c.fillRect(8, 2, 1, 2); c.fillRect(13, 2, 1, 2);
+  c.fillRect(5, 7, 1, 2); c.fillRect(11, 7, 1, 2);
+  c.fillRect(3, 12, 1, 2); c.fillRect(9, 12, 1, 2); c.fillRect(14, 12, 1, 2);
+  c.fillStyle = '#54c95e';
+  c.fillRect(2, 1, 1, 1); c.fillRect(4, 1, 1, 1); c.fillRect(7, 1, 1, 1); c.fillRect(9, 1, 1, 1); c.fillRect(12, 1, 1, 1); c.fillRect(14, 1, 1, 1);
+  c.fillRect(4, 6, 1, 1); c.fillRect(6, 6, 1, 1); c.fillRect(10, 6, 1, 1); c.fillRect(12, 6, 1, 1);
+  c.fillRect(2, 11, 1, 1); c.fillRect(4, 11, 1, 1); c.fillRect(8, 11, 1, 1); c.fillRect(10, 11, 1, 1); c.fillRect(13, 11, 1, 1); c.fillRect(15, 11, 1, 1);
+});
+TILES.pathStone = tileCanvas(c => { // path with two big flat stepping stones
+  c.drawImage(TILES.path, 0, 0);
+  c.fillStyle = '#c9ced4'; c.fillRect(3, 2, 6, 5); c.fillRect(8, 9, 6, 5);
+  c.fillStyle = '#e8edf2'; c.fillRect(3, 2, 6, 1); c.fillRect(8, 9, 6, 1);
+  c.fillStyle = '#8a8f96'; c.fillRect(3, 6, 6, 1); c.fillRect(8, 13, 6, 1); c.fillRect(5, 3, 1, 2); c.fillRect(11, 10, 1, 2);
+});
+TILES.bush = tileCanvas(c => { // a leafy bush with berries, on grass
+  c.drawImage(TILES.grass, 0, 0);
+  c.fillStyle = '#357a2a'; c.fillRect(2, 12, 12, 3);
+  c.fillStyle = '#1f6b2a'; c.fillRect(3, 4, 10, 9); c.fillRect(2, 6, 12, 6);
+  c.fillStyle = '#2f9e44'; c.fillRect(4, 3, 8, 8); c.fillRect(3, 5, 10, 5);
+  c.fillStyle = '#54c95e'; c.fillRect(5, 4, 4, 3); c.fillRect(9, 7, 3, 2);
+  c.fillStyle = '#7ed957'; c.fillRect(6, 4, 2, 1); c.fillRect(10, 6, 1, 1);
+  c.fillStyle = '#e0483e'; c.fillRect(5, 8, 1, 1); c.fillRect(9, 10, 1, 1); c.fillRect(12, 7, 1, 1); c.fillRect(7, 6, 1, 1);
+});
+TILES.birdbath = tileCanvas(c => { // stone birdbath on grass; the sparkle is animated at draw time
+  c.drawImage(TILES.grass, 0, 0);
+  c.fillStyle = '#357a2a'; c.fillRect(3, 13, 10, 2);
+  c.fillStyle = '#8a8f96'; c.fillRect(6, 9, 4, 5); c.fillRect(4, 14, 8, 1);
+  c.fillStyle = '#c9ced4'; c.fillRect(2, 5, 12, 3); c.fillRect(3, 4, 10, 1);
+  c.fillStyle = '#5b9bf0'; c.fillRect(4, 5, 8, 1);
+  c.fillStyle = '#a8dcff'; c.fillRect(5, 5, 3, 1);
+  c.fillStyle = '#e8edf2'; c.fillRect(2, 7, 12, 1);
+});
+TILES.mailbox = tileCanvas(c => { // fence line with a mailbox by the gate, red flag up
+  c.drawImage(TILES.fenceH, 0, 0);
+  c.fillStyle = '#6f4520'; c.fillRect(7, 8, 2, 7);
+  c.fillStyle = '#3b6fe0'; c.fillRect(4, 3, 9, 5);
+  c.fillStyle = '#2f56b8'; c.fillRect(4, 7, 9, 1); c.fillRect(11, 3, 2, 5);
+  c.fillStyle = '#a8dcff'; c.fillRect(5, 4, 3, 1);
+  c.fillStyle = '#e0483e'; c.fillRect(12, 0, 1, 3); c.fillRect(11, 0, 2, 1);
+  c.fillStyle = FK; c.fillRect(5, 5, 1, 1);
+});
+TILES.crate = tileCanvas(c => { // two stacked crates on the grass
+  c.drawImage(TILES.grass, 0, 0);
+  c.fillStyle = '#357a2a'; c.fillRect(1, 14, 14, 2);
+  c.fillStyle = '#a5713d'; c.fillRect(2, 8, 12, 7); c.fillRect(4, 2, 9, 6);
+  c.fillStyle = '#c08b4d'; c.fillRect(2, 8, 12, 1); c.fillRect(4, 2, 9, 1);
+  c.fillStyle = '#6f4520';
+  c.fillRect(2, 11, 12, 1); c.fillRect(4, 5, 9, 1);
+  c.fillRect(3, 9, 1, 5); c.fillRect(12, 9, 1, 5); c.fillRect(5, 3, 1, 4); c.fillRect(11, 3, 1, 4);
+  c.fillRect(7, 9, 1, 5); c.fillRect(8, 3, 1, 4);
+});
+TILES.can = tileCanvas(c => { // a watering can left on the grass by the bench
+  c.drawImage(TILES.grass, 0, 0);
+  c.fillStyle = '#357a2a'; c.fillRect(4, 13, 9, 2);
+  c.fillStyle = '#37b24d'; c.fillRect(5, 8, 7, 5);
+  c.fillStyle = '#2b8a3e'; c.fillRect(5, 12, 7, 1); c.fillRect(10, 8, 2, 5);
+  c.fillStyle = '#54c95e'; c.fillRect(5, 8, 7, 1);
+  c.fillRect(3, 10, 2, 1); c.fillRect(12, 9, 3, 1); // spout and handle
+  c.fillStyle = '#2b8a3e'; c.fillRect(2, 9, 1, 2); c.fillRect(14, 8, 1, 2);
+  c.fillStyle = '#ffd94a'; c.fillRect(8, 10, 1, 1);
+});
+TILES.fenceBloom = tileCanvas(c => { // fence with a flower bed at its base
+  c.drawImage(TILES.fenceH, 0, 0);
+  const dots = [[1, 13, '#ff5d8f'], [6, 14, '#ffd94a'], [11, 13, '#b07fe8'], [14, 14, '#ffffff']];
+  for (const [x, y, col] of dots) { c.fillStyle = col; c.fillRect(x, y, 2, 2); }
+  c.fillStyle = '#2f9e44'; c.fillRect(3, 14, 1, 2); c.fillRect(9, 13, 1, 2); c.fillRect(13, 15, 1, 1);
+});
+TILES.fenceVine = tileCanvas(c => { // side fence with a vine climbing it
+  c.drawImage(TILES.fenceV, 0, 0);
+  c.fillStyle = '#2f9e44'; c.fillRect(5, 10, 3, 2); c.fillRect(6, 7, 3, 2); c.fillRect(5, 4, 2, 2); c.fillRect(7, 12, 2, 2);
+  c.fillStyle = '#54c95e'; c.fillRect(6, 9, 1, 1); c.fillRect(7, 6, 1, 1); c.fillRect(6, 3, 1, 1);
+  c.fillStyle = '#ff5d8f'; c.fillRect(8, 5, 1, 1);
+});
 
 /* tree: 16x32 object sprite, drawn anchored to its tile's bottom */
 const TREE = makeSprite([
@@ -258,7 +375,7 @@ const TREE = makeSprite([
 /* ============================== CHARACTERS (16x16) ============================== */
 const SKIN = '#f2c184', HAIR = '#6b4423', EYE = '#20242a';
 /* k = outline, S/H/B = shaded side of skin/hair/shirt */
-const FRANK_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: HAIR, H: '#54381d', e: EYE, c: '#2e8b3a', C: '#1f6b2a', b: '#2f6fd0', B: '#245aa8', p: '#6b4f35', o: '#33261a' };
+const FRANK_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: HAIR, H: '#54381d', e: EYE, c: '#2e8b3a', C: '#1f6b2a', b: '#2f6fd0', B: '#245aa8', p: '#33549e', y: '#ffd94a', o: '#33261a' };
 const FRANK_DOWN = makeSprite([
 '................',
 '.....kkkkkk.....',
@@ -271,7 +388,7 @@ const FRANK_DOWN = makeSprite([
 '.....kkkkkk.....',
 '...kkbbbbbbkk...',
 '...skbbbbbBks...',
-'...skbbbbbBks...',
+'...skbpyypBks...',
 '....kkppppkk....',
 '....kppkkppk....',
 '....kppkkppk....',
@@ -289,7 +406,7 @@ const FRANK_DOWN2 = makeSprite([
 '.....kkkkkk.....',
 '...kkbbbbbbkk...',
 '...skbbbbbBks...',
-'...skbbbbbBks...',
+'...skbpyypBks...',
 '....kkppppkk....',
 '.....kppkppk....',
 '.....kppkppk....',
@@ -368,7 +485,7 @@ const FRANK_SIDE2 = makeSprite([
 '.....koook......',
 ], FRANK_PAL);
 const FRANK_SET = { down: [FRANK_DOWN, FRANK_DOWN2], up: [FRANK_UP, FRANK_UP2], side: [FRANK_SIDE, FRANK_SIDE2] };
-const CONSTANCE_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: '#8a5a2e', H: '#6f4520', e: EYE, d: '#2a9d8f', D: '#1f7a6e', o: '#3a2c1c' };
+const CONSTANCE_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: '#8a5a2e', H: '#6f4520', e: EYE, d: '#2a9d8f', D: '#1f7a6e', w: '#f8f8f8', o: '#3a2c1c' };
 const CONSTANCE_DOWN = makeSprite([
 '................',
 '.....kkkkkk.....',
@@ -381,9 +498,9 @@ const CONSTANCE_DOWN = makeSprite([
 '.....kkkkkk.....',
 '...kkddddddkk...',
 '...skdddddDks...',
-'...skdddddDks...',
-'...kdddddddDk...',
-'...kdddddddDk...',
+'...skddwwdDks...',
+'...kdddwwddDk...',
+'...kdddwwddDk...',
 '....kdddkddk....',
 '....kookkook....',
 ], CONSTANCE_PAL);
@@ -399,9 +516,9 @@ const CONSTANCE_DOWN2 = makeSprite([
 '.....kkkkkk.....',
 '...kkddddddkk...',
 '...skdddddDks...',
-'...skdddddDks...',
-'..kdddddddDk....',
-'..kdddddddDk....',
+'...skddwwdDks...',
+'..kdddwwddDk....',
+'..kdddwwddDk....',
 '....kdddkddk....',
 '.....ookook.....',
 ], CONSTANCE_PAL);
@@ -625,32 +742,76 @@ const DEER_BIG = makeSprite([
 '....bb...bb....bb...bb..',
 '...lll...lll...lll..lll.',
 ], { a: '#8a5a2e', h: '#caa06a', e: '#20242a', b: '#b07a45', B: '#8a5a2e', w: '#e8dcc0', t: '#8a5a2e', l: '#8a5a2e' });
+/* Alvin, big front view for the trial screen (24x20, drawn at 2x): floppy
+   ears, green collar with its tag, tail curled up on his right. */
+const ALVIN_BIG = makeSprite([
+'........................',
+'.....kkkkkkkkkkkk.......',
+'...kkttttttttttttkk.....',
+'..kdddkttttttttkdddk....',
+'..kdddkttetttetkdddk....',
+'..kdddkttttttttkdddk....',
+'..kdddkkttttttkkdddk....',
+'...kkkkmmmmmmmmkkkk.....',
+'.....kmmmnnnnmmmk.......',
+'.....kmmmmmmmmmmk....t..',
+'......kkkkkkkkkk....tt..',
+'...kkggggggggggk...tTt..',
+'..kttktttggytttkttktt...',
+'..ktTtkttttttttkTtk.....',
+'..ktTtkttttttttkTtk.....',
+'..ktTkkttttttttkkTtk....',
+'..kttk.kttttttk.ktk.....',
+'..kttk.kttttttk.ktk.....',
+'..kkkk.kkkkkkkk.kkkk....',
+'........................',
+], ALVIN_PAL);
+/* a butterfly that wanders the yard (ambient, never saved) */
+const BUTTERFLY_A = makeSprite([
+'w......w',
+'ww....ww',
+'wwwbbwww',
+'..bbbb..',
+'........',
+], { w: '#ffb347', b: '#20242a' });
+const BUTTERFLY_B = makeSprite([
+'........',
+'...bb...',
+'..bbbb..',
+'wwwbbwww',
+'ww....ww',
+], { w: '#ffb347', b: '#20242a' });
 /* ============================== MAP: DEERBROOK BACKYARD (24x18) ============================== */
-/* l lawn(neighbour) f fenceV H fenceH G gate T tree R roof c chimney W wall i window D door
-   g grass u grass2 o flower p path P porch B bench C compost */
+/* l lawn(neighbour) f fenceV v fenceVine H fenceH F fenceBloom G gate T tree U bush
+   R roof c chimney W wall i window D door g grass u grass2 o/O/Q flower beds p path
+   j stepping stone P porch B bench C compost s/S tilled plot b birdbath M mailbox
+   K crates w watering can. Gameplay geometry (house, door, porch, path column,
+   bench row, compost, gate, deer tile, spawn clearing) is unchanged from the
+   first slice; pass 3 only redressed tiles and added solid yard props (bush,
+   birdbath, mailbox, crates) on spots that were already obstacles or corners. */
 const MAP = [
 'nnnnnnnnnnnnnnnnnnnnnnnn',
 'nfRRRRcRRRRRRRRRRRRRRRfn',
 'nfWWiWWWWWWWWWWiWWWWWWfn',
 'nfWWWWWWWWWDWWWWWWWWWWfn',
-'nfoouogoouoPouoogouooufn',
-'nfugoguggggpgugogugggofn',
-'nfggTggugggpggguggggggfn',
+'nfOoQgogouoPoouoQgouoofn',
+'nfugogugQggpgugogugggofn',
+'nfggTggugggpggguggOgogfn',
 'nfgugggggoopggggugggTgfn',
-'nfoogugggggpggggguggogfn',
-'nfoggggugggpgugggggggufn',
-'nfgogggggBBBBBBggggoggfn',
-'nfgguggggggggggggggCggfn',
-'nfggTggoogggggugggggggfn',
-'nfguggggggggggggggTgggfn',
-'nfggggooggggggggggooggfn',
-'nfuggugggggggggggugggufn',
-'nfggggoggggggoggggggggfn',
-'nfHHHHHHHHHGGHHHHHHHHHfn',
+'nfoogugggggjggggguggogfn',
+'nvoggggugggpgugggggOgufn',
+'nfQogggggBBBBBBggggoggfn',
+'nfoguggggggpgggwggggCgfn',
+'nfggUggooggpgggguggggKfn',
+'nfgsSsSggggpggugggUgggfn',
+'nfgSsSsgoogpggggggooggvn',
+'nfuggugggggjggggggguggfn',
+'nfbogggggggpggggggggogfn',
+'nfFFFFHHHHMGGHHHHHHHHFfn',
 ];
 const MAP_W = 24, MAP_H = 18;
-const TILEMAP = { n: 'lawn', f: 'fenceV', H: 'fenceH', G: 'gate', R: 'roof', c: 'chimney', W: 'wall', i: 'window', D: 'door', g: 'grass', u: 'grass2', o: 'flower', p: 'path', P: 'porch', B: 'bench', C: 'compost', T: 'grass' };
-const SOLID = new Set(['n', 'f', 'H', 'G', 'R', 'c', 'W', 'i', 'D', 'B', 'C', 'T']);
+const TILEMAP = { n: 'lawn', f: 'fenceV', v: 'fenceVine', H: 'fenceH', F: 'fenceBloom', G: 'gate', R: 'roof', c: 'chimney', W: 'wall', i: 'window', D: 'door', g: 'grass', u: 'grass2', o: 'flower', O: 'flower2', Q: 'flower3', p: 'path', j: 'pathStone', P: 'porch', B: 'bench', C: 'compost', T: 'grass', s: 'soil', S: 'soilSprout', U: 'bush', b: 'birdbath', M: 'mailbox', K: 'crate', w: 'can' };
+const SOLID = new Set(['n', 'f', 'v', 'H', 'F', 'G', 'R', 'c', 'W', 'i', 'D', 'B', 'C', 'T', 'U', 'b', 'M', 'K']);
 function mapChar(x, y) { if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return 'f'; return MAP[y][x]; }
 function isSolid(x, y) { return SOLID.has(mapChar(x, y)); }
 
@@ -688,17 +849,18 @@ function strongestPot() {
 /* Persisted separately from the game save, so starting a New Game (which
    overwrites the save) never resets the player's control preferences. */
 const SETTINGS_KEY = 'hss-settings-v1';
-const settings = { stick: 'auto' }; // auto | always | off
+const settings = { pad: 'auto' }; // auto | always | off
 try {
   const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-  if (s && ['auto', 'always', 'off'].includes(s.stick)) settings.stick = s.stick;
+  const v = s && (s.pad || s.stick); // 'stick' was the pre-D-pad field name
+  if (['auto', 'always', 'off'].includes(v)) settings.pad = v;
 } catch (e) {}
 function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
 
 /* ============================== INPUT ============================== */
 const keys = {};
 let btnA = false, btnB = false, padA = false, padB = false, padStart = false;
-let touchDir = { x: 0, y: 0 }, touchA = false, touchB = false;
+let padDir = { x: 0, y: 0 }, touchA = false, touchB = false, menuBtnHit = false;
 let prevA = false, prevB = false, prevStart = false;
 const Input = {
   dir: { x: 0, y: 0 }, aHit: false, bHit: false, startHit: false,
@@ -719,14 +881,14 @@ const Input = {
       if (ax < -0.4) x -= 1; if (ax > 0.4) x += 1; if (ay < -0.4) y -= 1; if (ay > 0.4) y += 1;
       padA = b(0); padB = b(1); padStart = b(9);
     }
-    let fromTouch = false;
-    if (x === 0 && y === 0 && (touchDir.x || touchDir.y)) { x = touchDir.x; y = touchDir.y; fromTouch = true; }
-    // keyboard/gamepad diagonals collapse to one axis; the touch stick is
-    // genuinely 8-way and keeps both axes (the overworld staircases them)
-    if (x !== 0 && y !== 0 && !fromTouch) { if (this.dir.x !== 0 && this.dir.y === 0) y = 0; else x = 0; }
+    // the on-screen D-pad is a classic 4-way cross: it feeds the same axes
+    if (x === 0 && y === 0 && (padDir.x || padDir.y)) { x = padDir.x; y = padDir.y; }
+    // diagonals from any source collapse to one axis (tile movement is 4-way)
+    if (x !== 0 && y !== 0) { if (this.dir.x !== 0 && this.dir.y === 0) y = 0; else x = 0; }
     this.dir.x = Math.sign(x); this.dir.y = Math.sign(y);
     const aNow = btnA || padA || touchA, bNow = btnB || padB || touchB;
-    const sNow = padStart || !!keys['p'];
+    const sNow = padStart || !!keys['p'] || menuBtnHit;
+    menuBtnHit = false; // consumed: one press of the deck MENU button = one Start edge
     this.aHit = aNow && !prevA; this.bHit = bNow && !prevB; this.startHit = sNow && !prevStart;
     prevA = aNow; prevB = bNow; prevStart = sNow;
   }
@@ -745,43 +907,35 @@ window.addEventListener('keyup', e => {
 });
 let padToastShown = false;
 window.addEventListener('gamepadconnected', () => { if (!padToastShown) { padToastShown = true; toast('GAMEPAD CONNECTED'); } });
-/* Touch controls: a FIXED virtual joystick + A/B buttons in the page deck
-   below the screen (never over the canvas, so they can't cover dialogue).
-   Visibility follows settings.stick: always | off | auto (touch devices). */
+/* Touch controls: a classic cross D-PAD + a MENU button + A/B buttons in
+   the page deck below the screen (never over the canvas, so they can't
+   cover dialogue). Visibility follows settings.pad: always | off | auto. */
 const deckEl = document.getElementById('deck');
-const stickPad = document.getElementById('stickPad'), stickKnob = document.getElementById('stickKnob');
 const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 let touchSeen = false;
-function stickShouldShow() {
-  return settings.stick === 'always' || (settings.stick === 'auto' && (touchSeen || coarsePointer));
+function padShouldShow() {
+  return settings.pad === 'always' || (settings.pad === 'auto' && (touchSeen || coarsePointer));
 }
-function applyStickPref() { deckEl.hidden = !stickShouldShow(); }
-window.addEventListener('touchstart', () => { if (!touchSeen) { touchSeen = true; applyStickPref(); } }, { passive: true });
+function applyPadPref() { deckEl.hidden = !padShouldShow(); }
+window.addEventListener('touchstart', () => { if (!touchSeen) { touchSeen = true; applyPadPref(); } }, { passive: true });
 (function () {
-  let pid = null;
-  const DIRS8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
-  function moveStick(e) {
-    const r = stickPad.getBoundingClientRect();
-    let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
-    const len = Math.hypot(dx, dy), max = 30;
-    if (len > max) { dx = dx / len * max; dy = dy / len * max; }
-    stickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-    if (len < 9) { touchDir = { x: 0, y: 0 }; return; }
-    const sector = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) & 7;
-    touchDir = { x: DIRS8[sector][0], y: DIRS8[sector][1] };
+  const dpadState = { up: false, down: false, left: false, right: false };
+  function syncPadDir() {
+    padDir = { x: (dpadState.right ? 1 : 0) - (dpadState.left ? 1 : 0), y: (dpadState.down ? 1 : 0) - (dpadState.up ? 1 : 0) };
   }
-  stickPad.addEventListener('pointerdown', e => {
-    e.preventDefault(); pid = e.pointerId;
-    try { stickPad.setPointerCapture(pid); } catch (err) {}
-    moveStick(e);
-  });
-  stickPad.addEventListener('pointermove', e => { if (e.pointerId === pid) moveStick(e); });
-  function endStick(e) {
-    if (e.pointerId !== pid) return;
-    pid = null; touchDir = { x: 0, y: 0 };
-    stickKnob.style.transform = 'translate(-50%,-50%)';
-  }
-  stickPad.addEventListener('pointerup', endStick); stickPad.addEventListener('pointercancel', endStick);
+  const bindDir = (id, key) => {
+    const el = document.getElementById(id);
+    el.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      try { el.setPointerCapture(e.pointerId); } catch (err) {}
+      dpadState[key] = true; syncPadDir();
+    });
+    const off = () => { dpadState[key] = false; syncPadDir(); };
+    el.addEventListener('pointerup', off);
+    el.addEventListener('pointercancel', off);
+    el.addEventListener('lostpointercapture', off);
+  };
+  bindDir('dpUp', 'up'); bindDir('dpDown', 'down'); bindDir('dpLeft', 'left'); bindDir('dpRight', 'right');
   const bind = (id, set) => {
     const el = document.getElementById(id);
     el.addEventListener('pointerdown', e => { e.preventDefault(); set(true); });
@@ -790,7 +944,9 @@ window.addEventListener('touchstart', () => { if (!touchSeen) { touchSeen = true
     el.addEventListener('pointercancel', () => set(false));
   };
   bind('btnA', v => touchA = v); bind('btnB', v => touchB = v);
-  applyStickPref();
+  // the deck's MENU button is a Start press: P and gamepad Start still work
+  document.getElementById('btnMenu').addEventListener('pointerdown', e => { e.preventDefault(); menuBtnHit = true; });
+  applyPadPref();
 })();
 
 /* ============================== RUNTIME / UI STATE ============================== */
@@ -807,14 +963,21 @@ function syncPixels(e) { e.px = e.tx * TILE; e.py = e.ty * TILE; }
 function faceName(dx, dy) { return dx < 0 ? 'left' : dx > 0 ? 'right' : dy < 0 ? 'up' : 'down'; }
 
 /* ============================== DIALOGUE ============================== */
-let dlg = null; // {lines, idx, chars, timer, cb, choice}
+let dlg = null; // {lines:[{name,text}], idx, chars, timer, cb, choice}
 function say(lines, cb, choice) {
-  dlg = { lines: Array.isArray(lines) ? lines : [lines], idx: 0, chars: 0, timer: 0, cb: cb || null, choice: choice || null };
+  const raw = Array.isArray(lines) ? lines : [lines];
+  // a leading "FRANK:" / "CONSTANCE:" becomes a speaker name tag on the box,
+  // so the characterization reads without shouting prefixes in the text
+  const parsed = raw.map(l => {
+    const m = String(l).match(/^(FRANK|CONSTANCE):\s*/);
+    return m ? { name: m[1], text: String(l).slice(m[0].length) } : { name: null, text: String(l) };
+  });
+  dlg = { lines: parsed, idx: 0, chars: 0, timer: 0, cb: cb || null, choice: choice || null };
   mode = 'dialogue';
 }
 function dlgUpdate(dt) {
   if (!dlg) return;
-  const line = dlg.lines[dlg.idx];
+  const line = dlg.lines[dlg.idx].text;
   dlg.timer += dt;
   const total = line.length;
   if (dlg.chars < total) { dlg.chars = Math.min(total, Math.floor(dlg.timer * 45)); }
@@ -837,7 +1000,14 @@ function drawBox(y, h) {
 }
 function drawDlg() {
   drawBox(102, 40);
-  const line = dlg.lines[dlg.idx];
+  const cur = dlg.lines[dlg.idx];
+  const line = cur.text;
+  if (cur.name) { // speaker name tag straddling the box's top edge
+    const w = textW(cur.name, 1) + 6;
+    ctx.fillStyle = '#20242a'; ctx.fillRect(8, 97, w, 10);
+    ctx.fillStyle = '#ffd94a'; ctx.fillRect(9, 98, w - 2, 8);
+    drawText(cur.name, 11, 100, '#20242a', 1);
+  }
   const wrapped = wrapText(line.slice(0, dlg.chars), 36);
   wrapped.slice(0, 4).forEach((l, i) => drawText(l, 8, 107 + i * 8, '#20242a', 1));
   if (dlg.chars >= line.length) {
@@ -963,7 +1133,7 @@ function interact() {
     return say(line);
   }
   if (s.deerPresent && !s.deerBeaten && f.x === DEER_POS.x && f.y === DEER_POS.y) {
-    if (strongestPot() < 0) return say('THE DEER EYES THE POTS. NO SPROUT IS READY TO FACE IT. YET.');
+    if (strongestPot() < 0) return say('ALVIN IS READY TO DEFEND THE GARDEN. BUT THERE IS NO SPROUT TO DEFEND. YET.');
     return say('WILD DEER APPEARED!', () => startTrial());
   }
   const ch = mapChar(f.x, f.y);
@@ -1044,32 +1214,37 @@ function startIntro() {
 }
 
 /* ============================== TRIAL: WILD DEER ============================== */
+/* Alvin is the only actor on the player's side: his HP is the defended
+   garden's old Vigor value, and the moves map 1:1 from the old plant slots
+   (LUNGE = the GROW slot's 6, as Pressure damage; GUARD = WATER's shield;
+   DIG IN = MULCH's armor; BARK unchanged). The pots are scenery he defends:
+   lose, and the deer gets past him and nibbles the strongest sprout back. */
 let trial = null;
-const MOVES = ['GROW', 'WATER', 'MULCH', 'BARK'];
+const MOVES = ['LUNGE', 'GUARD', 'DIG IN', 'BARK'];
 function startTrial() {
   const pi = strongestPot();
   if (pi < 0) return;
   const p = G.save.pots[pi];
-  p.vigor = MAX_VIGOR[p.stage];
   trial = {
-    pot: pi, pressure: 30, phase: 'intro', msg: 'WILD DEER APPEARED!', timer: 0,
+    pot: pi, pressure: 30, phase: 'intro', msg: 'ALVIN LEAPS IN FRONT OF THE BENCH, BARKING!', timer: 0,
     menu: 0, moveSel: 0, shield: false, armor: false, over: false, result: null,
+    vigor: MAX_VIGOR[p.stage], maxVigor: MAX_VIGOR[p.stage], anim: null,
   };
   mode = 'trial';
 }
 function trialSetMsg(m, phase) { trial.msg = m; trial.phase = phase || 'wait'; trial.timer = 0; }
 function trialUpdate(dt) {
-  const t = trial, p = G.save.pots[t.pot];
+  const t = trial;
   t.timer += dt;
   if (t.phase === 'intro' && t.timer > 1.1) { t.phase = 'menu'; t.menu = 0; t.sel = 0; }
   else if (t.phase === 'wait' && t.timer > 1.15) {
     if (t.over) return endTrial();
     if (t.foeTurn) { t.foeTurn = false; deerAct(); }
-    else { t.phase = 'menu'; t.menu = 0; t.sel = 0; }
+    else { t.phase = 'menu'; t.menu = 0; t.sel = 0; t.anim = null; }
   }
   if (t.phase === 'menu' || t.phase === 'moves' || t.phase === 'plants' || t.phase === 'bag') {
     if (Input.bHit && t.phase !== 'menu') { t.phase = 'menu'; t.sel = 0; return; }
-    const n = t.phase === 'menu' ? 4 : t.phase === 'moves' ? 4 : t.phase === 'plants' ? G.save.pots.filter(q => q.stage >= 2).length : 1;
+    const n = (t.phase === 'menu' || t.phase === 'moves') ? 4 : 1; // PLANTS is a peek, BAG has one item
     if (Input.dir.y < 0 || Input.dir.x < 0) { /* handled on hit below */ }
     if (menuNavHit('up')) t.sel = (t.sel || 0) - (t.phase === 'menu' || t.phase === 'moves' ? 2 : 1);
     if (menuNavHit('down')) t.sel = (t.sel || 0) + (t.phase === 'menu' || t.phase === 'moves' ? 2 : 1);
@@ -1090,7 +1265,7 @@ function menuNavHit(which) {
   return hit;
 }
 function trialChoose() {
-  const t = trial, s = G.save, p = s.pots[t.pot];
+  const t = trial, s = G.save;
   if (t.phase === 'menu') {
     if (t.sel === 0) { t.phase = 'moves'; t.sel = 0; }
     else if (t.sel === 1) { t.phase = 'plants'; t.sel = 0; }
@@ -1098,26 +1273,26 @@ function trialChoose() {
     else { trialSetMsg('YOU BACK AWAY SLOWLY. THE DEER WINS THIS ROUND OF STARING.'); t.over = true; t.result = 'flee'; }
     return;
   }
-  if (t.phase === 'plants') {
-    const fighters = s.pots.map((q, i) => [q, i]).filter(([q]) => q.stage >= 2);
-    const pick = fighters[t.sel][1];
-    if (pick !== t.pot) { t.pot = pick; trialSetMsg('GO, ' + STAGE_NAMES[s.pots[pick].stage] + '!'); t.foeTurn = true; }
-    else { t.phase = 'menu'; t.sel = 0; }
-    return;
-  }
+  if (t.phase === 'plants') { t.phase = 'menu'; t.sel = 0; return; } // a peek costs no turn
   if (t.phase === 'bag') {
     if (s.tea > 0) {
-      s.tea--; p.vigor = Math.min(MAX_VIGOR[p.stage], p.vigor + 10);
-      trialSetMsg('USED COMPOST TEA! VIGOR RESTORED.'); t.foeTurn = true;
+      s.tea--; t.vigor = Math.min(t.maxVigor, t.vigor + 10);
+      trialSetMsg('USED COMPOST TEA! ALVIN LAPS IT UP, RESTORED.'); t.foeTurn = true;
     } else trialSetMsg('NO TEA LEFT! (BREW MORE AT THE COMPOST.)');
     return;
   }
-  // moves
+  // moves — all Alvin's, numbers mapped 1:1 from the old plant slots
   const mv = MOVES[t.sel];
-  if (mv === 'GROW') { p.vigor = Math.min(MAX_VIGOR[p.stage], p.vigor + 6); trialSetMsg(STAGE_NAMES[p.stage] + ' USED GROW! IT LOOKS HEALTHIER.'); }
-  else if (mv === 'WATER') { t.shield = true; trialSetMsg(STAGE_NAMES[p.stage] + ' USED WATER! A COOLING SHIELD OF MIST.'); }
-  else if (mv === 'MULCH') { t.armor = true; trialSetMsg(STAGE_NAMES[p.stage] + ' USED MULCH! ARMOR UP.'); }
+  if (mv === 'LUNGE') {
+    t.anim = 'lunge';
+    t.pressure = Math.max(0, t.pressure - 6);
+    if (t.pressure <= 0) { trialSetMsg('ALVIN LUNGES! THE DEER BOLTS OVER THE FENCE!'); t.over = true; t.result = 'win'; saveGame(); return; }
+    trialSetMsg('ALVIN LUNGES! THE DEER STAGGERS BACK.');
+  }
+  else if (mv === 'GUARD') { t.shield = true; trialSetMsg('ALVIN PLANTS HIS PAWS. HE WILL TAKE THE NEXT HIT HIMSELF.'); }
+  else if (mv === 'DIG IN') { t.armor = true; trialSetMsg('ALVIN DIGS IN. NO DEER PUSHES PAST HIM EASILY.'); }
   else if (mv === 'BARK') {
+    t.anim = 'bark';
     t.pressure = Math.max(0, t.pressure - 8);
     if (t.pressure <= 0) { trialSetMsg('ALVIN BARKS HIS BRAVE HEART OUT! THE DEER BOUNDED AWAY!'); t.over = true; t.result = 'win'; saveGame(); return; }
     if (Math.random() < 0.3) { trialSetMsg('ALVIN USED BARK! THE DEER FLINCHED!'); saveGame(); return; } // foe loses turn
@@ -1126,7 +1301,7 @@ function trialChoose() {
   t.foeTurn = true;
 }
 function deerAct() {
-  const t = trial, p = G.save.pots[t.pot];
+  const t = trial;
   const r = Math.random();
   let dmg, name;
   if (r < 0.5) { dmg = 7; name = 'NIBBLE'; }
@@ -1134,28 +1309,28 @@ function deerAct() {
   else { dmg = 2; name = 'STARE'; }
   if (t.armor) dmg = Math.max(1, dmg - 2);
   if (t.shield) { dmg = Math.floor(dmg / 2); t.shield = false; }
-  p.vigor = Math.max(0, p.vigor - dmg);
-  if (name === 'STARE') trialSetMsg('DEER USED STARE. IT IS NOT EVEN AFRAID OF YOU. (-' + dmg + ')');
-  else trialSetMsg('DEER USED ' + name + '! (-' + dmg + ' VIGOR)');
-  if (p.vigor <= 0) { t.over = true; t.result = 'lose'; }
+  t.vigor = Math.max(0, t.vigor - dmg);
+  if (name === 'STARE') trialSetMsg('DEER USED STARE. ALVIN STARES RIGHT BACK. (-' + dmg + ')');
+  else trialSetMsg('DEER USED ' + name + '! IT GETS AT ALVIN. (-' + dmg + ')');
+  if (t.vigor <= 0) { t.over = true; t.result = 'lose'; }
   t.foeTurn = false;
 }
 function endTrial() {
   const t = trial, s = G.save; trial = null; mode = 'overworld';
   if (t.result === 'win') {
     s.deerBeaten = true; s.deerPresent = false; saveGame();
-    say('THE YARD IS SAFE. THE SPROUTS STAND TALL. WELL. TALL-ISH.', () => { checkChapter(); });
+    say('THE YARD IS SAFE. ALVIN TAKES A SMALL, PROUD BOW. THE SPROUTS STAND TALL. WELL. TALL-ISH.', () => { checkChapter(); });
   } else if (t.result === 'lose') {
     const p = s.pots[t.pot];
     if (p.stage > 1) p.stage--; p.waterDays = 0; p.vigor = MAX_VIGOR[p.stage] || 0;
     saveGame();
-    say('THE ' + 'SPROUT WAS NIBBLED BACK. IT WILL TRY AGAIN. SO WILL YOU.', () => { fading = 'dawn'; fade = 1; setTimeout(dawn, 350); });
+    say('THE DEER GOT PAST ALVIN AND NIBBLED THE SPROUT BACK. IT WILL TRY AGAIN. SO WILL YOU.', () => { fading = 'dawn'; fade = 1; setTimeout(dawn, 350); });
   }
 }
 function trialSnapshot() {
   if (!trial) return null;
   const p = G.save.pots[trial.pot];
-  return { pressure: trial.pressure, vigor: p.vigor, maxVigor: MAX_VIGOR[p.stage], pot: trial.pot, stage: p.stage, phase: trial.phase, over: trial.over, result: trial.result, msg: trial.msg };
+  return { actor: 'ALVIN', pressure: trial.pressure, vigor: trial.vigor, maxVigor: trial.maxVigor, pot: trial.pot, stage: p.stage, phase: trial.phase, over: trial.over, result: trial.result, msg: trial.msg };
 }
 
 /* ============================== RENDER: TITLE / CHAPTERS ============================== */
@@ -1283,11 +1458,30 @@ function renderOverworld() {
   for (let ty = y0; ty <= y0 + 9; ty++) for (let tx = x0; tx <= x0 + 10; tx++) {
     if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H) continue;
     const ch = mapChar(tx, ty), sx = tx * TILE - camX, sy = ty * TILE - camY;
+    // ambient sway: flowers and grass tufts lean with a slow two-frame breeze,
+    // neighbouring tiles out of phase so the yard shimmers instead of pulsing
+    const sway = (Math.floor(perfNow * 1.5) + tx + ty) % 2 === 0;
     let base = TILES.grass; // plain grass tiles get a hashed variety so the lawn isn't flat
-    if (ch === 'g') { const h = (tx * 31 + ty * 17) % 9; base = h === 0 ? TILES.tuft : h === 4 ? TILES.grass3 : TILES.grass; }
+    if (ch === 'g') { const h = (tx * 31 + ty * 17) % 9; base = h === 0 ? (sway ? TILES.tuftB : TILES.tuft) : h === 4 ? TILES.grass3 : TILES.grass; }
     ctx.drawImage(base, sx, sy);
-    const t = TILES[TILEMAP[ch]]; if (t && TILEMAP[ch] !== 'grass') ctx.drawImage(t, sx, sy);
+    let t = TILES[TILEMAP[ch]];
+    if (ch === 'o') t = sway ? TILES.flowerB : TILES.flower;
+    if (t && TILEMAP[ch] !== 'grass') ctx.drawImage(t, sx, sy);
     if (ch === 'T') ctx.drawImage(TREE, sx, sy);
+    if (ch === 'c') { // chimney smoke: three puffs rising, growing, drifting off
+      for (let i = 0; i < 3; i++) {
+        const ph = (perfNow * 0.45 + i / 3) % 1;
+        const px = Math.round(sx + 8 + Math.sin(ph * 5 + i * 2) * 1.5 + ph * 3);
+        const py = Math.round(sy - 2 - ph * 15);
+        const sz = 2 + Math.floor(ph * 3);
+        ctx.fillStyle = ph < 0.5 ? '#e8edf2' : '#c9ced4';
+        ctx.fillRect(px, py, sz, sz);
+      }
+    }
+    if (ch === 'b' && (Math.floor(perfNow * 2) + tx * 3 + ty) % 3 === 0) { // birdbath sparkle
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(sx + 7, sy + 3, 1, 3); ctx.fillRect(sx + 6, sy + 4, 3, 1);
+    }
   }
   // pots on the bench
   G.save.pots.forEach((p, i) => {
@@ -1302,6 +1496,12 @@ function renderOverworld() {
   ents.push({ y: alvin.py, draw: () => charSprite(alvin, ALVIN_SET) });
   ents.push({ y: player.py, draw: () => charSprite(player, FRANK_SET) });
   ents.sort((a, b) => a.y - b.y).forEach(e => e.draw());
+  // a butterfly wanders the flower beds in the south-west (pure ambience)
+  {
+    const bx = Math.round((7.5 + Math.sin(perfNow * 0.33) * 3.2) * TILE - camX);
+    const by = Math.round((13.5 + Math.cos(perfNow * 0.47) * 1.4) * TILE - camY - 8 + Math.sin(perfNow * 2.2) * 2);
+    if (bx > -10 && by > -10 && bx < VW && by < VH) ctx.drawImage(Math.floor(perfNow * 6) % 2 ? BUTTERFLY_A : BUTTERFLY_B, bx, by);
+  }
   // HUD (no persistent objective banner: it overlapped the bench/pots at the
   // bottom of the frame. The objective lives in the pause menu, and the
   // tutorial steps are taught through dialogue.)
@@ -1321,7 +1521,7 @@ function drawBar(x, y, w, frac, col) {
   ctx.fillStyle = col; ctx.fillRect(x, y, Math.max(0, Math.round(w * frac)), 3);
 }
 function renderTrial() {
-  const t = trial, p = G.save.pots[t.pot];
+  const t = trial;
   ctx.fillStyle = '#7ec8f7'; ctx.fillRect(0, 0, VW, 62);
   ctx.fillStyle = '#a8dcff'; ctx.fillRect(0, 56, VW, 6);
   ctx.fillStyle = '#58b93e'; ctx.fillRect(0, 62, VW, 82);
@@ -1333,50 +1533,60 @@ function renderTrial() {
   ctx.fillStyle = '#8fd07a';
   ctx.fillRect(0, 50, 66, 12); ctx.fillRect(8, 46, 50, 4); ctx.fillRect(18, 42, 30, 4);
   ctx.fillRect(102, 52, 58, 10); ctx.fillRect(110, 48, 42, 4); ctx.fillRect(120, 44, 24, 4);
-  drawPatch(118, 52, 64); drawPatch(34, 96, 56);
-  // ground shadows under the deer, the pot, and Alvin
+  drawPatch(118, 52, 64);
+  // ground shadows: under the deer, and under Alvin in front of the bench
   ctx.fillStyle = '#357a2a';
   ctx.fillRect(102, 55, 40, 3); ctx.fillRect(106, 54, 32, 1);
-  ctx.fillRect(16, 99, 36, 3); ctx.fillRect(20, 98, 28, 1);
-  ctx.fillRect(56, 100, 16, 2);
-  const hop = (t.phase === 'wait' && t.foeTurn === false && t.timer < 0.3) ? -2 : 0;
-  ctx.drawImage(DEER_BIG, 94, 12 + hop, 48, 42);
-  ctx.drawImage(POT_SPRITES[p.stage], 14, 58, 44, 44);
-  ctx.drawImage(ALVIN_DOWN, 54, 82, 20, 20);
-  // status boxes
+  ctx.fillRect(42, 97, 38, 3); ctx.fillRect(46, 96, 30, 1);
+  // the deer idles with a slow bob
+  const dbob = Math.floor(perfNow * 1.5) % 2;
+  ctx.drawImage(DEER_BIG, 94, 11 + dbob, 48, 42);
+  // what Alvin defends: the garden bench with all six pots, as scenery
+  for (let i = 0; i < 3; i++) ctx.drawImage(TILES.bench, 2 + i * 16, 92);
+  G.save.pots.forEach((p, i) => ctx.drawImage(POT_SPRITES[p.stage], 4 + i * 10, 84, 10, 10));
+  // Alvin, the only actor on this side — he hops forward on LUNGE, pops up on BARK
+  let ax = 40, ay = 56;
+  if (t.anim && t.phase === 'wait') {
+    const s = Math.sin(Math.min(1, t.timer / 0.45) * Math.PI);
+    if (t.anim === 'lunge') ax += Math.round(7 * s);
+    else if (t.anim === 'bark') ay -= Math.round(3 * s);
+  }
+  ctx.drawImage(ALVIN_BIG, ax, ay, 48, 40);
+  // status boxes: DEER pressure above, ALVIN's HP below — one box per side
   ctx.fillStyle = '#20242a'; ctx.fillRect(3, 5, 76, 25); ctx.fillStyle = '#f8f8f8'; ctx.fillRect(5, 7, 72, 21);
   drawText('DEER', 8, 9, '#20242a', 1);
   drawText('PRESSURE', 8, 17, '#5a6270', 1);
   drawBar(8, 23, 62, t.pressure / 30, t.pressure > 10 ? '#37b24d' : '#e0483e');
   ctx.fillStyle = '#20242a'; ctx.fillRect(81, 66, 76, 27); ctx.fillStyle = '#f8f8f8'; ctx.fillRect(83, 68, 72, 23);
-  drawText('BLUEBERRY', 86, 70, '#20242a', 1);
-  drawText(STAGE_NAMES[p.stage], 86, 78, '#5a6270', 1);
-  drawBar(86, 85, 46, p.vigor / MAX_VIGOR[p.stage], p.vigor > 8 ? '#37b24d' : '#e0483e');
-  drawText(p.vigor + '/' + MAX_VIGOR[p.stage], 134, 84, '#20242a', 1);
-  if (t.shield) drawText('MIST', 134, 70, '#3b6fe0', 1);
-  if (t.armor) drawText('MULCH', 134, 77, '#8a5a2e', 1);
+  drawText('ALVIN', 86, 70, '#20242a', 1);
+  drawText('HP', 86, 79, '#5a6270', 1);
+  drawBar(94, 80, 38, t.vigor / t.maxVigor, t.vigor > 8 ? '#37b24d' : '#e0483e');
+  drawText(t.vigor + '/' + t.maxVigor, 134, 79, '#20242a', 1);
+  if (t.shield) drawText('GUARD', 130, 70, '#3b6fe0', 1);
+  if (t.armor) drawText('DUG IN', 126, 88, '#8a5a2e', 1);
   // text box / menus
   drawBox(102, 40);
   if (t.phase === 'menu' || t.phase === 'moves') {
-    const lines = wrapText(t.phase === 'menu' ? 'WHAT WILL BLUEBERRY DO?' : 'CHOOSE A MOVE:', 20);
+    const lines = wrapText(t.phase === 'menu' ? 'WHAT WILL ALVIN DO?' : 'CHOOSE A MOVE:', 20);
     lines.slice(0, 3).forEach((l, i) => drawText(l, 7, 108 + i * 8, '#20242a', 1));
-    const items = t.phase === 'menu' ? ['TEND', 'PLANTS', 'BAG', 'FLEE'] : MOVES;
+    const items = t.phase === 'menu' ? ['DEFEND', 'PLANTS', 'BAG', 'FLEE'] : MOVES;
     items.forEach((m, i) => {
       const x = 96 + (i % 2) * 32, y = 110 + Math.floor(i / 2) * 12;
       if (i === (t.sel || 0)) drawText('▶', x - 6, y, '#b03030', 1);
       drawText(m, x, y, '#20242a', 1);
     });
-    if (t.phase === 'moves') drawText('BARK = ALVIN', 7, 132, '#5a6270', 1);
   } else if (t.phase === 'plants' || t.phase === 'bag') {
-    drawText(t.phase === 'plants' ? 'CHOOSE A PLANT:' : 'BAG:', 7, 108, '#20242a', 1);
     if (t.phase === 'plants') {
-      G.save.pots.map((q, i) => [q, i]).filter(([q]) => q.stage >= 2).forEach(([q, i], k) => {
-        if (k === (t.sel || 0)) drawText('▶', 7, 118 + k * 8, '#b03030', 1);
-        drawText('POT ' + (i + 1) + ' ' + STAGE_NAMES[q.stage] + ' ' + q.vigor + '/' + MAX_VIGOR[q.stage], 13, 118 + k * 8, '#20242a', 1);
+      drawText('THE GARDEN ALVIN GUARDS:', 7, 107, '#20242a', 1);
+      G.save.pots.forEach((q, i) => {
+        const x = 10 + (i % 2) * 74, y = 117 + Math.floor(i / 2) * 8;
+        drawText('POT ' + (i + 1) + ': ' + STAGE_NAMES[q.stage], x, y, '#20242a', 1);
       });
+      drawText('A/B: BACK', 10, 133, '#5a6270', 1);
     } else {
+      drawText('BAG:', 7, 108, '#20242a', 1);
       if ((t.sel || 0) === 0) drawText('▶', 7, 118, '#b03030', 1);
-      drawText('COMPOST TEA ×' + G.save.tea + ' (+10 VIGOR)', 13, 118, '#20242a', 1);
+      drawText('COMPOST TEA ×' + G.save.tea + ' (+10 HP)', 13, 118, '#20242a', 1);
       drawText('B: BACK', 13, 128, '#5a6270', 1);
     }
   } else {
@@ -1400,47 +1610,55 @@ function renderCard() {
   drawText(l, 80 - textW(l, 1) / 2, 116, '#20242a', 1);
   drawText('HEAR CHAPTER 1:', 80 - textW('HEAR CHAPTER 1:', 1) / 2, 127, '#cfe8cf', 1);
 }
+const MENU_ITEMS = ['RESUME', 'CONTROLS', 'SAVE & QUIT'];
 function menuUpdate() {
   if (Input.bHit || Input.startHit) { mode = 'overworld'; return; }
-  if (menuNavHit('up')) menuSel = (menuSel + 2) % 3;
-  if (menuNavHit('down')) menuSel = (menuSel + 1) % 3;
+  if (menuNavHit('up')) menuSel = (menuSel + MENU_ITEMS.length - 1) % MENU_ITEMS.length;
+  if (menuNavHit('down')) menuSel = (menuSel + 1) % MENU_ITEMS.length;
   if (Input.aHit) {
-    if (menuSel === 0) mode = 'dex';
+    if (menuSel === 0) mode = 'overworld';
     else if (menuSel === 1) openControls('menu');
-    else mode = 'overworld';
+    else { // SAVE & QUIT: write the save out, then back to the title screen
+      saveGame();
+      titleSel = 0; titleConfirm = false;
+      mode = 'title';
+    }
   }
 }
 function renderMenu() {
   renderOverworld();
   ctx.fillStyle = 'rgba(10,16,10,0.55)'; ctx.fillRect(0, 0, VW, VH);
   ctx.fillStyle = '#20242a'; ctx.fillRect(24, 18, 112, 108); ctx.fillStyle = '#f8f8f8'; ctx.fillRect(26, 20, 108, 104);
+  // display-only info: day, objective, Berrydex summary, tea
   drawText('DAY ' + G.save.day, 32, 26, '#20242a', 1);
-  wrapText(objective(), 24).slice(0, 4).forEach((l, i) => drawText(l, 32, 37 + i * 7, '#5a6270', 1));
-  ['BERRYDEX', 'CONTROLS', 'RESUME'].forEach((l, i) => {
-    const y = 72 + i * 12;
+  wrapText(objective(), 24).slice(0, 3).forEach((l, i) => drawText(l, 32, 36 + i * 7, '#5a6270', 1));
+  const seen = G.save.dex.blueberry;
+  wrapText('BERRYDEX: ' + (seen.length ? seen.join(' · ') : 'NOTHING SEEN YET'), 24).slice(0, 2).forEach((l, i) => drawText(l, 32, 59 + i * 7, '#5a6270', 1));
+  drawText('TEA ×' + G.save.tea, 32, 75, '#5a6270', 1);
+  MENU_ITEMS.forEach((l, i) => {
+    const y = 86 + i * 12;
     if (i === menuSel) drawText('▶', 32, y, '#b03030', 1);
     drawText(l, 40, y, '#20242a', 1);
   });
-  drawText('TEA ×' + G.save.tea, 32, 112, '#5a6270', 1);
 }
 
 /* ============================== CONTROLS SCREEN ============================== */
-let controlsFrom = 'title', controlsSel = 0; // row 0: joystick setting, row 1: back
-const STICK_MODES = ['AUTO', 'ALWAYS', 'OFF'];
+let controlsFrom = 'title', controlsSel = 0; // row 0: D-pad setting, row 1: back
+const PAD_MODES = ['AUTO', 'ALWAYS', 'OFF'];
 function openControls(from) { controlsFrom = from; controlsSel = 0; mode = 'controls'; }
-function cycleStick(d) {
-  const cur = STICK_MODES.indexOf(settings.stick.toUpperCase());
-  settings.stick = STICK_MODES[(cur + d + STICK_MODES.length) % STICK_MODES.length].toLowerCase();
-  saveSettings(); applyStickPref();
+function cyclePad(d) {
+  const cur = PAD_MODES.indexOf(settings.pad.toUpperCase());
+  settings.pad = PAD_MODES[(cur + d + PAD_MODES.length) % PAD_MODES.length].toLowerCase();
+  saveSettings(); applyPadPref();
 }
 function controlsUpdate() {
   if (Input.bHit) { mode = controlsFrom; return; }
   if (controlsFrom === 'menu' && Input.startHit) { mode = 'menu'; return; }
   if (menuNavHit('up') || menuNavHit('down')) controlsSel = 1 - controlsSel;
   if (controlsSel === 0) {
-    if (menuNavHit('left')) cycleStick(-1);
-    if (menuNavHit('right')) cycleStick(1);
-    if (Input.aHit) cycleStick(1);
+    if (menuNavHit('left')) cyclePad(-1);
+    if (menuNavHit('right')) cyclePad(1);
+    if (Input.aHit) cyclePad(1);
   } else if (Input.aHit) mode = controlsFrom;
 }
 function renderControls() {
@@ -1458,10 +1676,10 @@ function renderControls() {
   row('STICK OR D-PAD: MOVE', 74);
   row('A: OK · B: BACK · START: MENU', 82);
   head('TOUCH', 94);
-  row('JOYSTICK: MOVE · A/B: BUTTONS', 103);
+  row('D-PAD MOVE · ON-SCREEN A/B', 103);
   ctx.fillStyle = '#c9ced4'; ctx.fillRect(12, 112, 136, 1);
   if (controlsSel === 0) drawText('▶', 12, 118, '#b03030', 1);
-  drawText('SHOW STICK: < ' + settings.stick.toUpperCase() + ' >', 20, 118, '#20242a', 1);
+  drawText('SHOW PAD: < ' + settings.pad.toUpperCase() + ' >', 20, 118, '#20242a', 1);
   if (controlsSel === 1) drawText('▶', 12, 128, '#b03030', 1);
   drawText('BACK', 20, 128, '#20242a', 1);
 }
@@ -1545,7 +1763,7 @@ window.__hss = {
       dex: JSON.parse(JSON.stringify(G.save.dex)), deerBeaten: G.save.deerBeaten, deerPresent: G.save.deerPresent,
       chapterDone: G.save.chapterDone, player: { x: player.tx, y: player.ty, dir: player.dir },
       alvin: { x: alvin.tx, y: alvin.ty }, trial: trialSnapshot(),
-      settings: { stick: settings.stick }, stickVisible: !deckEl.hidden,
+      settings: { pad: settings.pad }, padVisible: !deckEl.hidden, menuSel,
     };
   },
   advanceDay() {
