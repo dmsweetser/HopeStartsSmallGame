@@ -4153,13 +4153,28 @@ window.addEventListener('gamepadconnected', () => { if (!padToastShown) { padToa
        so jitter near a boundary never flickers the direction;
      · diagonals never reach the game; release stops movement at once. */
 const deckEl = document.getElementById('deck');
+const consoleEl = document.getElementById('console');
+// Daniel (Nov 26, 2026): the game fills the browser window. The stage
+// scales uniformly — the 160:144 aspect never changes — letterboxed on
+// the page ground, snapping to a whole-number scale whenever that still
+// fills the window well (>= 85% of the fit), so the pixels stay crisp;
+// below that (small phones) it takes the exact fractional fit instead.
+function fitStage() {
+  const deckH = deckEl.hidden ? 0 : deckEl.offsetHeight;
+  const availW = window.innerWidth - 8, availH = window.innerHeight - deckH - 8; // 8: the console's borders
+  let scale = Math.min(availW / 160, availH / 144);
+  const whole = Math.floor(scale);
+  if (whole >= 2 && whole / scale >= 0.85) scale = whole;
+  consoleEl.style.width = (Math.max(160, Math.floor(160 * scale)) + 8) + 'px'; // +8 so the SCREEN is exactly 160 x scale
+}
+window.addEventListener('resize', fitStage);
 const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 let touchSeen = false;
 const stickDebug = { dir: null, mag: 0 }; // exposed via __hss for the smoke test
 function stickShouldShow() {
   return settings.stick === 'always' || (settings.stick === 'auto' && (touchSeen || coarsePointer));
 }
-function applyStickPref() { deckEl.hidden = !stickShouldShow(); }
+function applyStickPref() { deckEl.hidden = !stickShouldShow(); fitStage(); }
 window.addEventListener('touchstart', () => { if (!touchSeen) { touchSeen = true; applyStickPref(); } }, { passive: true });
 (function () {
   const base = document.getElementById('stickBase');

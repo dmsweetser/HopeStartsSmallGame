@@ -1359,6 +1359,43 @@ function findChromium() {
   check('bare-int pot migrated to a named plant', s.pots[0].name === 'ADMIRAL' && s.pots[0].location === 'BENCH', JSON.stringify(s.pots[0]));
   check('waterDays-era pot migrated with name + days', s.pots[1].name === 'CAPTAIN' && s.pots[1].wateredDays === 1, JSON.stringify(s.pots[1]));
 
+  // FULLSCREEN FILL (Daniel, Nov 26, 2026): the stage scales to fill the
+  // window, aspect exactly 160:144, integer scale when it fills well.
+  const layoutAt = async (w, h) => {
+    await page.setViewportSize({ width: w, height: h });
+    await page.waitForTimeout(350);
+    return page.evaluate(() => {
+      const scr = document.getElementById('screen').getBoundingClientRect();
+      const con = document.getElementById('console').getBoundingClientRect();
+      const dck = document.getElementById('deck').getBoundingClientRect();
+      const lnk = document.getElementById('audibleBtn').getBoundingClientRect();
+      return {
+        sw: scr.width, sh: scr.height, conR: con.right, conB: con.bottom,
+        deckHidden: document.getElementById('deck').hidden, deckB: dck.bottom,
+        linkIn: lnk.left >= scr.left - 1 && lnk.right <= scr.right + 1 && lnk.top >= scr.top - 1 && lnk.bottom <= scr.bottom + 1,
+        scrollW: document.documentElement.scrollWidth, scrollH: document.documentElement.scrollHeight,
+        iw: window.innerWidth, ih: window.innerHeight,
+      };
+    });
+  };
+  await page.evaluate(() => localStorage.setItem('hss-settings-v1', JSON.stringify({ stick: 'auto', music: true })));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+  await page.waitForTimeout(400);
+  let L = await layoutAt(1920, 1080);
+  check('fullscreen: 1920x1080 fills at an integer scale', L.sw / 160 === Math.round(L.sw / 160) && L.sh >= 0.85 * L.ih && L.scrollW <= L.iw && L.scrollH <= L.ih, JSON.stringify(L));
+  L = await layoutAt(1366, 768);
+  check('fullscreen: 1366x768 fills at an integer scale', L.sw / 160 === Math.round(L.sw / 160) && L.sh >= 0.85 * L.ih && L.scrollW <= L.iw, JSON.stringify(L));
+  await page.evaluate(() => localStorage.setItem('hss-settings-v1', JSON.stringify({ stick: 'always', music: true })));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+  await page.waitForTimeout(400);
+  L = await layoutAt(390, 844);
+  check('fullscreen: phone 390x844 — deck and links fully usable, no scrollbars', L.deckHidden === false && L.deckB <= L.ih && L.linkIn && L.scrollW <= L.iw && L.scrollH <= L.ih + 1 && L.conR <= L.iw, JSON.stringify(L));
+  L = await layoutAt(360, 740);
+  check('fullscreen: 360px wide — nothing clipped, no scrollbars', L.conR <= L.iw && L.deckB <= L.ih && L.linkIn && L.scrollW <= L.iw, JSON.stringify(L));
+  await page.setViewportSize({ width: 880, height: 800 });
+
   await browser.close();
   if (ownServer) server.close();
   log('SMOKE DONE');

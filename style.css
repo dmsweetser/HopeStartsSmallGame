@@ -4,11 +4,13 @@ body {
   background: #14251a;
   background-image: radial-gradient(circle at 50% 35%, #1d3a26 0%, #14251a 70%);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  font-family: monospace; color: #cfe8cf; min-height: 100vh; padding: 12px;
+  font-family: monospace; color: #cfe8cf; height: 100vh; height: 100dvh; overflow: hidden;
   -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
 }
 #console {
-  width: min(96vw, calc((96vh - 150px) * 160 / 144), 720px);
+  /* width is set by fitStage() in game.js so the stage fills the window;
+     this is only the pre-script default */
+  width: min(96vw, 720px); max-width: 100vw;
   border: 4px solid #0a140d;
   border-radius: 6px;
   box-shadow: 0 10px 40px rgba(0,0,0,.55), inset 0 0 0 2px #2c5236;
