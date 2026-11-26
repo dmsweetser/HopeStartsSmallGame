@@ -1336,10 +1336,10 @@ function drawDlg() {
   drawBox(102, 40);
   const cur = dlg.lines[dlg.idx];
   const line = cur.text;
-  if (cur.name) { // speaker name tag straddling the box's top edge
+  if (cur.name) { // speaker name tag straddling the box's top edge, in their colour
     const w = textW(cur.name, 1) + 6;
     ctx.fillStyle = '#20242a'; ctx.fillRect(8, 97, w, 10);
-    ctx.fillStyle = '#ffd94a'; ctx.fillRect(9, 98, w - 2, 8);
+    ctx.fillStyle = cur.name === 'CONSTANCE' ? '#7fd1c8' : '#ffd94a'; ctx.fillRect(9, 98, w - 2, 8);
     drawText(cur.name, 11, 100, '#20242a', 1);
   }
   const wrapped = wrapText(line.slice(0, dlg.chars), 36);
@@ -1410,6 +1410,8 @@ let alvinTarget = null;
 let diagX = true; // diagonal stick input alternates axes per step (staircase)
 function overworldUpdate(dt) {
   if (fade > 0) { fade -= dt * 2; if (fade < 0) fade = 0; }
+  // Constance idles between watching the yard and checking on the pots
+  constance.dir = (perfNow % 9 < 6.5) ? 'left' : 'down';
   const dx0 = Input.dir.x, dy0 = Input.dir.y;
   let dx = dx0, dy = dy0;
   if (dx && dy) { if (diagX) dy = 0; else dx = 0; } // tile grid is 4-way: one axis per step
@@ -1467,6 +1469,7 @@ function interact() {
     return openRegister();
   }
   if (f.x === constance.tx && f.y === constance.ty) {
+    constance.dir = ({ up: 'down', down: 'up', left: 'right', right: 'left' })[player.dir];
     const line = CONSTANCE_LINES[s.constanceLine % CONSTANCE_LINES.length]; s.constanceLine++;
     return say(line);
   }
@@ -1747,6 +1750,10 @@ function drawSceneBanner(y0, seedling) {
   // ground + picket fence line
   ctx.fillStyle = '#58b93e'; ctx.fillRect(0, y0 + 38, VW, 26);
   ctx.fillStyle = '#3f9433'; ctx.fillRect(0, y0 + 56, VW, 8);
+  // the house and tree throw soft shadows onto the grass, like everything else
+  ctx.fillStyle = '#2f7a24';
+  ctx.fillRect(5, y0 + 38, 40, 2); ctx.fillRect(8, y0 + 40, 34, 1);
+  ctx.fillRect(123, y0 + 38, 24, 2); ctx.fillRect(127, y0 + 40, 16, 1);
   // a scatter of little flowers and tufts in the banner grass
   for (const [fx, fc] of [[8, '#ff5d8f'], [52, '#ffd94a'], [66, '#ffffff'], [104, '#ff5d8f'], [148, '#ffd94a']]) {
     ctx.fillStyle = fc; ctx.fillRect(fx, y0 + 51, 2, 2);
@@ -1899,8 +1906,8 @@ function renderOverworld() {
   // entities sorted by y — each stands on a soft contact shadow
   const contactShadow = (px, py) => {
     ctx.fillStyle = SHADOW;
-    ctx.fillRect(Math.round(px - camX) + 3, Math.round(py - camY) + 13, 10, 2);
-    ctx.fillRect(Math.round(px - camX) + 2, Math.round(py - camY) + 14, 12, 1);
+    ctx.fillRect(Math.round(px - camX) + 5, Math.round(py - camY) + 13, 10, 2);
+    ctx.fillRect(Math.round(px - camX) + 4, Math.round(py - camY) + 14, 12, 1);
   };
   const ents = [];
   ents.push({ y: constance.py, draw: () => { contactShadow(constance.tx * TILE, constance.ty * TILE); charSprite({ px: constance.tx * TILE, py: constance.ty * TILE, dir: constance.dir, moving: false, blinkOff: 1.9 }, CONSTANCE_SET); } });
@@ -1962,17 +1969,19 @@ function renderTrial() {
   // ground shadows: under the deer, and under Alvin in front of the bench
   ctx.fillStyle = '#357a2a';
   ctx.fillRect(102, 55, 40, 3); ctx.fillRect(106, 54, 32, 1);
-  ctx.fillRect(42, 97, 38, 3); ctx.fillRect(46, 96, 30, 1);
+  ctx.fillRect(45, 97, 38, 3); ctx.fillRect(49, 96, 30, 1);
   // the deer idles with a slow bob, ear twitching between two frames;
   // once its Pressure runs low the white tail stays flagged (alarmed)
   const dbob = Math.floor(perfNow * 1.5) % 2;
   const deerImg = (t.pressure <= 10 || dbob) ? DEER_BIG2 : DEER_BIG;
-  ctx.drawImage(deerImg, 94, 11 + dbob, 48, 42);
+  // a fresh hit from Alvin makes the deer flinch for a beat
+  const flinch = (t.phase === 'wait' && t.timer < 0.25 && (t.anim === 'lunge' || t.anim === 'bark')) ? (Math.floor(perfNow * 20) % 2 ? 1 : -1) : 0;
+  ctx.drawImage(deerImg, 94 + flinch, 11 + dbob, 48, 42);
   // what Alvin defends: the garden bench with all six pots, as scenery —
   // the yard's picket fence peeks over the bench, and the bench casts a shadow
   ctx.fillStyle = '#f4f4f0';
-  for (let x = 0; x < 54; x += 8) { ctx.fillRect(x, 88, 3, 5); }
-  ctx.fillRect(0, 91, 54, 1);
+  for (let x = 0; x < 94; x += 8) { ctx.fillRect(x, 88, 3, 5); }
+  ctx.fillRect(0, 91, 94, 1);
   ctx.fillStyle = SHADOW; ctx.fillRect(0, 106, 52, 3);
   for (let i = 0; i < 3; i++) ctx.drawImage(TILES.bench, 2 + i * 16, 92);
   G.save.pots.forEach((p, i) => ctx.drawImage(POT_SPRITES[p.stage], 4 + i * 10, 84, 10, 10));
@@ -1985,6 +1994,10 @@ function renderTrial() {
   }
   const alvinImg = (t.anim === 'bark' && t.phase === 'wait') ? ALVIN_BIG_BARK : ALVIN_BIG;
   ctx.drawImage(alvinImg, ax, ay, 48, 40);
+  if (t.anim === 'lunge' && t.phase === 'wait' && t.timer < 0.3) { // dust kicked up at his paws
+    ctx.fillStyle = '#c9b18a';
+    ctx.fillRect(ax + 40, ay + 37, 2, 1); ctx.fillRect(ax + 45, ay + 35, 1, 1); ctx.fillRect(ax + 37, ay + 34, 1, 1);
+  }
   if (alvinImg === ALVIN_BIG_BARK) { // little bark arcs off his muzzle, toward the deer
     ctx.fillStyle = '#20242a';
     ctx.fillRect(ax + 50, ay + 12, 2, 1); ctx.fillRect(ax + 54, ay + 9, 2, 1); ctx.fillRect(ax + 54, ay + 15, 2, 1);
@@ -2041,6 +2054,9 @@ function renderCard() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
   drawSceneBanner(2, true);
   drawText('CHAPTER COMPLETE', 80 - textW('CHAPTER COMPLETE', 1) / 2, 70, '#cfe8cf', 1);
+  ctx.fillStyle = '#ffd94a'; // two little stars, twinkling in turn
+  if (Math.floor(perfNow * 2) % 2 === 0) { ctx.fillRect(24, 71, 1, 3); ctx.fillRect(23, 72, 3, 1); }
+  else { ctx.fillRect(133, 71, 1, 3); ctx.fillRect(132, 72, 3, 1); }
   drawText('SEEDS', 80 - textW('SEEDS', 2) / 2, 78, '#ffd94a', 2);
   const teaser = wrapText('SIX POTS, SIX PROMISES. NO LAND YET — BUT A START.', 34);
   teaser.forEach((l, i) => drawText(l, 80 - textW(l, 1) / 2, 91 + i * 7, '#ffffff', 1));
@@ -2111,6 +2127,7 @@ function controlsUpdate() {
 function renderControls() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
   drawPanel(4, 4, 152, 136);
+  ctx.drawImage(FRANK_DOWN, 10, 7); ctx.drawImage(ALVIN_DOWN, 134, 7); // the cast presents the controls
   drawText('CONTROLS', 80 - textW('CONTROLS', 2) / 2, 10, '#20242a', 2);
   const head = (t, y) => drawText(t, 12, y, '#2e8b3a', 1);
   const row = (t, y) => drawText(t, 12, y, '#20242a', 1);
@@ -2160,6 +2177,11 @@ function registerUpdate() {
   }
 }
 function dayOr(day, none) { return day != null ? 'DAY ' + day : none; }
+function drawPaw(x, y, col) { // Alvin has signed the journal, in his own way
+  ctx.fillStyle = col;
+  ctx.fillRect(x + 2, y + 4, 5, 3); ctx.fillRect(x + 3, y + 7, 3, 1);
+  ctx.fillRect(x, y + 1, 2, 2); ctx.fillRect(x + 3, y, 2, 2); ctx.fillRect(x + 6, y + 1, 2, 2);
+}
 function renderRegister() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
   drawPanel(4, 4, 152, 136);
@@ -2179,6 +2201,7 @@ function renderRegister() {
     });
     const seen = s.dex.blueberry;
     drawText('STAGES SEEN: ' + (seen.length ? seen.join(' · ') : 'NONE YET'), 12, 129, '#5a6270', 1);
+    drawPaw(142, 124, '#b09a72');
   } else {
     const p = s.pots[regSel];
     drawText(p.name, 14, 11, '#20242a', 2);
@@ -2202,6 +2225,7 @@ function renderRegister() {
       if (i === regCardSel) drawText('▶', 14, y, '#b03030', 1);
       drawText(l, 22, y, '#20242a', 1);
     });
+    drawPaw(142, 124, '#b09a72');
   }
 }
 
