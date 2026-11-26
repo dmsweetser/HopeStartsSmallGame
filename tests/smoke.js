@@ -812,6 +812,63 @@ function findChromium() {
   check('register opens on the list view', s.register.view === 'list', s.register.view);
   await tap('x'); await page.waitForTimeout(200);
 
+  // CHAPTER 3 — LANDING: Berryhill, the viewing, the move, the build,
+  // the carry, and the first night in the glass house.
+  await page.evaluate(() => {
+    const sv = __hss.debugSave();
+    sv.world.ch = 3; sv.world.step = 0; sv.world.area = 'yard';
+    sv.plants.forEach(p => { p.memorial = false; p.health = 0; p.husk = false; if (p.location === 'MEMORIAL') p.location = 'WINDOW'; });
+    __hss.setSave(sv);
+  });
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(8);
+  s = await S();
+  check('landing opens: step 1, the road is open', s.world.step === 1 && s.world.ch === 3, 'step=' + s.world.step);
+  await page.evaluate(() => window.__hss.gotoArea('barnOut', 2, 1));
+  await dismissDialogue(8);
+  s = await S();
+  check('the viewing: Berryhill loads, step 2', s.world.area === 'barnOut' && s.world.step === 2, 'area=' + s.world.area + ' step=' + s.world.step);
+  check('the field is on the map, fenced and waiting', await page.evaluate(() => mapChar(13, 12) === 'G' && mapChar(13, 14) === 's' && mapChar(20, 9) === 's'), '');
+  for (let i = 0; i < 2; i++) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(8); }
+  s = await S();
+  check('the decision: the barn, step 4', s.world.step === 4, 'step=' + s.world.step);
+  await page.evaluate(() => window.__hss.chooseLoadOrder('plants'));
+  await dismissDialogue(8);
+  s = await S();
+  check('plants ride first: all in the office', s.plants.every(p => p.memorial || p.location === 'OFFICE') && s.world.step === 5, 'step=' + s.world.step);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(8);
+  s = await S();
+  check('moving done: step 6, build the glass house', s.world.step === 6, 'step=' + s.world.step);
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(() => window.__hss.buildGreenhouse());
+    await dismissDialogue(8);
+    if (i < 2) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(6); }
+  }
+  s = await S();
+  check('greenhouse built in three days', s.field.heater === true && s.world.step === 7, 'heater=' + s.field.heater + ' step=' + s.world.step);
+  await page.evaluate(() => { let guard = 0; while (G.save.plants.some(p => p.location === 'OFFICE' && !p.memorial) && guard++ < 12) carryPlants(); });
+  await dismissDialogue(8);
+  s = await S();
+  check('the carry: everyone in the greenhouse', s.plants.every(p => p.memorial || p.location === 'GREENHOUSE') && s.world.step === 8, 'step=' + s.world.step + ' in=' + s.plants.filter(p => p.location === 'GREENHOUSE').length);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('the first night: FROST at the glass, 35/28', s.mode === 'trial' && s.trial && s.trial.foe === 'FROST' && s.trial.maxPressure === 35 && s.trial.maxVigor === 28, JSON.stringify(s.trial && { mp: s.trial.maxPressure, mv: s.trial.maxVigor }));
+  await page.evaluate(() => { trial.pressure = 3; });
+  await page.waitForTimeout(1400);
+  await tap('z'); await page.waitForTimeout(250);
+  await tap('z'); await page.waitForTimeout(1600);
+  await dismissDialogue(8);
+  s = await S();
+  check('the glass holds: step 9', s.world.step === 9 && s.mode === 'overworld', 'step=' + s.world.step + ' mode=' + s.mode);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('landing complete: chapter 3 card', s.mode === 'card' && s.world.ch === 4, 'mode=' + s.mode + ' ch=' + s.world.ch);
+  await tap('z'); await page.waitForTimeout(300);
+
   // a save written in the oldest formats still loads: pots as a bare stage
   // int and as {stage, waterDays} objects both migrate to named plants
   await page.evaluate(() => {

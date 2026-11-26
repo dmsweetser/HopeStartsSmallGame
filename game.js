@@ -1296,9 +1296,68 @@ const HOUSE_MAP = [
   'HHHHHHHHHHDHHHHHHHHH',
 ];
 const HOUSE_SOLID = new Set(['H', 'a', 'r', 'k', 'h', 'e', 'x', 'f']);
+const BARNOUT_MAP = [
+  'TTpTTTTTTTTTTTTTTTTTTTTTTT',
+  'TpgggggggggggggggggggggggT',
+  'TpggggggRRRRRRRRggRRRgRRRT',
+  'TpggggggWWiWWWiWggWWWgWWWT',
+  'TpggggggEEEEEDEEgEDEgEDEET',
+  'TpgggggugggggggggggggggggT',
+  'TpgggggggggggggggggggggggT',
+  'TpgogggggggggggggggggggggT',
+  'TpggggggggggggggggsssssggT',
+  'TpggbgggggggggggggsssssggT',
+  'TppppppppppppgggggsssssggT',
+  'TgggggggggggggggggsssssggT',
+  'TffffffffffffGfffffffffffT',
+  'TssssssssssssssssssssssssT',
+  'TssssssssssssssssssssssssT',
+  'TssssssssssssssssssssssssT',
+  'TssssssssssssssssssssssssT',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTT',
+];
+const BARNIN_MAP = [
+  'HHHHHHHHHHHHHHHH',
+  'HaaaaaaazzkkzzzH',
+  'HzzzzzzzzzzzzzzH',
+  'HzzZZzzzzzzzzzzH',
+  'HzzZZzzzeeeezzzH',
+  'HzzzzzzzeeeezzxH',
+  'HzzzzzzzzzzzzzzH',
+  'HzzzzzzzzzzzzzzH',
+  'HzzkzzzzzzzzzmzH',
+  'HzzzzzzzzzzzzzzH',
+  'HHHHHHHHHHHHHHHH',
+];
+const OMA_MAP = [
+  'HHHHHHHHHHHH',
+  'HaaaaazzzzkH',
+  'HzzzzzzzzzzH',
+  'HzzZZzzzzzzH',
+  'HzzZZzzzeeeH',
+  'HzzzzzzzzzzH',
+  'HmmzzzzzzzzH',
+  'HHHHHHDHHHHH',
+];
+const GREEN_MAP = [
+  'HHHHHHHHHHHH',
+  'HaaaaaaaaaaH',
+  'HzzzzzzzzzzH',
+  'HzzzzzzzzzhH',
+  'HzzzzzzzzzzH',
+  'HaaaaaaaaaaH',
+  'HzzzzzzzzzzH',
+  'HzzzzzzzzzzH',
+  'HHHHHHDHHHHH',
+];
+const IN_SOLID = new Set(['H', 'a', 'r', 'k', 'h', 'e', 'x', 'm', 'f']);
 const AREAS = {
   yard: { rows: MAP, w: MAP_W, h: MAP_H, name: 'DEERBROOK' },
   house: { rows: HOUSE_MAP, w: 20, h: 13, name: 'THE HOUSE', solid: HOUSE_SOLID },
+  barnOut: { rows: BARNOUT_MAP, w: 26, h: 18, name: 'BERRYHILL' },
+  barnIn: { rows: BARNIN_MAP, w: 16, h: 11, name: 'THE BARN — UPSTAIRS', solid: IN_SOLID },
+  oma: { rows: OMA_MAP, w: 12, h: 8, name: 'THE DOWNSTAIRS', solid: IN_SOLID },
+  green: { rows: GREEN_MAP, w: 12, h: 9, name: 'THE GREENHOUSE', solid: IN_SOLID },
 };
 let AW = MAP_W, AH = MAP_H;
 let npcList = []; // runtime NPCs in the current area: {id,tx,ty,dir,set,name}
@@ -1307,16 +1366,35 @@ function mapChar(x, y) { const a = curArea(); if (x < 0 || y < 0 || x >= a.w || 
 function isSolid(x, y) { const a = curArea(); return (a.solid || SOLID).has(mapChar(x, y)); }
 function setArea(name, tx, ty) {
   area = name; const a = curArea(); AW = a.w; AH = a.h;
+  if (name === 'barnOut') { constance.tx = 11; constance.ty = 6; }
+  if (name === 'yard') { constance.tx = 13; constance.ty = 5; }
   G.save.world.area = name;
   player.tx = tx; player.ty = ty; syncPixels(player);
   alvin.tx = tx; alvin.ty = Math.min(AH - 1, ty + 1); syncPixels(alvin);
   alvinTarget = null;
   layoutNPCs();
   saveGame();
+  onEnterArea(name);
+}
+function onEnterArea(name) {
+  const s = G.save; if (!s) return;
+  const w = s.world;
+  if (name === 'barnOut' && w.ch === 3 && w.step === 1 && !w.flags.visited) {
+    w.flags.visited = true; w.step = 2; saveGame();
+    say(['THE PLACE OUTSIDE BERRYHILL. A BARN THAT BECAME A HOUSE, A HOUSE THAT KEPT THE BARN\'S HONESTY.', 'A GOOD SHED. A LINE OF PINES. AND THE FIELD — SQUARE, OPEN, WAITING — VISIBLE FROM THE DRIVE LIKE IT IS HOLDING ITS BREATH.', 'CONSTANCE, QUIETLY: OH. OH, FRANK.', 'FRANK: I KNOW. I KNOW. DO NOT SAY IT YET. LET IT BE UNSAID AND TRUE A MINUTE LONGER.']);
+  }
 }
 function exitsFor(a) { return EXITS[a] ? EXITS[a]() : []; }
 const EXITS = { // area -> () => [{x,y,to,tx,ty}] (state-dependent)
   house: () => [{ x: 10, y: 12, to: 'yard', tx: 10, ty: 5 }],
+  barnOut: () => {
+    const ex = [{ x: 2, y: 0, to: 'yard', tx: 11, ty: 1 }];
+    if (G.save.world.ch >= 3 && (G.save.world.flags.buildStep || 0) >= 3) ex.push({ x: 20, y: 11, to: 'green', tx: 6, ty: 7 });
+    return ex;
+  },
+  barnIn: () => [{ x: 14, y: 5, to: 'barnOut', tx: 13, ty: 5 }],
+  oma: () => [{ x: 6, y: 7, to: 'barnOut', tx: 18, ty: 5 }],
+  green: () => [{ x: 6, y: 8, to: 'barnOut', tx: 20, ty: 11 }],
 };
 /* NPCs: simple folk, placed by chapter and step. Sets are palettes for the
    little figure drawer; Constance uses her real sprite set. */
@@ -1338,6 +1416,17 @@ function npcsFor(a) {
       list.push({ id: 'zoey', tx: 6, ty: 13, dir: 'down', set: 'zoey', name: 'ZOEY' });
       list.push({ id: 'lily', tx: 12, ty: 6, dir: 'down', set: 'lily', name: 'LILY' });
     }
+  }
+  if (w.ch === 3) {
+    if (a === 'barnOut') {
+      list.push({ id: 'zoey', tx: 5, ty: 9, dir: 'down', set: 'zoey', name: 'ZOEY' });
+      list.push({ id: 'lily', tx: 6, ty: 9, dir: 'down', set: 'lily', name: 'LILY' });
+    }
+    if (a === 'barnIn') {
+      list.push({ id: 'constance', tx: 4, ty: 3, dir: 'down', set: 'constance', name: 'CONSTANCE' });
+      if (w.step === 7) list.push({ id: 'jeremiah', tx: 9, ty: 3, dir: 'down', set: 'jeremiah', name: 'JEREMIAH' });
+    }
+    if (a === 'green' && w.step >= 8) list.push({ id: 'jeremiah', tx: 5, ty: 4, dir: 'down', set: 'jeremiah', name: 'JEREMIAH' });
   }
   if (a === 'house' && w.ch === 2) {
     list.push({ id: 'constance', tx: 5, ty: 4, dir: 'down', set: 'constance', name: 'CONSTANCE' });
@@ -1419,7 +1508,174 @@ function npcTalk(npc) {
 
 function areaInteract(f) {
   if (area === 'house') return houseInteract(f);
+  if (area === 'barnOut') return barnInteract(f);
+  if (area === 'barnIn') return barnInInteract(f);
+  if (area === 'oma') return omaInteract(f);
+  if (area === 'green') return greenInteract(f);
 }
+const BERRY_CONSTANCE = [
+  'CONSTANCE: THE BARN SMELLS OF HAY AND SECOND CHANCES. I CHECKED: THE SECOND CHANCES ARE STRUCTURAL.',
+  'CONSTANCE: A FIELD, FRANK. AN ACTUAL FIELD. I HAVE ALREADY FORGIVEN IT FOR THE WORK IT WILL CAUSE.',
+  'CONSTANCE: THE DOWNSTAIRS WILL BE OMA\'S WHEN SHE IS READY. THE DOOR OPENS TO THE YARD — HER OWN DOOR. THAT MATTERS.',
+];
+function barnInteract(f) {
+  const s = G.save, w = s.world, ch = mapChar(f.x, f.y);
+  if (f.x === constance.tx && f.y === constance.ty) {
+    constance.dir = ({ up: 'down', down: 'up', left: 'right', right: 'left' })[player.dir];
+    return say(BERRY_CONSTANCE[s.day % BERRY_CONSTANCE.length]);
+  }
+  if (f.x === 13 && f.y === 4) { // the barn door
+    return say('THE BARN DOOR. HOME, AS OF VERY RECENTLY.', which => {
+      if (which === 0) restDay();
+      else if (which === 1) setArea('barnIn', 14, 6);
+    }, ['REST', 'GO INSIDE', 'NOT YET']);
+  }
+  if (f.x === 18 && f.y === 4) { // the downstairs door
+    return say('THE DOWNSTAIRS DOOR. IT OPENS TO THE YARD, ON ITS OWN — AN APARTMENT WITH ITS OWN FRONT DOOR.', which => { if (which === 0) setArea('oma', 6, 6); }, ['GO IN', 'NOT YET']);
+  }
+  if (f.x === 22 && f.y === 4) return say('THE GOOD SHED. SOUND ROOF, TRUE WALLS. INSIDE: TWINE, STAKES, A TAPE MEASURE, AND A SPADE THAT HAS SEEN THINGS.');
+  if (f.x === 13 && f.y === 12) return say('THE FIELD GATE. FIRST, A HOUSE TO LIVE IN AND A GLASS HOUSE FOR THE PLANTS. THEN — EVERYTHING.');
+  if (f.x >= 18 && f.x <= 22 && f.y >= 8 && f.y <= 11) { // the greenhouse site
+    if (w.ch === 3 && w.step === 6 && (w.flags.buildStep || 0) < 3) {
+      if (w.flags.buildDay === s.day) return say('ENOUGH BUILDING FOR ONE DAY. GLASS KEEPS. SO DOES FRANK, BARELY.');
+      const stage = ['THE FRAME', 'THE SHELL', 'THE HEATER'][(w.flags.buildStep || 0)];
+      return say('THE GREENHOUSE SITE, STAKED WITH STRING. NEXT: ' + stage + '.', which => { if (which === 0) buildGreenhouse(); }, ['BUILD: ' + stage, 'NOT YET']);
+    }
+    if ((w.flags.buildStep || 0) >= 3) return say('THE GREENHOUSE. GLASS AND PATIENCE. (STEP ONTO ITS DOORSTEP TO GO IN.)');
+    return say('A LEVEL PATCH OF GROUND, STAKED WITH STRING. SOMETHING IS PLANNED HERE.');
+  }
+  if (ch === 'T') return say('THE PINE LINE. THE WIND COMES THROUGH IT LIKE IT IS READING ALOUD.');
+  if (ch === 'b') return say('A BIRDBATH, INHERITED WITH THE PROPERTY. THE BIRDS HAVE ALREADY SIGNED THE LEASE.');
+  return say('BERRYHILL. THE NAME IS ON THE MAILBOX AND, FRANK INSISTS, ON HIS HEART.');
+}
+function buildGreenhouse() {
+  const s = G.save, w = s.world;
+  w.flags.buildDay = s.day;
+  w.flags.buildStep = (w.flags.buildStep || 0) + 1;
+  saveGame();
+  if (w.flags.buildStep === 1) return say(['DAY ONE: THE FRAME. POSTS, BEAMS, AND A LEVEL THAT FRANK CONSULTS LIKE SCRIPTURE.', 'IT STANDS. IT IS SQUARE. CONSTANCE CHECKS THE LEVEL HERSELF AND NODS ONCE, WHICH IS APPLAUSE.']);
+  if (w.flags.buildStep === 2) return say(['DAY TWO: THE SHELL. THE WIND PICKS TODAY, OF ALL DAYS, TO HAVE OPINIONS.', 'FRANK HOLDS A PANEL. THE PANEL HOLDS FRANK. CONSTANCE HOLDS THE LADDER, THE SCREWS, AND THE SITUATION.', 'IT IS ON. IT IS SEALED. IT GLEAMS.']);
+  s.field.heater = true; w.step = 7; layoutNPCs();
+  return say(['DAY THREE: THE HEATER, A LITTLE STOVE WITH A SERIOUS FACE.', 'THE GLASS HOUSE IS A HOUSE NOW. TOMORROW THE PLANTS MOVE IN — CARRIED, A LOAD AT A TIME, FROM THE OFFICE SHELF.']);
+}
+function barnInInteract(f) {
+  const s = G.save, w = s.world, ch = mapChar(f.x, f.y);
+  if (ch === 'a') {
+    if (f.x === 1) { // the shelf end: carrying and watering live here
+      if (w.ch === 3 && w.step === 7 && s.plants.some(p => p.location === 'OFFICE' && !p.memorial)) {
+        return say('THE OFFICE SHELF, FULL OF PLANTS PRACTICING THEIR INDOOR VOICES.', which => {
+          if (which === 0) carryPlants();
+          else if (which === 1) waterLocation('OFFICE');
+        }, ['CARRY A LOAD TO THE GREENHOUSE', 'WATER THEM HERE', 'NOT NOW']);
+      }
+      return say('THE OFFICE SHELF.', which => { if (which === 0) waterLocation('OFFICE'); }, ['WATER THE SHELF', 'NOT NOW']);
+    }
+    if (f.x >= 2 && f.x <= 7) {
+      const p = sixPlants().find(q => q.location === 'OFFICE' && q.slot === f.x - 2);
+      if (p) return potInteract(p);
+      return say('AN EMPTY SPOT ON THE OFFICE SHELF. IT WILL NOT STAY EMPTY. IT NEVER DOES.');
+    }
+  }
+  if (ch === 'e') return say('THE TABLE. IT MADE THE TRIP. EVERYTHING IMPORTANT IN THIS FAMILY HAS BEEN DECIDED AT THIS TABLE, INCLUDING BREAKFAST.');
+  if (ch === 'k') return say('THE COUNTER. THE KETTLE HAS FOUND ITS NEW HOME AND APPROVES OF THE VIEW.');
+  if (ch === 'm') return say('THE BED. MOVING HOUSE IS A CONTACT SPORT AND EVERYONE IS BRUISED IN PLACES THEY DID NOT KNOW THEY HAD.');
+  return say('UPSTAIRS IN THE BARN. IT SMELLS OF WOOD AND BEGINNINGS.');
+}
+function waterLocation(loc) {
+  let n = 0;
+  for (const p of G.save.plants) if (!p.memorial && p.location === loc && p.stage >= 1 && !p.watered) { waterPlant(p); n++; }
+  saveGame();
+  say(n ? 'WATERED, ALL OF THEM. ' + n + ' DRINKS POURED.' : 'EVERYONE HERE IS ALREADY WATERED.');
+}
+function carryPlants() {
+  const s = G.save, w = s.world;
+  const load = s.plants.filter(p => p.location === 'OFFICE' && !p.memorial).slice(0, 6);
+  if (!load.length) return;
+  for (const p of load) { p.location = 'GREENHOUSE'; p.slot = null; }
+  saveGame();
+  const left = s.plants.filter(p => p.location === 'OFFICE' && !p.memorial).length;
+  if (!left) {
+    w.step = 8; layoutNPCs();
+    return say(['THE LAST LOAD GOES OVER. JEREMIAH CARRIES TWO AND SUPERVISES THE REST LIKE A SMALL FOREMAN.', 'THE GREENHOUSE IS FULL OF QUIET GREEN. TONIGHT IS ITS FIRST NIGHT — AND THE RADIO SAYS COLD.', 'LIGHT THE LITTLE STOVE BEFORE DARK, OR TRUST THE GLASS. (THE STOVE IS THE BETTER BET.)']);
+  }
+  say(['A LOAD GOES OVER: ' + load.map(p => p.name).join(', ') + '. JEREMIAH WALKS THE PATH LIKE IT IS A PARADE ROUTE.', left + ' STILL WAIT ON THE SHELF.']);
+}
+function greenInteract(f) {
+  const s = G.save, w = s.world, ch = mapChar(f.x, f.y);
+  if (ch === 'h') {
+    if (w.flags.heaterLit) return say('THE STOVE TICKS WITH HEAT. THE GLASS FOGS, JUST A LITTLE, AT THE EDGES. ALL IS WELL.');
+    return say('THE LITTLE STOVE, COLD. THE NIGHT WILL BE WHAT IT WILL BE.', which => { if (which === 0) { w.flags.heaterLit = true; saveGame(); say('LIT. THE STOVE SETTLES INTO ITS WORK WITH A TICK AND A SIGH.'); } }, ['LIGHT THE STOVE', 'LEAVE IT']);
+  }
+  if (ch === 'a') return say('THE BENCHES. EVERY PLANT IN ITS PLACE, EVERY PLACE WITH A PLANT.', which => { if (which === 0) waterLocation('GREENHOUSE'); }, ['WATER THE BENCHES', 'NOT NOW']);
+  return say('THE GREENHOUSE. IT SMELLS OF WARM EARTH AND POSSIBILITY.');
+}
+function omaInteract(f) {
+  const ch = mapChar(f.x, f.y);
+  if (ch === 'a' && f.x === 2) return say(['THE PHOTOGRAPH ON OMA\'S SHELF: A YOUNGER OMA, AND OPA, SQUINTING INTO A SUN THAT HAS LONG SINCE SET.', 'HE IS NOT HERE. HE IS NOT NOWHERE, EITHER. THE ROOM KEEPS HIM THE WAY THE REGISTER KEEPS A NAME.']);
+  if (ch === 'a') return say('OMA\'S SHELF. EVERYTHING ON IT IS EXACTLY WHERE IT BELONGS, INCLUDING THE THINGS THAT LOOK RANDOM.');
+  if (ch === 'm') return say('THE BED, MADE WITH HOSPITAL CORNERS AND OPINIONS.');
+  if (ch === 'e') return say('A SMALL TABLE FOR ONE, SET — ON PRINCIPLE — FOR TWO.');
+  return say('THE DOWNSTAIRS. ITS OWN DOOR, ITS OWN HOURS, ITS OWN EVERYTHING. READY WHEN SHE IS.');
+}
+function chooseLoadOrder(order) {
+  const s = G.save;
+  s.world.flags.loadOrder = order; s.world.step = 5;
+  if (order === 'plants') {
+    for (const p of s.plants) if (!p.memorial && (p.location === 'BENCH' || p.location === 'WINDOW')) p.location = 'OFFICE';
+    s.world.flags.plantsMoved = true; saveGame();
+    say(['THE PLANTS RIDE FIRST — IN THE CAB, IN BOXES, IN FRANK\'S LAP, IN DESCENDING ORDER OF FRAGILITY AND ASCENDING ORDER OF VOLUME.', 'THE FURNITURE CAN WAIT A DAY. IT HAS WAITED THIS LONG. THE PLANTS MOVE INTO THE BARN OFFICE BY SUPPERTIME.']);
+  } else {
+    saveGame();
+    say(['THE FURNITURE RIDES FIRST. THE PLANTS WILL SPEND ONE NIGHT IN THE EMPTY HOUSE.', 'FRANK: ONE NIGHT. THEY WILL BE FINE. (HE WILL THINK ABOUT IT ALL NIGHT. HE IS THINKING ABOUT IT NOW.)']);
+  }
+}
+function ch3Opening() {
+  say(['THE RENTAL IS SMALL AND THE PLANTS HAVE THE WINDOW AND MOST OF THE TABLE.', 'THE AGENT CALLS: HER FRIEND HAS HEARD OF A PLACE. A BARN, OUTSIDE A TOWN CALLED BERRYHILL. LAND WITH IT. A FIELD, EVEN.', 'CONSTANCE: WE GO AND LOOK. QUIETLY. NO FALLING IN LOVE BEFORE THE ROOF IS INSPECTED.', 'FRANK: AGREED. COMPLETELY. (HE IS ALREADY IN LOVE. THE GATE BY THE ROAD WILL TAKE YOU THERE.)']);
+}
+function ch3Dawn(ev) {
+  const s = G.save, w = s.world;
+  if (w.step === 0) { w.step = 1; return ['A BARN. LAND. A FIELD. THE WORDS GO AROUND THE RENTAL LIKE A CAT AROUND A CHAIR.', 'THE GATE BY THE ROAD, WHEN YOU ARE READY. CONSTANCE HAS ALREADY PACKED A TAPE MEASURE AND NO EXPECTATIONS.']; }
+  if (w.step === 2) { w.step = 3; return null; } // a day of thinking it over
+  if (w.step === 3) {
+    w.step = 4;
+    return ['ONE MORE HOUSE FAILS — A NICE HOUSE, WITH A YARD THE SIZE OF A RUG AND A NEIGHBOUR WITH A LEAF BLOWER AND A PHILOSOPHY.', 'CONSTANCE: THE BARN, FRANK.', 'FRANK: THE BARN WAS NEVER THE PLAN. THE FIELD WAS.', 'CONSTANCE: THEY COME AS A SET. THEY ALWAYS DID. THIS WEEKEND, THEN. THE TRUCK COMES SATURDAY. THE HOUSE DOOR, BACK IN DEERBROOK, WHEN YOU ARE READY.'];
+  }
+  if (w.step === 5) {
+    if (w.flags.loadOrder === 'furniture' && !w.flags.plantsMoved) {
+      w.flags.plantsMoved = true;
+      for (const p of s.plants) if (!p.memorial && (p.location === 'BENCH' || p.location === 'WINDOW')) { p.wateredDays = Math.max(0, p.wateredDays - 1); p.location = 'OFFICE'; }
+      w.step = 6; saveGame();
+      return ['THE PLANTS SPENT THE NIGHT IN THE EMPTY HOUSE, IN THE COLD, AMONG THE ECHOES.', 'THEY ARE ALIVE. THEY ARE FINE. FRANK HAS APOLOGIZED TO EACH OF THEM BY NAME ANYWAY, AND ONE OF THE APOLOGIES HAD A SMALL SPEECH IN IT.', 'CONSTANCE: THEY FORGIVE YOU. PLANTS ARE LIKE THAT. NOW — A GLASS HOUSE FOR THEM, BEFORE ANYTHING ELSE.'];
+    }
+    if (w.flags.loadOrder === 'plants') { w.step = 6; return ['THE FURNITURE ARRIVES ON THE SECOND LOAD, SLIGHTLY OFFENDED AND ENTIRELY INTACT.', 'THE PLANTS ARE ALREADY ON THE OFFICE SHELF, ACTING LIKE THEY OWN THE BARN. NEXT: THE GREENHOUSE. ITS SITE IS STAKED, BY THE FIELD PATH.']; }
+  }
+  if (w.step === 8) { startGlassTrial(); return null; }
+  if (w.step === 9) {
+    completeChapter(3);
+    return null;
+  }
+  return null;
+}
+function startGlassTrial() {
+  const s = G.save;
+  const gp = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE');
+  startTrial({ foe: 'FROST', kind: 'frostGlass', pressure: 35, vigor: 28, snap: true, plantsList: gp.length ? gp : sixPlants(), msg: 'THE FIRST NIGHT IN THE GLASS HOUSE, AND THE COLD COMES TO TEST THE SEAMS! ALVIN STANDS IN THE DOORWAY OF THE GREENHOUSE AND DARES IT!' });
+}
+TRIAL_OUTCOMES.frostGlass = {
+  win(t) {
+    G.save.world.step = 9; saveGame();
+    say(['THE GLASS HOLDS. THE STOVE TICKS. BY MORNING THERE IS FROST ON THE OUTSIDE OF THE PANES AND NONE — NONE — ON THE INSIDE.', 'THE PLANTS HAVE A HOUSE. THE FAMILY HAS A BARN. THE FIELD HAS A FUTURE. EVERYONE SLEEPS.']);
+  },
+  lose(t, fled) {
+    const s = G.save, w = s.world;
+    if (fled) { say('ALVIN BACKS OFF. THE COLD KEEPS THE NIGHT; THE WAR CONTINUES TOMORROW.'); return; }
+    w.step = 9;
+    for (const p of t.plantsList || []) { if (!p.memorial) { p.wateredDays = 0; p.dirtCredit = 0; if (p.health < 3) p.health++; } }
+    saveGame();
+    say(['THE COLD FOUND A SEAM. BY MORNING THE GLASS HOUSE CROWD IS A DAY POORER AND A STEP SORER — BUT STANDING.', 'CONSTANCE: A HOUSE, LIKE A PLANT, TELLS YOU WHERE IT HURTS. WE SEAL THE SEAM. WE GO ON. THEY ARE ALL STILL HERE, FRANK.']);
+  },
+};
+
 function houseInteract(f) {
   const s = G.save, w = s.world, ch = mapChar(f.x, f.y);
   // the moving boxes stand on floor tiles in the corner
@@ -1543,9 +1799,79 @@ function renderArea() {
   ctx.fillStyle = '#ffd94a'; ctx.fillRect(2, 10, 34, 1);
   drawText('DAY ' + G.save.day, 4, 4, '#ffffff', 1);
 }
+function renderBerry() {
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VW, VH);
+  camX = Math.round(Math.max(0, Math.min(AW * TILE - VW, player.px + 8 - VW / 2)));
+  camY = Math.round(Math.max(0, Math.min(AH * TILE - VH, player.py + 8 - VH / 2)));
+  const winter = seasonOf(G.save.day).idx === 3;
+  const x0 = Math.floor(camX / TILE), y0 = Math.floor(camY / TILE);
+  for (let ty = y0; ty <= y0 + 9; ty++) for (let tx = x0; tx <= x0 + 10; tx++) {
+    if (tx < 0 || ty < 0 || tx >= AW || ty >= AH) continue;
+    const ch = mapChar(tx, ty), sx = tx * TILE - camX, sy = ty * TILE - camY;
+    const sway = (Math.floor(perfNow * 1.5) + tx + ty) % 2 === 0;
+    let base = TILES.grass;
+    if (ch === 'g') { const h = (tx * 31 + ty * 17) % 9; base = h === 0 ? (sway ? TILES.tuftB : TILES.tuft) : h === 4 ? TILES.grass3 : h === 6 ? TILES.grass4 : h === 7 ? TILES.grass2 : TILES.grass; }
+    if (winter && SNOW_TILES.grass) base = SNOW_TILES[base === TILES.tuft ? 'tuft' : base === TILES.tuftB ? 'tuftB' : base === TILES.grass3 ? 'grass3' : base === TILES.grass4 ? 'grass4' : base === TILES.grass2 ? 'grass2' : 'grass'] || base;
+    ctx.drawImage(base, sx, sy);
+    let t = TILES[TILEMAP[ch]];
+    if (ch === 'o') t = sway ? TILES.flowerB : TILES.flower;
+    if (winter && SNOW_TILES[TILEMAP[ch]]) t = SNOW_TILES[TILEMAP[ch]];
+    if (t && TILEMAP[ch] !== 'grass') ctx.drawImage(t, sx, sy);
+    if (ch === 'T') ctx.drawImage(winter && SNOW_TREE ? SNOW_TREE : TREE, sx, sy);
+    if (ch === 's' && ty >= 13) { // the field: combed soil, waiting for stakes
+      ctx.fillStyle = 'rgba(90,58,30,0.35)'; ctx.fillRect(sx, sy + 3, TILE, 1); ctx.fillRect(sx, sy + 10, TILE, 1);
+    }
+  }
+  // the greenhouse, in its three acts: site, frame and shell, glass house
+  const bs = G.save.world.flags.buildStep || 0;
+  if (G.save.world.ch >= 3) {
+    const gx = 18 * TILE - camX, gy = 8 * TILE - camY;
+    if (bs === 1) { ctx.strokeStyle = '#8a6f45'; ctx.fillStyle = '#8a6f45'; for (let i = 0; i < 5; i++) ctx.fillRect(gx + i * 16 + 2, gy + 2, 3, 44); ctx.fillRect(gx + 2, gy + 2, 78, 3); }
+    else if (bs === 2) { ctx.fillStyle = 'rgba(190,220,245,0.5)'; ctx.fillRect(gx + 2, gy + 2, 76, 44); ctx.fillStyle = '#8a6f45'; for (let i = 0; i < 5; i++) ctx.fillRect(gx + i * 16 + 2, gy + 2, 3, 44); ctx.fillRect(gx + 2, gy + 2, 78, 3); ctx.fillRect(gx + 2, gy + 24, 78, 2); }
+    else if (bs >= 3) { ctx.fillStyle = 'rgba(190,220,245,0.65)'; ctx.fillRect(gx + 2, gy + 2, 76, 44); ctx.fillStyle = '#e8f4fc'; for (let i = 0; i < 5; i++) ctx.fillRect(gx + i * 16 + 2, gy + 2, 2, 44); ctx.fillRect(gx + 2, gy + 2, 78, 2); ctx.fillStyle = '#5e4c36'; ctx.fillRect(gx + 36, gy + 34, 10, 12); }
+  }
+  const spk = (mode === 'dialogue' && dlg) ? dlg.lines[dlg.idx] : null;
+  const spkName = spk && dlg.chars < spk.text.length ? spk.name : null;
+  player.talk = spkName === 'FRANK';
+  const ents = [];
+  ents.push({ y: constance.py, draw: () => charSprite({ px: constance.tx * TILE, py: constance.ty * TILE, dir: constance.dir, moving: false, blinkOff: 1.9, talk: spkName === 'CONSTANCE' }, CONSTANCE_SET) });
+  for (const n of npcList) ents.push({ y: n.ty * TILE, draw: () => drawNPCFigure(n, n.tx * TILE - camX, n.ty * TILE - camY, spkName === n.name) });
+  if (!alvinAway()) ents.push({ y: alvin.py, draw: () => charSprite(alvin, ALVIN_SET) });
+  ents.push({ y: player.py, draw: () => charSprite(player, FRANK_SET) });
+  ents.sort((a, b) => a.y - b.y).forEach(e => e.draw());
+  ctx.fillStyle = 'rgba(20,26,20,0.8)'; ctx.fillRect(2, 2, 34, 9);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(2, 10, 34, 1);
+  drawText('DAY ' + G.save.day, 4, 4, '#ffffff', 1);
+}
 function drawAreaTile(ch, sx, sy, tx, ty) {
-  if (area === 'house') return drawHouseTile(ch, sx, sy, tx, ty);
+  if (area === 'house' || area === 'barnIn' || area === 'oma') return drawHouseTile(ch, sx, sy, tx, ty);
+  if (area === 'green') return drawGreenTile(ch, sx, sy, tx, ty);
   ctx.fillStyle = '#2a2f26'; ctx.fillRect(sx, sy, TILE, TILE);
+}
+function drawGreenTile(ch, sx, sy, tx, ty) {
+  ctx.drawImage(TILES.soil, sx, sy); // gravel-and-earth floor
+  ctx.fillStyle = 'rgba(120,90,60,0.25)'; ctx.fillRect(sx, sy + 12, TILE, 1);
+  if (ch === 'z' || ch === 'D') { if (ch === 'D') { ctx.fillStyle = '#5e7a4a'; ctx.fillRect(sx + 1, sy + 4, 14, 9); } return; }
+  if (ch === 'H') { // glass: pale panes in a white frame, sky showing through
+    ctx.fillStyle = '#bcd9f2'; ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#dceefb'; ctx.fillRect(sx + 2, sy + 2, 5, 5);
+    ctx.fillStyle = '#f4f8fc'; ctx.fillRect(sx, sy, TILE, 1); ctx.fillRect(sx, sy + 15, TILE, 1); ctx.fillRect(sx, sy, 1, TILE); ctx.fillRect(sx + 15, sy, 1, TILE);
+    return;
+  }
+  if (ch === 'a') { // a bench: slatted wood at working height
+    ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx, sy + 6, TILE, 4);
+    ctx.fillStyle = '#a8895c'; ctx.fillRect(sx, sy + 6, TILE, 1);
+    ctx.fillStyle = '#5e4c36'; ctx.fillRect(sx + 2, sy + 10, 2, 6); ctx.fillRect(sx + 12, sy + 10, 2, 6);
+    return;
+  }
+  if (ch === 'h') { // the little stove
+    ctx.fillStyle = '#3a3f4a'; ctx.fillRect(sx + 2, sy + 5, 12, 11);
+    ctx.fillStyle = '#2a2d33'; ctx.fillRect(sx + 7, sy - 4, 3, 9);
+    const lit = G.save.world.flags.heaterLit;
+    ctx.fillStyle = lit ? '#e07b2a' : '#20242a'; ctx.fillRect(sx + 5, sy + 9, 6, 4);
+    if (lit) { ctx.fillStyle = '#ffd94a'; ctx.fillRect(sx + 7, sy + 10, 2, 2); }
+    return;
+  }
 }
 function drawHouseTile(ch, sx, sy, tx, ty) {
   // warm wood floor everywhere first
@@ -1599,6 +1925,12 @@ function drawHouseTile(ch, sx, sy, tx, ty) {
     ctx.fillStyle = '#c9bfa8'; ctx.fillRect(sx + 1, sy + 11, TILE - 2, 1);
     return;
   }
+  if (ch === 'm') { // a bed, made up neat
+    ctx.fillStyle = '#7a4636'; ctx.fillRect(sx, sy + 2, TILE, 12);
+    ctx.fillStyle = '#e8e2d2'; ctx.fillRect(sx + 1, sy + 3, TILE - 2, 4);
+    ctx.fillStyle = '#8e3b34'; ctx.fillRect(sx + 1, sy + 7, TILE - 2, 6);
+    return;
+  }
   if (ch === 'x') { // stairs up: bedrooms and boxes
     ctx.fillStyle = '#6b5136'; ctx.fillRect(sx, sy, TILE, TILE);
     ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx, sy + 10, TILE, 3); ctx.fillRect(sx, sy + 5, TILE, 3); ctx.fillRect(sx, sy, TILE, 3);
@@ -1611,6 +1943,42 @@ function drawHouseTile(ch, sx, sy, tx, ty) {
   }
 }
 function drawAreaProps() {
+  if (area === 'barnIn') { // the office shelf holds the plants for now
+    const s2 = G.save;
+    for (const p of s2.plants) {
+      if (p.location !== 'OFFICE' || p.memorial) continue;
+      if (p.slot != null && p.slot < 6) {
+        const sx = (2 + p.slot) * TILE - camX, sy = 1 * TILE - camY;
+        ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], sx, sy - 3, 14, 14);
+        if (p.watered) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(sx + 11, sy - 6, 2, 3); }
+      }
+    }
+    const comp = s2.plants.filter(p => p.location === 'OFFICE' && !p.memorial && (p.slot == null || p.slot >= 6));
+    comp.slice(0, 9).forEach((p, i) => {
+      const sx = (11 + (i % 3)) * TILE - camX, sy = (2 + Math.floor(i / 3)) * TILE - camY;
+      ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], sx + 3, sy + 3, 10, 10);
+    });
+    return;
+  }
+  if (area === 'green') { // the benches, north and south
+    const s2 = G.save;
+    const gp = s2.plants.filter(p => p.location === 'GREENHOUSE' && !p.memorial);
+    gp.slice(0, 20).forEach((p, i) => {
+      const north = i < 10;
+      const sx = (1 + (i % 10)) * TILE - camX, sy = (north ? 1 : 5) * TILE - camY;
+      ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], sx + 1, sy - 4, 13, 13);
+      if (p.watered) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(sx + 11, sy - 7, 2, 3); }
+      if (p.health >= 2) { ctx.fillStyle = '#e0483e'; ctx.fillRect(sx + 12, sy + 6, 3, 3); }
+    });
+    return;
+  }
+  if (area === 'oma') { // the photograph on the shelf, facing the room
+    const sx = 2 * TILE - camX, sy = 1 * TILE - camY;
+    ctx.fillStyle = '#5e4c36'; ctx.fillRect(sx + 3, sy + 1, 9, 8);
+    ctx.fillStyle = '#e8e2d2'; ctx.fillRect(sx + 4, sy + 2, 7, 6);
+    ctx.fillStyle = '#8a919c'; ctx.fillRect(sx + 6, sy + 4, 3, 4);
+    return;
+  }
   if (area !== 'house') return;
   const s = G.save;
   // plants on the window shelf, in their slots; the tray at the west end
@@ -2165,7 +2533,7 @@ function entityBlocked(x, y, self) {
   if (isSolid(x, y)) return true;
   if (self !== player && x === player.tx && y === player.ty) return true;
   if (self !== alvin && x === alvin.tx && y === alvin.ty && !alvinAway()) return true;
-  if (area === 'yard' && x === constance.tx && y === constance.ty) return true;
+  if ((area === 'yard' || area === 'barnOut') && x === constance.tx && y === constance.ty) return true;
   if (area === 'yard' && G.save.deerPresent && !G.save.deerBeaten && x === DEER_POS.x && y === DEER_POS.y) return true;
   if (npcList.some(n => n.tx === x && n.ty === y)) return true;
   return false;
@@ -2286,6 +2654,15 @@ function interact() {
   const pi = potIndexAt(f.x, f.y);
   if (pi >= 0) { const bp = sixPlants().find(p => p.location === 'BENCH' && p.slot === pi); if (bp) return potInteract(bp); return say('THE BENCH IS EMPTY HERE NOW. THE POTS LIVE ON — CHECK THE REGISTER.'); }
   if (f.x === 11 && f.y === 3) { // house door
+    if (s.world.ch === 3 && s.world.step === 4) {
+      return say('THE DOOR. THE TRUCK IS IN THE DRIVE, HUNGRY FOR BOXES.', which => {
+        if (which === 0) restDay();
+        else if (which === 1) {
+          say('WHAT RIDES FIRST?', sub => chooseLoadOrder(sub === 0 ? 'furniture' : 'plants'), ['FURNITURE FIRST', 'PLANTS FIRST']);
+        }
+        else if (which === 2) setArea('house', 10, 11);
+      }, ['REST', 'LOAD THE TRUCK', 'GO INSIDE', 'NOT YET']);
+    }
     if (s.world.ch >= 2) {
       return say('THE DOOR. INSIDE SMELLS OF TEA AND CARDBOARD.', which => {
         if (which === 0) restDay();
@@ -2331,7 +2708,10 @@ function interact() {
     saveGame();
     return say(lines);
   }
-  if (ch === 'G') return say('THE GATE STICKS. BEYOND IT: MOWED LAWNS AND ORDINARY LIFE.');
+  if (ch === 'G') {
+    if (s.world.ch >= 3) return say('THE ROAD TO BERRYHILL. IT IS NOT FAR. IT IS ONLY EVERYTHING.', which => { if (which === 0) setArea('barnOut', 2, 1); }, ['GO TO BERRYHILL', 'NOT YET']);
+    return say('THE GATE STICKS. BEYOND IT: MOWED LAWNS AND ORDINARY LIFE.');
+  }
   if (ch === 'T') return say('TOO MUCH SHADE HERE. A FIELD NEEDS OPEN SKY, AND TIME.');
   const uw = weedAt(player.tx, player.ty); // or the weed under Frank's own boots
   if (uw) return pullWeed(uw);
@@ -2514,7 +2894,7 @@ const BERRY_MORNING = [
   'THE MOUNTAINS ARE DOING THEIR LONG BLUE STAND AT THE EDGE OF EVERYTHING.',
 ];
 function wineDawn() {} // spliced full by the Wine chapter
-function chapterDawnPrep(ev) { const w = G.save.world; if (w.ch === 2) ch2DawnPrep(ev); }
+function chapterDawnPrep(ev) { const w = G.save.world; if (w.ch === 2) ch2DawnPrep(ev); if (w.ch >= 3) { G.save.world.flags.heaterLit = false; } }
 function ch2DawnPrep(ev) {
   const s = G.save, w = s.world;
   // stratification: the fridge tray banks one day per winter day
@@ -2585,7 +2965,7 @@ TRIAL_OUTCOMES.frostTray = {
   },
 };
 
-function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); return null; }
+function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); if (w.ch === 3) return ch3Dawn(ev); return null; }
 
 const CHAPTER_INFO = [
   null,
@@ -3093,6 +3473,7 @@ function charSprite(e, set) {
   drawSprite(img, shx, shy, e.dir === 'left');
 }
 function renderOverworld() {
+  if (area === 'barnOut') return renderBerry();
   if (area !== 'yard') return renderArea();
   camX = Math.round(Math.max(0, Math.min(AW * TILE - VW, player.px + 8 - VW / 2)));
   camY = Math.round(Math.max(0, Math.min(AH * TILE - VH, player.py + 8 - VH / 2)));
@@ -3369,7 +3750,7 @@ function renderTrial() {
 function cardUpdate() {
   if (Input.aHit || Input.bHit) { mode = 'overworld'; chapterCardDone(cardChapter); } // KEEP TENDING
 }
-function chapterCardDone(n) { if (n === 1) ch2Opening(); }
+function chapterCardDone(n) { if (n === 1) ch2Opening(); if (n === 2) ch3Opening(); }
 function renderCard() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
   drawSceneBanner(2, true);
@@ -3825,6 +4206,9 @@ window.__hss = {
   storageTrip() { storageTrip(); },
   potUp() { potUp(); },
   signSale() { if (G.save.world.step === 8) signSale(); },
+  buildGreenhouse() { buildGreenhouse(); },
+  chooseLoadOrder(o) { chooseLoadOrder(o); },
+  carryPlants() { carryPlants(); },
   warp(x, y) { player.tx = x; player.ty = y; syncPixels(player); alvin.tx = x; alvin.ty = Math.min(AH - 1, y + 1); syncPixels(alvin); },
   gotoArea(a, x, y) { setArea(a, x, y); },
   setDay(n) { G.save.day = n; saveGame(); },
