@@ -10,9 +10,9 @@ Open the GitHub Pages site, or run it locally (below). Progress saves automatica
 
 - **Keyboard:** Arrows / WASD move · Z or Enter = A (confirm) · X or Esc = B (back) · P = menu
 - **Gamepad** (standard mapping): D-pad or left stick move · A = confirm · B = back · Start = menu
-- **Touch:** virtual joystick (bottom-left) · A / B buttons (bottom-right)
+- **Touch:** virtual joystick and A / B buttons in the control deck below the screen
 
-All three work at the same time.
+All three work at the same time. The in-game **CONTROLS** menu (from the title screen or the pause menu) lists every scheme and lets you set when the touch controls show: AUTO (touch devices), ALWAYS, or OFF.
 
 ## Run locally
 

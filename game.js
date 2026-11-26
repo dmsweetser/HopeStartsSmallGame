@@ -110,9 +110,24 @@ TILES.lawn = tileCanvas(c => { // neighbours' striped lawn, seen over the fence
   c.fillStyle = '#5cba45'; c.fillRect(0, 0, 4, 16); c.fillRect(8, 0, 4, 16);
 });
 TILES.path = tileCanvas(c => {
-  c.fillStyle = '#ecd28a'; c.fillRect(0, 0, 16, 16); c.fillStyle = '#d9b96a';
-  c.fillRect(2, 2, 2, 1); c.fillRect(9, 5, 3, 1); c.fillRect(4, 9, 2, 1); c.fillRect(12, 12, 2, 1); c.fillRect(6, 14, 3, 1);
-  c.fillStyle = '#c4a355'; c.fillRect(13, 2, 1, 1); c.fillRect(1, 11, 1, 1);
+  c.fillStyle = '#ecd28a'; c.fillRect(0, 0, 16, 16);
+  c.fillStyle = '#c4a355'; c.fillRect(0, 0, 1, 16); c.fillRect(15, 0, 1, 16); // stone edging
+  c.fillStyle = '#a8843f'; c.fillRect(1, 3, 1, 2); c.fillRect(1, 11, 1, 2); c.fillRect(14, 6, 1, 2); c.fillRect(14, 13, 1, 2);
+  c.fillStyle = '#d9b96a';
+  c.fillRect(3, 2, 2, 1); c.fillRect(9, 5, 3, 1); c.fillRect(4, 9, 2, 1); c.fillRect(11, 12, 2, 1); c.fillRect(6, 14, 3, 1);
+  c.fillStyle = '#c4a355'; c.fillRect(12, 2, 1, 1); c.fillRect(2, 12, 1, 1);
+});
+TILES.grass3 = tileCanvas(c => {
+  c.fillStyle = GRASS; c.fillRect(0, 0, 16, 16); c.fillStyle = GRASS_D;
+  c.fillRect(1, 1, 1, 2); c.fillRect(2, 2, 1, 1); c.fillRect(8, 5, 1, 2); c.fillRect(9, 6, 1, 1);
+  c.fillRect(14, 9, 1, 2); c.fillRect(15, 10, 1, 1); c.fillRect(4, 13, 1, 2); c.fillRect(5, 14, 1, 1);
+  c.fillStyle = GRASS_L; c.fillRect(11, 1, 1, 2); c.fillRect(6, 8, 1, 1);
+  c.fillStyle = '#9aa38f'; c.fillRect(12, 13, 2, 1); // a pebble
+});
+TILES.tuft = tileCanvas(c => {
+  c.drawImage(TILES.grass, 0, 0); c.fillStyle = GRASS_D;
+  c.fillRect(6, 5, 1, 4); c.fillRect(8, 4, 1, 5); c.fillRect(10, 5, 1, 4); c.fillRect(7, 7, 3, 1);
+  c.fillStyle = GRASS_L; c.fillRect(8, 4, 1, 1); c.fillRect(6, 5, 1, 1); c.fillRect(10, 5, 1, 1);
 });
 TILES.soil = tileCanvas(c => {
   c.fillStyle = '#8a5a30'; c.fillRect(0, 0, 16, 16); c.fillStyle = '#6f4520';
@@ -122,16 +137,23 @@ TILES.soil = tileCanvas(c => {
 
 const FW = '#f4f4f0', FS = '#c9ced4', FK = '#20242a';
 TILES.fenceH = tileCanvas(c => {
-  c.drawImage(TILES.grass, 0, 0); c.fillStyle = FW;
-  c.fillRect(1, 3, 3, 12); c.fillRect(6, 3, 3, 12); c.fillRect(12, 3, 3, 12);
-  c.fillRect(0, 6, 16, 2); c.fillRect(0, 11, 16, 2);
-  c.fillStyle = FS; c.fillRect(3, 3, 1, 12); c.fillRect(8, 3, 1, 12); c.fillRect(14, 3, 1, 12);
-  c.fillStyle = FK; c.fillRect(1, 2, 3, 1); c.fillRect(6, 2, 3, 1); c.fillRect(12, 2, 3, 1);
+  c.drawImage(TILES.grass, 0, 0);
+  c.fillStyle = '#4cab36'; c.fillRect(0, 13, 16, 3); // ground shadow under the fence
+  c.fillStyle = FW; c.fillRect(0, 6, 16, 2); c.fillRect(0, 11, 16, 2); // rails
+  c.fillStyle = FS; c.fillRect(0, 7, 16, 1); c.fillRect(0, 12, 16, 1);
+  for (const x of [1, 6, 12]) { // pointed pickets with a shaded edge and nails
+    c.fillStyle = FW; c.fillRect(x + 1, 2, 1, 1); c.fillRect(x, 3, 3, 12);
+    c.fillStyle = FS; c.fillRect(x + 2, 3, 1, 12);
+    c.fillStyle = FK; c.fillRect(x + 1, 6, 1, 1); c.fillRect(x + 1, 11, 1, 1);
+  }
 });
 TILES.fenceV = tileCanvas(c => {
-  c.drawImage(TILES.grass, 0, 0); c.fillStyle = FW;
-  c.fillRect(5, 0, 6, 16); c.fillStyle = FS; c.fillRect(9, 0, 2, 16);
-  c.fillStyle = FW; c.fillRect(4, 2, 8, 2); c.fillRect(4, 12, 8, 2);
+  c.drawImage(TILES.grass, 0, 0);
+  c.fillStyle = '#4cab36'; c.fillRect(10, 0, 6, 16); // ground shadow
+  c.fillStyle = FW; c.fillRect(4, 2, 2, 12); c.fillRect(11, 2, 2, 12); // side rails
+  c.fillStyle = FW; c.fillRect(6, 1, 5, 14);
+  c.fillStyle = FS; c.fillRect(9, 1, 2, 14);
+  c.fillStyle = FK; c.fillRect(8, 0, 2, 1);
 });
 TILES.gate = tileCanvas(c => {
   c.fillStyle = '#a5713d'; c.fillRect(1, 2, 14, 13);
@@ -139,27 +161,62 @@ TILES.gate = tileCanvas(c => {
   c.fillStyle = '#6f4520'; c.fillRect(7, 2, 2, 13);
   c.fillStyle = FK; c.fillRect(12, 8, 2, 2);
 });
-TILES.roof = tileCanvas(c => {
-  c.fillStyle = '#2f6fd0'; c.fillRect(0, 0, 16, 16);
-  c.fillStyle = '#245aa8'; c.fillRect(0, 4, 16, 1); c.fillRect(0, 9, 16, 1); c.fillRect(0, 14, 16, 1);
-  c.fillRect(4, 0, 1, 4); c.fillRect(11, 5, 1, 4); c.fillRect(4, 10, 1, 4); c.fillRect(11, 0, 1, 4); c.fillRect(11, 10, 1, 4); c.fillRect(4, 5, 1, 4);
+TILES.roof = tileCanvas(c => { // shingled: lit top edge, shadowed lip, offset joints per band
+  c.fillStyle = '#3f7fd8'; c.fillRect(0, 0, 16, 16);
+  for (let b = 0; b < 4; b++) {
+    const y = b * 4;
+    c.fillStyle = '#5b9bf0'; c.fillRect(0, y, 16, 1);
+    c.fillStyle = '#2a5aa8'; c.fillRect(0, y + 3, 16, 1);
+    const off = (b % 2) * 4;
+    for (let x = off; x < 16; x += 8) c.fillRect(x, y, 1, 3);
+  }
 });
-TILES.wall = tileCanvas(c => {
-  c.fillStyle = '#7fb2e8'; c.fillRect(0, 0, 16, 16);
-  c.fillStyle = '#5b93d6'; c.fillRect(0, 4, 16, 1); c.fillRect(0, 9, 16, 1); c.fillRect(0, 14, 16, 1);
+TILES.chimney = tileCanvas(c => {
+  c.drawImage(TILES.roof, 0, 0);
+  c.fillStyle = '#e8edf2'; c.fillRect(2, 1, 2, 2); c.fillRect(4, 0, 2, 2); // smoke puffs
+  c.fillStyle = '#8a8f96'; c.fillRect(5, 3, 7, 2); // concrete cap
+  c.fillStyle = '#b0552f'; c.fillRect(6, 5, 5, 11); // brick stack
+  c.fillStyle = '#d97b4a'; c.fillRect(6, 5, 1, 11);
+  c.fillStyle = '#8a3d20'; c.fillRect(10, 5, 1, 11); c.fillRect(6, 8, 5, 1); c.fillRect(6, 12, 5, 1);
 });
-TILES.window = tileCanvas(c => {
+TILES.wall = tileCanvas(c => { // horizontal siding: lit top, shadow line under each plank
+  c.fillStyle = '#8fc1f0'; c.fillRect(0, 0, 16, 16);
+  for (let y = 0; y < 16; y += 4) {
+    c.fillStyle = '#a8d0f7'; c.fillRect(0, y, 16, 1);
+    c.fillStyle = '#6ea3dd'; c.fillRect(0, y + 3, 16, 1);
+  }
+  c.fillStyle = '#7fb2e8'; c.fillRect(7, 1, 1, 2); c.fillRect(12, 5, 1, 2); c.fillRect(3, 9, 1, 2); c.fillRect(9, 13, 1, 2);
+});
+TILES.window = tileCanvas(c => { // framed window: white frame, muntins, sill, warm glass
   c.drawImage(TILES.wall, 0, 0);
-  c.fillStyle = FK; c.fillRect(3, 3, 10, 10);
-  c.fillStyle = '#ffe9a8'; c.fillRect(4, 4, 8, 8);
+  c.fillStyle = '#f4f4f0'; c.fillRect(2, 2, 12, 11);
+  c.fillStyle = '#ffe9a8'; c.fillRect(4, 4, 8, 7);
   c.fillStyle = '#fff6cf'; c.fillRect(5, 5, 3, 3);
-  c.fillStyle = FK; c.fillRect(7, 4, 2, 8); c.fillRect(4, 7, 8, 2);
+  c.fillStyle = '#f4f4f0'; c.fillRect(7, 4, 2, 7); c.fillRect(4, 7, 8, 1);
+  c.fillStyle = FK; c.fillRect(2, 2, 12, 1); c.fillRect(2, 12, 12, 1); c.fillRect(2, 2, 1, 11); c.fillRect(13, 2, 1, 11);
+  c.fillStyle = '#e0e4ea'; c.fillRect(1, 13, 14, 2);
+  c.fillStyle = '#6ea3dd'; c.fillRect(1, 15, 14, 1);
 });
-TILES.door = tileCanvas(c => {
+TILES.door = tileCanvas(c => { // paneled door under a little green porch awning
   c.drawImage(TILES.wall, 0, 0);
-  c.fillStyle = '#8a5a2e'; c.fillRect(3, 1, 10, 15);
-  c.fillStyle = '#6f4520'; c.fillRect(3, 1, 10, 1); c.fillRect(5, 4, 6, 5); c.fillRect(5, 11, 6, 4);
-  c.fillStyle = '#ffd94a'; c.fillRect(11, 9, 2, 2);
+  c.fillStyle = '#37b24d'; c.fillRect(0, 0, 16, 2);
+  c.fillStyle = '#2b8a3e'; c.fillRect(0, 2, 16, 1); c.fillRect(2, 3, 2, 1); c.fillRect(7, 3, 2, 1); c.fillRect(12, 3, 2, 1);
+  c.fillStyle = '#f4f4f0'; c.fillRect(3, 3, 10, 13);
+  c.fillStyle = '#a5662c'; c.fillRect(4, 4, 8, 12);
+  c.fillStyle = '#ffe9a8'; c.fillRect(5, 5, 6, 3);
+  c.fillStyle = '#8a4f1f'; c.fillRect(5, 9, 6, 2); c.fillRect(5, 12, 6, 3);
+  c.fillStyle = '#ffd94a'; c.fillRect(10, 10, 2, 2);
+});
+TILES.porch = tileCanvas(c => { // wooden deck boards in front of the door, with a welcome mat
+  c.fillStyle = '#b5854d'; c.fillRect(0, 0, 16, 16);
+  for (let y = 0; y < 16; y += 4) {
+    c.fillStyle = '#c99a5f'; c.fillRect(0, y, 16, 1);
+    c.fillStyle = '#96682f'; c.fillRect(0, y + 3, 16, 1);
+  }
+  c.fillStyle = '#6f4520'; c.fillRect(2, 1, 1, 1); c.fillRect(13, 5, 1, 1); c.fillRect(2, 9, 1, 1); c.fillRect(13, 13, 1, 1);
+  c.fillStyle = '#b03030'; c.fillRect(5, 6, 6, 4);
+  c.fillStyle = '#8a2424'; c.fillRect(5, 6, 6, 1);
+  c.fillStyle = '#8a5a30'; c.fillRect(0, 15, 16, 1);
 });
 TILES.bench = tileCanvas(c => {
   // garden bench: two slats, short legs, and a mulched planting bed at its base
@@ -180,156 +237,288 @@ TILES.compost = tileCanvas(c => {
 
 /* tree: 16x32 object sprite, drawn anchored to its tile's bottom */
 const TREE = makeSprite([
-'.....gggggg.....',
-'...ggGGGGGggg...',
-'..gGGGGGGGGGg...',
-'..GGgGGGGgGGG...',
-'.gGGGGGGGGGGGg..',
-'.GGGGgGGGGGGGg..',
-'.GGGGGGGGGgGGg..',
-'..gGGGGGGGGGg...',
-'...ggGGGGGgg....',
-'.....tttt.......',
-'.....tttt.......',
-'.....tttt.......',
-'....tttttt......',
-'....tttttt......',
-'.....tttt.......',
-'.....tttt.......',
-], { g: '#2f9e44', G: '#54c95e', t: '#7a4a21' });
+'.....kkkkkk.....',
+'...kkggggggkk...',
+'..kggHgggggggk..',
+'..gHgGGgggGggg..',
+'.kgGGGGgGGGGGgk.',
+'.gGGGGGgGGgGGGg.',
+'.gGGgGGGGGGGGGg.',
+'..kgGGGGgGGGgk..',
+'...kkggggggkk...',
+'....kkttttkk....',
+'......ttTt......',
+'......ttTt......',
+'......ttTt......',
+'.....tttTt......',
+'....ttttTTt.....',
+'................',
+], { k: '#1f6b2a', g: '#2f9e44', G: '#54c95e', H: '#7ed957', t: '#7a4a21', T: '#5f3717' });
 
 /* ============================== CHARACTERS (16x16) ============================== */
 const SKIN = '#f2c184', HAIR = '#6b4423', EYE = '#20242a';
-const FRANK_PAL = { s: SKIN, h: HAIR, e: EYE, c: '#2e8b3a', C: '#227733', b: '#2f6fd0', B: '#245aa8', p: '#5a4632', o: '#3a2c1c' };
+/* k = outline, S/H/B = shaded side of skin/hair/shirt */
+const FRANK_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: HAIR, H: '#54381d', e: EYE, c: '#2e8b3a', C: '#1f6b2a', b: '#2f6fd0', B: '#245aa8', p: '#6b4f35', o: '#33261a' };
 const FRANK_DOWN = makeSprite([
 '................',
-'....cccccccc....',
-'...cccccccccc...',
-'...chhhhhhhc....',
-'....ssssssss....',
-'....sesssses....',
-'....ssssssss....',
-'.....ssssss.....',
-'....bbbbbbbb....',
-'...bbbbbbbbbb...',
-'...sbbbbbbbbs...',
-'...sbbbbbbbbs...',
-'....pppppppp....',
-'....ppp..ppp....',
-'....ppp..ppp....',
-'...ooo....ooo...',
+'.....kkkkkk.....',
+'....kcccccck....',
+'...kcccccccck...',
+'...kCCCCCCCCk...',
+'....kssssssk....',
+'....ksessesk....',
+'....kssssSsk....',
+'.....kkkkkk.....',
+'...kkbbbbbbkk...',
+'...skbbbbbBks...',
+'...skbbbbbBks...',
+'....kkppppkk....',
+'....kppkkppk....',
+'....kppkkppk....',
+'....koookooo....',
+], FRANK_PAL);
+const FRANK_DOWN2 = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....kcccccck....',
+'...kcccccccck...',
+'...kCCCCCCCCk...',
+'....kssssssk....',
+'....ksessesk....',
+'....kssssSsk....',
+'.....kkkkkk.....',
+'...kkbbbbbbkk...',
+'...skbbbbbBks...',
+'...skbbbbbBks...',
+'....kkppppkk....',
+'.....kppkppk....',
+'.....kppkppk....',
+'.....kookook....',
 ], FRANK_PAL);
 const FRANK_UP = makeSprite([
 '................',
-'....cccccccc....',
-'...cccccccccc...',
-'...chhhhhhhc....',
-'....hhhhhhhh....',
-'....hhhhhhhh....',
-'....hhhhhhhh....',
-'.....ssssss.....',
-'....bbbbbbbb....',
-'...bbbbbbbbbb...',
-'...bbbbbbbbbb...',
-'...bbbbbbbbbb...',
-'....pppppppp....',
-'....ppp..ppp....',
-'....ppp..ppp....',
-'...ooo....ooo...',
+'.....kkkkkk.....',
+'....kcccccck....',
+'...kcccccccck...',
+'...kCCCCCCCCk...',
+'....khhhhhhk....',
+'....khhhhhhk....',
+'....khhhhHHk....',
+'.....kkkkkk.....',
+'...kkbbbbbbkk...',
+'...skbbbbbBks...',
+'...skbbbbbBks...',
+'....kkppppkk....',
+'....kppkkppk....',
+'....kppkkppk....',
+'....koookooo....',
+], FRANK_PAL);
+const FRANK_UP2 = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....kcccccck....',
+'...kcccccccck...',
+'...kCCCCCCCCk...',
+'....khhhhhhk....',
+'....khhhhhhk....',
+'....khhhhHHk....',
+'.....kkkkkk.....',
+'...kkbbbbbbkk...',
+'...skbbbbbBks...',
+'...skbbbbbBks...',
+'....kkppppkk....',
+'.....kppkppk....',
+'.....kppkppk....',
+'.....kookook....',
 ], FRANK_PAL);
 const FRANK_SIDE = makeSprite([
 '................',
-'....cccccccc....',
-'...cccccccccc...',
-'....hhhhhhhc....',
-'....sssssss.....',
-'....sessss......',
-'....ssssss......',
-'.....ssss.......',
-'....bbbbbb......',
-'...bbbbbbbb.....',
-'...bbbbbbbs.....',
-'....bbbbbb......',
-'....pppppp......',
-'....ppp.ppp.....',
-'....ppp.ppp.....',
-'...ooo...ooo....',
+'.....kkkkkk.....',
+'....kcccccck....',
+'....kccccccck...',
+'....khhhhhhk....',
+'....kssssssk....',
+'....kssssesk....',
+'....kssssSsk....',
+'.....kkkkk......',
+'....kkbbbbb.....',
+'....kbbbbBks....',
+'....kbbbbBk.....',
+'....kkppppk.....',
+'...kppk.kppk....',
+'...kppk.kppk....',
+'..koook.koook...',
 ], FRANK_PAL);
-const CONSTANCE_PAL = { s: SKIN, h: '#8a5a2e', e: EYE, d: '#2a9d8f', D: '#1f7a6e', o: '#3a2c1c' };
+const FRANK_SIDE2 = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....kcccccck....',
+'....kccccccck...',
+'....khhhhhhk....',
+'....kssssssk....',
+'....kssssesk....',
+'....kssssSsk....',
+'.....kkkkk......',
+'....kkbbbbb.....',
+'....kbbbbBks....',
+'....kbbbbBk.....',
+'....kkppppk.....',
+'.....kpppk......',
+'.....kpppk......',
+'.....koook......',
+], FRANK_PAL);
+const FRANK_SET = { down: [FRANK_DOWN, FRANK_DOWN2], up: [FRANK_UP, FRANK_UP2], side: [FRANK_SIDE, FRANK_SIDE2] };
+const CONSTANCE_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: '#8a5a2e', H: '#6f4520', e: EYE, d: '#2a9d8f', D: '#1f7a6e', o: '#3a2c1c' };
 const CONSTANCE_DOWN = makeSprite([
 '................',
-'.....hhhhhh.....',
-'....hhhhhhhh....',
-'....hssssssh....',
-'....ssssssss....',
-'....sesssses....',
-'....ssssssss....',
-'.....ssssss.....',
-'....dddddddd....',
-'...dddddddddd...',
-'...sdddddddds...',
-'...dddddddddd...',
-'...dddddddddd...',
-'....dddddddd....',
-'....dd....dd....',
-'...oo......oo...',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'....khhhhhhk....',
+'....khsssshk....',
+'....khsesesk....',
+'....khsssShk....',
+'....kssssssk....',
+'.....kkkkkk.....',
+'...kkddddddkk...',
+'...skdddddDks...',
+'...skdddddDks...',
+'...kdddddddDk...',
+'...kdddddddDk...',
+'....kdddkddk....',
+'....kookkook....',
+], CONSTANCE_PAL);
+const CONSTANCE_DOWN2 = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'....khhhhhhk....',
+'....khsssshk....',
+'....khsesesk....',
+'....khsssShk....',
+'....kssssssk....',
+'.....kkkkkk.....',
+'...kkddddddkk...',
+'...skdddddDks...',
+'...skdddddDks...',
+'..kdddddddDk....',
+'..kdddddddDk....',
+'....kdddkddk....',
+'.....ookook.....',
 ], CONSTANCE_PAL);
 const CONSTANCE_SIDE = makeSprite([
 '................',
-'.....hhhhhh.....',
-'....hhhhhhhh....',
-'....hhhhhhh.....',
-'....ssssss......',
-'....sesss.......',
-'....sssss.......',
-'.....sss........',
-'....dddddd......',
-'...dddddddd.....',
-'....dddddds.....',
-'....dddddd......',
-'...dddddddd.....',
-'...dddddddd.....',
-'....dd..dd......',
-'...oo....oo.....',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'....khhhhhhk....',
+'....khhhhssk....',
+'....khhhhsek....',
+'....khhhhssk....',
+'....khhhhssk....',
+'.....kkkkk......',
+'....kkddddd.....',
+'....kddddDks....',
+'....kddddDk.....',
+'...kddddddDk....',
+'...kddddddDk....',
+'...kssk.kssk....',
+'...kook.kook....',
 ], CONSTANCE_PAL);
-/* Alvin: tan short coat, floppy darker ears, green collar with a tag */
-const ALVIN_PAL = { t: '#d9a05a', T: '#b57f3d', d: '#8a5a2e', m: '#ecd3a0', n: '#20242a', g: '#37b24d', y: '#ffd94a', e: '#20242a' };
+const CONSTANCE_SIDE2 = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'....khhhhhhk....',
+'....khhhhssk....',
+'....khhhhsek....',
+'....khhhhssk....',
+'....khhhhssk....',
+'.....kkkkk......',
+'....kkddddd.....',
+'....kddddDks....',
+'....kddddDk.....',
+'...kddddddDk....',
+'...kddddddDk....',
+'....ksskssk.....',
+'....kookook.....',
+], CONSTANCE_PAL);
+const CONSTANCE_SET = { down: [CONSTANCE_DOWN, CONSTANCE_DOWN2], up: [CONSTANCE_DOWN, CONSTANCE_DOWN2], side: [CONSTANCE_SIDE, CONSTANCE_SIDE2] };
+/* Alvin: tan short coat, floppy darker ears, green collar with a tag.
+   Side sprite faces right (charSprite flips it for left); the two frames
+   wag his tail and stride his legs. */
+const ALVIN_PAL = { k: '#20242a', t: '#d9a05a', T: '#b57f3d', d: '#8a5a2e', m: '#ecd3a0', n: '#20242a', g: '#37b24d', y: '#ffd94a', e: '#20242a' };
 const ALVIN_DOWN = makeSprite([
 '................',
-'..dd........dd..',
-'..ddd......ddd..',
-'..ddttttttttdd..',
-'....tttttttt....',
-'....tettttet....',
-'....tttttttt....',
-'....ttmmmmtt....',
-'....ttmnnmtt....',
+'................',
+'....kkkkkkkk....',
+'..kkkttttttkkk..',
+'..kddkttttkddk..',
+'..kddkettekddk..',
+'..kddkttttkddk..',
+'...kkkttttkkk...',
+'....ktmmmmtk....',
+'....kmmnnmmk....',
 '.....mmmmmm.....',
-'....gggggggg....',
-'....ggggyggg....',
-'....tttttttt....',
-'....tttttttt....',
-'....tt.tt.tt....',
-'....tt.tt.tt....',
+'....kggggggk....',
+'....kttgyttk....',
+'....kttttttkT...',
+'....ktkttktk....',
+'....kkk.kkk.....',
+], ALVIN_PAL);
+const ALVIN_DOWN2 = makeSprite([
+'................',
+'................',
+'....kkkkkkkk....',
+'..kkkttttttkkk..',
+'..kddkttttkddk..',
+'..kddkettekddk..',
+'..kddkttttkddk..',
+'...kkkttttkkk...',
+'....ktmmmmtk....',
+'....kmmnnmmk....',
+'.....mmmmmm.....',
+'....kggggggk....',
+'....kttgyttk....',
+'...Tkttttttk....',
+'....ktkttktk....',
+'....kkk.kkk.....',
 ], ALVIN_PAL);
 const ALVIN_SIDE = makeSprite([
 '................',
-'..ddd...........',
-'..dddd..........',
-'..ddtttttt......',
-'....tttttttttt..',
-'....tetttttttt..',
-'....tttttttttt..',
-'....mmmmtttttt..',
-'....mnnmtttttt..',
-'....ggggggtttt..',
-'....tttttttttt..',
-'....tttttttt.t..',
-'....tttttttt....',
-'....tt.tt.tt....',
-'....tt.tt.tt....',
+'.tt.............',
+'.tTt....kkkk....',
+'..tT...kddddk...',
+'...tT.kddttttk..',
+'....ktttttttek..',
+'..kktttttttttk..',
+'..ktttttmmmmnk..',
+'..kttttmmmmmmk..',
+'..kttttttggggk..',
+'..ktttttttggyk..',
+'..kTTTTTTTTTTk..',
+'...ktk..ktk.....',
+'...ktk..ktk.....',
+'...kkk..kkk.....',
 '................',
 ], ALVIN_PAL);
+const ALVIN_SIDE2 = makeSprite([
+'................',
+'................',
+'........kkkk....',
+'..t....kddddk...',
+'..tT..kddttttk..',
+'..tTktttttttek..',
+'..kktttttttttk..',
+'..ktttttmmmmnk..',
+'..kttttmmmmmmk..',
+'..kttttttggggk..',
+'..ktttttttggyk..',
+'..kTTTTTTTTTTk..',
+'..ktk...ktk.....',
+'..ktk...ktk.....',
+'..kkk...kkk.....',
+'................',
+], ALVIN_PAL);
+const ALVIN_SET = { down: [ALVIN_DOWN, ALVIN_DOWN2], up: [ALVIN_DOWN, ALVIN_DOWN2], side: [ALVIN_SIDE, ALVIN_SIDE2] };
 /* small deer for the yard */
 const DEER_SMALL = makeSprite([
 '..a..........a..',
@@ -427,7 +616,7 @@ const DEER_BIG = makeSprite([
 '....bbbbbbbbbbbbbbbbbbt.',
 '...bbwbbbbbbwbbbbbbbbbb.',
 '...bbbbbbbbbbbbbbbbbbbb.',
-'....bbbbbbbbbbbbbbbb....',
+'....BBBBBBBBBBBBBBBB....',
 '....bb...bb....bb...bb..',
 '....bb...bb....bb...bb..',
 '....bb...bb....bb...bb..',
@@ -435,16 +624,16 @@ const DEER_BIG = makeSprite([
 '....bb...bb....bb...bb..',
 '....bb...bb....bb...bb..',
 '...lll...lll...lll..lll.',
-], { a: '#8a5a2e', h: '#caa06a', e: '#20242a', b: '#b07a45', w: '#e8dcc0', t: '#8a5a2e', l: '#8a5a2e' });
+], { a: '#8a5a2e', h: '#caa06a', e: '#20242a', b: '#b07a45', B: '#8a5a2e', w: '#e8dcc0', t: '#8a5a2e', l: '#8a5a2e' });
 /* ============================== MAP: DEERBROOK BACKYARD (24x18) ============================== */
-/* l lawn(neighbour) f fenceV H fenceH G gate T tree R roof W wall i window D door
-   g grass u grass2 f2 flower p path B bench C compost . also grass */
+/* l lawn(neighbour) f fenceV H fenceH G gate T tree R roof c chimney W wall i window D door
+   g grass u grass2 o flower p path P porch B bench C compost */
 const MAP = [
 'nnnnnnnnnnnnnnnnnnnnnnnn',
-'nfRRRRRRRRRRRRRRRRRRRRfn',
+'nfRRRRcRRRRRRRRRRRRRRRfn',
 'nfWWiWWWWWWWWWWiWWWWWWfn',
 'nfWWWWWWWWWDWWWWWWWWWWfn',
-'nfoouogoouopouoogouooufn',
+'nfoouogoouoPouoogouooufn',
 'nfugoguggggpgugogugggofn',
 'nfggTggugggpggguggggggfn',
 'nfgugggggoopggggugggTgfn',
@@ -460,8 +649,8 @@ const MAP = [
 'nfHHHHHHHHHGGHHHHHHHHHfn',
 ];
 const MAP_W = 24, MAP_H = 18;
-const TILEMAP = { n: 'lawn', f: 'fenceV', H: 'fenceH', G: 'gate', R: 'roof', W: 'wall', i: 'window', D: 'door', g: 'grass', u: 'grass2', o: 'flower', p: 'path', B: 'bench', C: 'compost', T: 'grass' };
-const SOLID = new Set(['n', 'f', 'H', 'G', 'R', 'W', 'i', 'D', 'B', 'C', 'T']);
+const TILEMAP = { n: 'lawn', f: 'fenceV', H: 'fenceH', G: 'gate', R: 'roof', c: 'chimney', W: 'wall', i: 'window', D: 'door', g: 'grass', u: 'grass2', o: 'flower', p: 'path', P: 'porch', B: 'bench', C: 'compost', T: 'grass' };
+const SOLID = new Set(['n', 'f', 'H', 'G', 'R', 'c', 'W', 'i', 'D', 'B', 'C', 'T']);
 function mapChar(x, y) { if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return 'f'; return MAP[y][x]; }
 function isSolid(x, y) { return SOLID.has(mapChar(x, y)); }
 
@@ -495,6 +684,17 @@ function strongestPot() {
   return bi;
 }
 
+/* ============================== SETTINGS ============================== */
+/* Persisted separately from the game save, so starting a New Game (which
+   overwrites the save) never resets the player's control preferences. */
+const SETTINGS_KEY = 'hss-settings-v1';
+const settings = { stick: 'auto' }; // auto | always | off
+try {
+  const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+  if (s && ['auto', 'always', 'off'].includes(s.stick)) settings.stick = s.stick;
+} catch (e) {}
+function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
+
 /* ============================== INPUT ============================== */
 const keys = {};
 let btnA = false, btnB = false, padA = false, padB = false, padStart = false;
@@ -519,8 +719,11 @@ const Input = {
       if (ax < -0.4) x -= 1; if (ax > 0.4) x += 1; if (ay < -0.4) y -= 1; if (ay > 0.4) y += 1;
       padA = b(0); padB = b(1); padStart = b(9);
     }
-    if (x === 0 && y === 0 && (touchDir.x || touchDir.y)) { x = touchDir.x; y = touchDir.y; }
-    if (x !== 0 && y !== 0) { if (this.dir.x !== 0 && this.dir.y === 0) y = 0; else x = 0; }
+    let fromTouch = false;
+    if (x === 0 && y === 0 && (touchDir.x || touchDir.y)) { x = touchDir.x; y = touchDir.y; fromTouch = true; }
+    // keyboard/gamepad diagonals collapse to one axis; the touch stick is
+    // genuinely 8-way and keeps both axes (the overworld staircases them)
+    if (x !== 0 && y !== 0 && !fromTouch) { if (this.dir.x !== 0 && this.dir.y === 0) y = 0; else x = 0; }
     this.dir.x = Math.sign(x); this.dir.y = Math.sign(y);
     const aNow = btnA || padA || touchA, bNow = btnB || padB || touchB;
     const sNow = padStart || !!keys['p'];
@@ -542,51 +745,61 @@ window.addEventListener('keyup', e => {
 });
 let padToastShown = false;
 window.addEventListener('gamepadconnected', () => { if (!padToastShown) { padToastShown = true; toast('GAMEPAD CONNECTED'); } });
-/* touch joystick: dynamic origin in the left zone */
+/* Touch controls: a FIXED virtual joystick + A/B buttons in the page deck
+   below the screen (never over the canvas, so they can't cover dialogue).
+   Visibility follows settings.stick: always | off | auto (touch devices). */
+const deckEl = document.getElementById('deck');
+const stickPad = document.getElementById('stickPad'), stickKnob = document.getElementById('stickKnob');
+const coarsePointer = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+let touchSeen = false;
+function stickShouldShow() {
+  return settings.stick === 'always' || (settings.stick === 'auto' && (touchSeen || coarsePointer));
+}
+function applyStickPref() { deckEl.hidden = !stickShouldShow(); }
+window.addEventListener('touchstart', () => { if (!touchSeen) { touchSeen = true; applyStickPref(); } }, { passive: true });
 (function () {
-  const zone = document.getElementById('stickZone'), base = document.getElementById('stickBase'),
-    knob = document.getElementById('stickKnob'), btns = document.getElementById('touchBtns');
-  let pid = null, ox = 0, oy = 0;
-  function showTouch() { btns.hidden = false; }
-  zone.addEventListener('pointerdown', e => {
-    showTouch(); pid = e.pointerId;
-    const r = zone.getBoundingClientRect(); ox = e.clientX; oy = e.clientY;
-    base.hidden = false;
-    base.style.left = (e.clientX - r.left) + 'px'; base.style.top = (e.clientY - r.top + zone.offsetTop) + 'px';
-    base.style.left = (ox - zone.getBoundingClientRect().left) + 'px';
-    base.style.top = (oy - zone.getBoundingClientRect().top) + 'px';
-    knob.style.transform = 'translate(-50%,-50%)';
-    zone.setPointerCapture(pid);
-  });
-  zone.addEventListener('pointermove', e => {
-    if (e.pointerId !== pid) return;
-    let dx = e.clientX - ox, dy = e.clientY - oy;
-    const len = Math.hypot(dx, dy), max = 34;
+  let pid = null;
+  const DIRS8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+  function moveStick(e) {
+    const r = stickPad.getBoundingClientRect();
+    let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    const len = Math.hypot(dx, dy), max = 30;
     if (len > max) { dx = dx / len * max; dy = dy / len * max; }
-    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-    touchDir = { x: 0, y: 0 };
-    if (len > 10) { if (Math.abs(dx) > Math.abs(dy)) touchDir.x = Math.sign(dx); else touchDir.y = Math.sign(dy); }
+    stickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    if (len < 9) { touchDir = { x: 0, y: 0 }; return; }
+    const sector = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) & 7;
+    touchDir = { x: DIRS8[sector][0], y: DIRS8[sector][1] };
+  }
+  stickPad.addEventListener('pointerdown', e => {
+    e.preventDefault(); pid = e.pointerId;
+    try { stickPad.setPointerCapture(pid); } catch (err) {}
+    moveStick(e);
   });
-  function endStick(e) { if (e.pointerId !== pid) return; pid = null; touchDir = { x: 0, y: 0 }; base.hidden = true; }
-  zone.addEventListener('pointerup', endStick); zone.addEventListener('pointercancel', endStick);
+  stickPad.addEventListener('pointermove', e => { if (e.pointerId === pid) moveStick(e); });
+  function endStick(e) {
+    if (e.pointerId !== pid) return;
+    pid = null; touchDir = { x: 0, y: 0 };
+    stickKnob.style.transform = 'translate(-50%,-50%)';
+  }
+  stickPad.addEventListener('pointerup', endStick); stickPad.addEventListener('pointercancel', endStick);
   const bind = (id, set) => {
     const el = document.getElementById(id);
-    el.addEventListener('pointerdown', e => { e.preventDefault(); showTouch(); set(true); });
+    el.addEventListener('pointerdown', e => { e.preventDefault(); set(true); });
     el.addEventListener('pointerup', () => set(false));
     el.addEventListener('pointerleave', () => set(false));
     el.addEventListener('pointercancel', () => set(false));
   };
   bind('btnA', v => touchA = v); bind('btnB', v => touchB = v);
-  window.addEventListener('touchstart', showTouch, { once: true, passive: true });
+  applyStickPref();
 })();
 
 /* ============================== RUNTIME / UI STATE ============================== */
-let mode = 'title'; // title | chapters | overworld | dialogue | trial | card | dex | menu
+let mode = 'title'; // title | chapters | overworld | dialogue | trial | card | dex | menu | controls
 let titleSel = 0, chapterSel = 0, fade = 0, fading = null;
 let toastMsg = '', toastT = 0;
 function toast(m) { toastMsg = m; toastT = 2.2; }
 const player = { tx: 10, ty: 6, px: 160, py: 96, dir: 'down', moving: false, mx: 0, my: 0, mt: 0, stepAlt: false };
-const alvin = { tx: 9, ty: 7, px: 144, py: 112, dir: 'down', moving: false, mx: 0, my: 0, mt: 0 };
+const alvin = { tx: 9, ty: 7, px: 144, py: 112, dir: 'down', moving: false, mx: 0, my: 0, mt: 0, wag: true };
 const constance = { tx: 12, ty: 6, dir: 'left' };
 const STEP_T = 0.13;
 let camX = 0, camY = 0;
@@ -647,15 +860,15 @@ const MORNING_FORE = [
   'ALVIN STARED AT THE FENCE A LONG TIME THIS MORNING.',
 ];
 const CONSTANCE_LINES = [
-  'CONSTANCE: SIX POTS AND NO FIELD. WE HAVE DONE MORE WITH LESS.',
-  'CONSTANCE: THE FRIDGE SEEDS ARE CHILLING. PATIENCE, PACKET SAYS.',
-  'CONSTANCE: WATER THEM LIKE YOU MEAN IT. PLANTS CAN TELL.',
-  'CONSTANCE: ONE DAY THIS YARD WILL BE TOO SMALL FOR YOUR DREAMS.',
+  'CONSTANCE: SIX POTS AND NO FIELD. WE HAVE DONE MORE WITH LESS, LOVE.',
+  'CONSTANCE: THE FRIDGE SEEDS ARE NAPPING. FRANK TUCKED THEM IN. TUCKED. THEM. IN.',
+  'CONSTANCE: HE TALKS TO THE POTS EVERY MORNING. THE POTS, TO THEIR CREDIT, LISTEN BEAUTIFULLY.',
+  'CONSTANCE: ONE DAY THIS YARD WILL BE TOO SMALL FOR HIS DREAMS. I GIVE IT A YEAR, TOPS.',
 ];
 function objective() {
   const s = G.save;
-  if (s.tutorial === 1) return 'PLANT SEEDS: A AT EACH POT';
-  if (s.tutorial === 2) return 'WATER EACH POT: A AT A POT';
+  if (s.tutorial === 1) return 'THE GRAND PLAN: A SEED IN EVERY POT (A)';
+  if (s.tutorial === 2) return 'A DRINK FOR EACH POT: A AT A POT';
   if (s.chapterDone) return 'FREE TENDING. BERRYHILL COMES LATER.';
   if (s.deerPresent && !s.deerBeaten) return 'A DEER IS IN THE YARD! FACE IT, PRESS A';
   if (!anyStageAtLeast(3)) return 'WATER THE POTS DAILY. REST AT THE DOOR.';
@@ -689,13 +902,20 @@ function stepEntity(e, dx, dy, dt) {
   return false;
 }
 let alvinTarget = null;
+let diagX = true; // diagonal stick input alternates axes per step (staircase)
 function overworldUpdate(dt) {
   if (fade > 0) { fade -= dt * 2; if (fade < 0) fade = 0; }
-  const dx = Input.dir.x, dy = Input.dir.y;
+  const dx0 = Input.dir.x, dy0 = Input.dir.y;
+  let dx = dx0, dy = dy0;
+  if (dx && dy) { if (diagX) dy = 0; else dx = 0; } // tile grid is 4-way: one axis per step
   const wasMoving = player.moving;
-  const stepped = stepEntity(player, dx, dy, dt);
+  let stepped = stepEntity(player, dx, dy, dt);
+  if (!stepped && !player.moving && dx0 && dy0) {
+    stepped = stepEntity(player, dx0 - dx, dy0 - dy, dt); // preferred axis blocked: try the other
+  }
   if (stepped) {
     player.stepAlt = !player.stepAlt;
+    if (dx0 && dy0) diagX = !diagX;
     alvinTarget = { x: player.tx - lastStep.dx, y: player.ty - lastStep.dy }; // tile the player just left
   }
   if (!wasMoving && player.moving) lastStep = { dx: player.mx, dy: player.my };
@@ -759,14 +979,14 @@ function potInteract(pi) {
   if (p.stage === 0) {
     if (s.seedsLeft <= 0) return say('NO SEEDS LEFT IN THE PACKET.');
     p.stage = 1; s.seedsLeft--; dexAdd('SEED'); saveGame();
-    if (s.tutorial === 1 && s.pots.every(q => q.stage >= 1)) { s.tutorial = 2; saveGame(); return say(['PLANTED! SIX LITTLE PROMISES IN PEAT.', 'NOW WATER EACH POT. PRESS A AT A POT TO WATER IT.']); }
+    if (s.tutorial === 1 && s.pots.every(q => q.stage >= 1)) { s.tutorial = 2; saveGame(); return say(['PLANTED! SIX LITTLE PROMISES IN PEAT.', 'A DRINK FOR EACH NEW FRIEND: PRESS A AT A POT TO WATER IT.']); }
     return say('YOU PLANT A BLUEBERRY SEED. SMALL AS A SECRET.');
   }
   if (!p.watered) {
     p.watered = true; saveGame();
     if (s.tutorial === 2 && s.pots.every(q => q.watered)) {
       s.tutorial = 3; saveGame();
-      return say(['CONSTANCE: NOW WE WAIT. THAT IS MOST OF GARDENING.', 'REST AT THE HOUSE DOOR TO PASS THE DAY. WATER AGAIN TOMORROW.']);
+      return say(['CONSTANCE: NOW WE WAIT. FRANK HAS ALREADY NAMED ALL SIX. IT IS DAY ONE.', 'REST AT THE HOUSE DOOR TO PASS THE DAY. WATER AGAIN TOMORROW.']);
     }
     return say(p.stage === 1 ? 'YOU WATER THE SEED. DREAM BIG, LITTLE ONE.' : 'YOU WATER THE ' + STAGE_NAMES[p.stage] + '. STEADY DOES IT.');
   }
@@ -812,12 +1032,12 @@ function startIntro() {
   alvin.tx = 10; alvin.ty = 7; syncPixels(alvin);
   constance.tx = 12; constance.ty = 6; constance.dir = 'left';
   say([
-    'CONSTANCE: THE SEED PACKET CAME. REAL BLUEBERRY SEEDS, FRANK.',
-    'FRANK: SOME GO IN THE FRIDGE TO CHILL. THEY NEED THE COLD BEFORE THEY WILL WAKE.',
-    'CONSTANCE: AND THESE SIX?',
-    'FRANK: THESE SIX START TODAY. PEAT POTS, SUNSHINE, AND PATIENCE.',
-    'CONSTANCE: WE DO NOT HAVE LAND FOR A FIELD YET.',
-    'FRANK: THEN THEY WILL GROW WHERE THEY ARE PLANTED. LIKE THE REST OF US.',
+    'CONSTANCE: YOUR SEEDS CAME, FRANK. REAL BLUEBERRY SEEDS. THE MAILMAN LOOKS WORRIED.',
+    'FRANK: LET HIM. SOME OF THESE GO IN THE FRIDGE, TO CHILL AND DREAM OF SPRING.',
+    'CONSTANCE: SEEDS THAT NEED A NAP BEFORE THEY GROW. THEY WILL FIT RIGHT IN HERE.',
+    'FRANK: AND THESE SIX START TODAY! PEAT POTS, SUNSHINE, AND A LITTLE SPEECH I PREPARED.',
+    'CONSTANCE: HE REHEARSED THE SPEECH, ALVIN. TWICE. I COUNTED.',
+    'FRANK: WE HAVE NO FIELD YET, LOVE. SO THEY WILL GROW WHERE THEY ARE PLANTED. LIKE THE REST OF US.',
     'ALVIN WAGS HIS WHOLE BACK HALF. HE HAS APPOINTED HIMSELF SUPERVISOR.',
     'WALK WITH THE ARROWS. PRESS A AT A PEAT POT TO PLANT A SEED.',
   ], () => { G.save.tutorial = 1; saveGame(); });
@@ -941,8 +1161,9 @@ function trialSnapshot() {
 /* ============================== RENDER: TITLE / CHAPTERS ============================== */
 let titleConfirm = false;
 function hasSaveFile() { return !!loadSave(); }
+function titleLabels() { return hasSaveFile() ? ['NEW GAME', 'CONTINUE', 'CHAPTERS', 'CONTROLS'] : ['NEW GAME', 'CHAPTERS', 'CONTROLS']; }
 function titleUpdate() {
-  const items = hasSaveFile() ? 3 : 2;
+  const items = titleLabels().length;
   if (titleConfirm) {
     if (Input.aHit) { titleConfirm = false; startNewGame(); }
     if (Input.bHit) titleConfirm = false;
@@ -951,11 +1172,11 @@ function titleUpdate() {
   if (menuNavHit('up')) titleSel = (titleSel + items - 1) % items;
   if (menuNavHit('down')) titleSel = (titleSel + 1) % items;
   if (Input.aHit) {
-    const labels = hasSaveFile() ? ['NEW GAME', 'CONTINUE', 'CHAPTERS'] : ['NEW GAME', 'CHAPTERS'];
-    const pick = labels[titleSel];
+    const pick = titleLabels()[titleSel];
     if (pick === 'NEW GAME') { if (hasSaveFile()) titleConfirm = true; else startNewGame(); }
     else if (pick === 'CONTINUE') continueGame();
     else if (pick === 'CHAPTERS') { mode = 'chapters'; }
+    else if (pick === 'CONTROLS') openControls('title');
   }
 }
 function startNewGame() {
@@ -976,26 +1197,51 @@ function continueGame() {
 function drawSceneBanner(y0, seedling) {
   ctx.fillStyle = '#7ec8f7'; ctx.fillRect(0, y0, VW, 30);
   ctx.fillStyle = '#a8dcff'; ctx.fillRect(0, y0 + 30, VW, 8);
-  ctx.fillStyle = '#ffd94a'; ctx.fillRect(132, y0 + 6, 14, 14);
-  ctx.fillStyle = '#ffec9e'; ctx.fillRect(135, y0 + 9, 8, 8);
+  // clouds
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(52, y0 + 5, 20, 4); ctx.fillRect(56, y0 + 3, 11, 2); ctx.fillRect(104, y0 + 10, 15, 3);
+  ctx.fillStyle = '#dfe9f5'; ctx.fillRect(52, y0 + 9, 20, 1); ctx.fillRect(104, y0 + 13, 15, 1);
+  // sun
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(138, y0 + 4, 13, 13);
+  ctx.fillStyle = '#ffec9e'; ctx.fillRect(141, y0 + 7, 7, 7);
+  // the little blue house, left
+  ctx.fillStyle = '#2f56b8'; ctx.fillRect(4, y0 + 12, 40, 4); ctx.fillRect(8, y0 + 8, 32, 4); ctx.fillRect(14, y0 + 4, 20, 4);
+  ctx.fillStyle = '#7fb2e8'; ctx.fillRect(7, y0 + 16, 34, 22);
+  ctx.fillStyle = '#5b93d6'; ctx.fillRect(7, y0 + 21, 34, 1); ctx.fillRect(7, y0 + 27, 34, 1); ctx.fillRect(7, y0 + 33, 34, 1);
+  ctx.fillStyle = '#f4f4f0'; ctx.fillRect(11, y0 + 20, 7, 7); ctx.fillRect(30, y0 + 20, 7, 7);
+  ctx.fillStyle = '#ffe9a8'; ctx.fillRect(12, y0 + 21, 5, 5); ctx.fillRect(31, y0 + 21, 5, 5);
+  ctx.fillStyle = '#8a5a2e'; ctx.fillRect(20, y0 + 26, 8, 12);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(26, y0 + 31, 1, 1);
+  // a tree, right
+  ctx.fillStyle = '#7a4a21'; ctx.fillRect(130, y0 + 26, 4, 12);
+  ctx.fillStyle = '#2f9e44'; ctx.fillRect(122, y0 + 12, 20, 13); ctx.fillRect(126, y0 + 8, 12, 5);
+  ctx.fillStyle = '#54c95e'; ctx.fillRect(125, y0 + 14, 8, 5); ctx.fillRect(133, y0 + 18, 6, 4);
+  // ground + picket fence line
   ctx.fillStyle = '#58b93e'; ctx.fillRect(0, y0 + 38, VW, 26);
   ctx.fillStyle = '#3f9433'; ctx.fillRect(0, y0 + 56, VW, 8);
+  ctx.fillStyle = '#f4f4f0';
+  for (let x = 2; x < VW; x += 12) { ctx.fillRect(x, y0 + 34, 3, 6); }
+  ctx.fillRect(0, y0 + 36, VW, 1);
   for (let i = 0; i < 3; i++) ctx.drawImage(seedling ? POT_SEEDLING : POT_SPROUT, 34 + i * 36, y0 + 42);
   ctx.drawImage(ALVIN_DOWN, 122, y0 + 44);
 }
 function renderTitle() {
   ctx.fillStyle = '#274e13'; ctx.fillRect(0, 0, VW, VH);
   drawSceneBanner(0, false);
-  ctx.fillStyle = 'rgba(20,40,20,0.85)'; ctx.fillRect(14, 66, 132, 34);
-  drawText('HOPE STARTS', 80 - textW('HOPE STARTS', 2) / 2, 70, '#ffffff', 2);
-  drawText('SMALL', 80 - textW('SMALL', 2) / 2, 84, '#ffd94a', 2);
-  drawText('CHAPTER 1 · SEEDS', 80 - textW('CHAPTER 1 · SEEDS', 1) / 2, 104, '#cfe8cf', 1);
-  const labels = hasSaveFile() ? ['NEW GAME', 'CONTINUE', 'CHAPTERS'] : ['NEW GAME', 'CHAPTERS'];
-  labels.forEach((l, i) => {
-    const y = 110 + i * 9;
+  ctx.fillStyle = 'rgba(20,40,20,0.85)'; ctx.fillRect(14, 64, 132, 34);
+  drawText('HOPE STARTS', 80 - textW('HOPE STARTS', 2) / 2 + 1, 69, '#14251a', 2);
+  drawText('HOPE STARTS', 80 - textW('HOPE STARTS', 2) / 2, 68, '#ffffff', 2);
+  drawText('SMALL', 80 - textW('SMALL', 2) / 2 + 1, 83, '#7a4a21', 2);
+  drawText('SMALL', 80 - textW('SMALL', 2) / 2, 82, '#ffd94a', 2);
+  drawText('CHAPTER 1 · SEEDS', 80 - textW('CHAPTER 1 · SEEDS', 1) / 2, 101, '#cfe8cf', 1);
+  titleLabels().forEach((l, i) => {
+    const y = 107 + i * 8;
     if (i === titleSel) drawText('▶', 42, y, '#ffd94a', 1);
     drawText(l, 50, y, i === titleSel ? '#ffffff' : '#9fc79f', 1);
   });
+  // a thin gold frame around the whole scene
+  ctx.fillStyle = '#ffd94a';
+  ctx.fillRect(0, 0, VW, 1); ctx.fillRect(0, VH - 1, VW, 1); ctx.fillRect(0, 0, 1, VH); ctx.fillRect(VW - 1, 0, 1, VH);
   if (titleConfirm) {
     drawBox(48, 34);
     drawText('ERASE YOUR SAVE AND', 80 - textW('ERASE YOUR SAVE AND', 1) / 2, 54, '#20242a', 1);
@@ -1022,10 +1268,12 @@ function drawSprite(img, x, y, flip) {
   if (flip) { ctx.save(); ctx.translate(x + img.width, y); ctx.scale(-1, 1); ctx.drawImage(img, 0, 0); ctx.restore(); }
   else ctx.drawImage(img, x, y);
 }
-function charSprite(e, down, up, side) {
-  const img = e.dir === 'down' ? down : e.dir === 'up' ? up : side;
-  const bob = e.moving && Math.floor(perfNow * 10) % 2 === 0 ? -1 : 0;
-  drawSprite(img, Math.round(e.px - camX), Math.round(e.py - camY) + bob, e.dir === 'left');
+function charSprite(e, set) {
+  const frames = e.dir === 'down' ? set.down : e.dir === 'up' ? set.up : set.side;
+  // two-frame walk cycle while moving; Alvin (e.wag) also wags slowly at rest
+  const anim = e.moving || e.wag;
+  const img = anim ? frames[Math.floor(perfNow * (e.moving ? 7 : 3)) % frames.length] : frames[0];
+  drawSprite(img, Math.round(e.px - camX), Math.round(e.py - camY), e.dir === 'left');
 }
 function renderOverworld() {
   camX = Math.max(0, Math.min(MAP_W * TILE - VW, player.px + 8 - VW / 2));
@@ -1035,7 +1283,9 @@ function renderOverworld() {
   for (let ty = y0; ty <= y0 + 9; ty++) for (let tx = x0; tx <= x0 + 10; tx++) {
     if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H) continue;
     const ch = mapChar(tx, ty), sx = tx * TILE - camX, sy = ty * TILE - camY;
-    ctx.drawImage(TILES.grass, sx, sy);
+    let base = TILES.grass; // plain grass tiles get a hashed variety so the lawn isn't flat
+    if (ch === 'g') { const h = (tx * 31 + ty * 17) % 9; base = h === 0 ? TILES.tuft : h === 4 ? TILES.grass3 : TILES.grass; }
+    ctx.drawImage(base, sx, sy);
     const t = TILES[TILEMAP[ch]]; if (t && TILEMAP[ch] !== 'grass') ctx.drawImage(t, sx, sy);
     if (ch === 'T') ctx.drawImage(TREE, sx, sy);
   }
@@ -1047,10 +1297,10 @@ function renderOverworld() {
   });
   // entities sorted by y
   const ents = [];
-  ents.push({ y: constance.py, draw: () => charSprite({ px: constance.tx * TILE, py: constance.ty * TILE, dir: constance.dir, moving: false }, CONSTANCE_DOWN, CONSTANCE_DOWN, CONSTANCE_SIDE) });
+  ents.push({ y: constance.py, draw: () => charSprite({ px: constance.tx * TILE, py: constance.ty * TILE, dir: constance.dir, moving: false }, CONSTANCE_SET) });
   if (G.save.deerPresent && !G.save.deerBeaten) ents.push({ y: DEER_POS.y * TILE, draw: () => { const bob = Math.floor(perfNow * 1.5) % 2; ctx.drawImage(DEER_SMALL, DEER_POS.x * TILE - camX, DEER_POS.y * TILE - camY + bob); } });
-  ents.push({ y: alvin.py, draw: () => charSprite(alvin, ALVIN_DOWN, ALVIN_DOWN, ALVIN_SIDE) });
-  ents.push({ y: player.py, draw: () => charSprite(player, FRANK_DOWN, FRANK_UP, FRANK_SIDE) });
+  ents.push({ y: alvin.py, draw: () => charSprite(alvin, ALVIN_SET) });
+  ents.push({ y: player.py, draw: () => charSprite(player, FRANK_SET) });
   ents.sort((a, b) => a.y - b.y).forEach(e => e.draw());
   // HUD (no persistent objective banner: it overlapped the bench/pots at the
   // bottom of the frame. The objective lives in the pause menu, and the
@@ -1076,7 +1326,19 @@ function renderTrial() {
   ctx.fillStyle = '#a8dcff'; ctx.fillRect(0, 56, VW, 6);
   ctx.fillStyle = '#58b93e'; ctx.fillRect(0, 62, VW, 82);
   ctx.fillStyle = '#4cab36'; for (let i = 0; i < 40; i++) ctx.fillRect((i * 37) % 160, 66 + (i * 23) % 34, 2, 2);
+  // clouds and a low hill line on the horizon
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(14, 8, 20, 4); ctx.fillRect(18, 5, 11, 3); ctx.fillRect(120, 14, 16, 3); ctx.fillRect(123, 11, 9, 3);
+  ctx.fillStyle = '#dfe9f5'; ctx.fillRect(14, 12, 20, 1); ctx.fillRect(120, 17, 16, 1);
+  ctx.fillStyle = '#8fd07a';
+  ctx.fillRect(0, 50, 66, 12); ctx.fillRect(8, 46, 50, 4); ctx.fillRect(18, 42, 30, 4);
+  ctx.fillRect(102, 52, 58, 10); ctx.fillRect(110, 48, 42, 4); ctx.fillRect(120, 44, 24, 4);
   drawPatch(118, 52, 64); drawPatch(34, 96, 56);
+  // ground shadows under the deer, the pot, and Alvin
+  ctx.fillStyle = '#357a2a';
+  ctx.fillRect(102, 55, 40, 3); ctx.fillRect(106, 54, 32, 1);
+  ctx.fillRect(16, 99, 36, 3); ctx.fillRect(20, 98, 28, 1);
+  ctx.fillRect(56, 100, 16, 2);
   const hop = (t.phase === 'wait' && t.foeTurn === false && t.timer < 0.3) ? -2 : 0;
   ctx.drawImage(DEER_BIG, 94, 12 + hop, 48, 42);
   ctx.drawImage(POT_SPRITES[p.stage], 14, 58, 44, 44);
@@ -1140,21 +1402,68 @@ function renderCard() {
 }
 function menuUpdate() {
   if (Input.bHit || Input.startHit) { mode = 'overworld'; return; }
-  if (menuNavHit('up') || menuNavHit('down')) menuSel = 1 - menuSel;
-  if (Input.aHit) { if (menuSel === 0) mode = 'dex'; else mode = 'overworld'; }
+  if (menuNavHit('up')) menuSel = (menuSel + 2) % 3;
+  if (menuNavHit('down')) menuSel = (menuSel + 1) % 3;
+  if (Input.aHit) {
+    if (menuSel === 0) mode = 'dex';
+    else if (menuSel === 1) openControls('menu');
+    else mode = 'overworld';
+  }
 }
 function renderMenu() {
   renderOverworld();
   ctx.fillStyle = 'rgba(10,16,10,0.55)'; ctx.fillRect(0, 0, VW, VH);
-  ctx.fillStyle = '#20242a'; ctx.fillRect(28, 26, 104, 92); ctx.fillStyle = '#f8f8f8'; ctx.fillRect(30, 28, 100, 88);
-  drawText('DAY ' + G.save.day, 36, 34, '#20242a', 1);
-  wrapText(objective(), 22).slice(0, 4).forEach((l, i) => drawText(l, 36, 45 + i * 7, '#5a6270', 1));
-  ['BERRYDEX', 'RESUME'].forEach((l, i) => {
-    const y = 82 + i * 11;
-    if (i === menuSel) drawText('▶', 36, y, '#b03030', 1);
-    drawText(l, 44, y, '#20242a', 1);
+  ctx.fillStyle = '#20242a'; ctx.fillRect(24, 18, 112, 108); ctx.fillStyle = '#f8f8f8'; ctx.fillRect(26, 20, 108, 104);
+  drawText('DAY ' + G.save.day, 32, 26, '#20242a', 1);
+  wrapText(objective(), 24).slice(0, 4).forEach((l, i) => drawText(l, 32, 37 + i * 7, '#5a6270', 1));
+  ['BERRYDEX', 'CONTROLS', 'RESUME'].forEach((l, i) => {
+    const y = 72 + i * 12;
+    if (i === menuSel) drawText('▶', 32, y, '#b03030', 1);
+    drawText(l, 40, y, '#20242a', 1);
   });
-  drawText('TEA ×' + G.save.tea, 36, 106, '#5a6270', 1);
+  drawText('TEA ×' + G.save.tea, 32, 112, '#5a6270', 1);
+}
+
+/* ============================== CONTROLS SCREEN ============================== */
+let controlsFrom = 'title', controlsSel = 0; // row 0: joystick setting, row 1: back
+const STICK_MODES = ['AUTO', 'ALWAYS', 'OFF'];
+function openControls(from) { controlsFrom = from; controlsSel = 0; mode = 'controls'; }
+function cycleStick(d) {
+  const cur = STICK_MODES.indexOf(settings.stick.toUpperCase());
+  settings.stick = STICK_MODES[(cur + d + STICK_MODES.length) % STICK_MODES.length].toLowerCase();
+  saveSettings(); applyStickPref();
+}
+function controlsUpdate() {
+  if (Input.bHit) { mode = controlsFrom; return; }
+  if (controlsFrom === 'menu' && Input.startHit) { mode = 'menu'; return; }
+  if (menuNavHit('up') || menuNavHit('down')) controlsSel = 1 - controlsSel;
+  if (controlsSel === 0) {
+    if (menuNavHit('left')) cycleStick(-1);
+    if (menuNavHit('right')) cycleStick(1);
+    if (Input.aHit) cycleStick(1);
+  } else if (Input.aHit) mode = controlsFrom;
+}
+function renderControls() {
+  ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
+  ctx.fillStyle = '#20242a'; ctx.fillRect(4, 4, 152, 136);
+  ctx.fillStyle = '#f8f8f8'; ctx.fillRect(6, 6, 148, 132);
+  drawText('CONTROLS', 80 - textW('CONTROLS', 2) / 2, 10, '#20242a', 2);
+  const head = (t, y) => drawText(t, 12, y, '#2e8b3a', 1);
+  const row = (t, y) => drawText(t, 12, y, '#20242a', 1);
+  head('KEYBOARD', 28);
+  row('ARROWS OR WASD: MOVE', 37);
+  row('Z OR ENTER: A · X OR ESC: B', 45);
+  row('P: MENU', 53);
+  head('GAMEPAD', 65);
+  row('STICK OR D-PAD: MOVE', 74);
+  row('A: OK · B: BACK · START: MENU', 82);
+  head('TOUCH', 94);
+  row('JOYSTICK: MOVE · A/B: BUTTONS', 103);
+  ctx.fillStyle = '#c9ced4'; ctx.fillRect(12, 112, 136, 1);
+  if (controlsSel === 0) drawText('▶', 12, 118, '#b03030', 1);
+  drawText('SHOW STICK: < ' + settings.stick.toUpperCase() + ' >', 20, 118, '#20242a', 1);
+  if (controlsSel === 1) drawText('▶', 12, 128, '#b03030', 1);
+  drawText('BACK', 20, 128, '#20242a', 1);
 }
 function dexUpdate() { if (Input.bHit || Input.aHit) mode = 'menu'; }
 function renderDex() {
@@ -1192,6 +1501,7 @@ function update(dt) {
     case 'card': cardUpdate(); break;
     case 'menu': menuUpdate(); break;
     case 'dex': dexUpdate(); break;
+    case 'controls': controlsUpdate(); break;
   }
   audibleBtn.hidden = !(mode === 'title' || mode === 'card');
 }
@@ -1204,6 +1514,7 @@ function render() {
     case 'card': renderCard(); break;
     case 'menu': renderMenu(); break;
     case 'dex': renderDex(); break;
+    case 'controls': renderControls(); break;
   }
   if (fade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, fade)})`; ctx.fillRect(0, 0, VW, VH); }
   if (toastT > 0) {
@@ -1234,6 +1545,7 @@ window.__hss = {
       dex: JSON.parse(JSON.stringify(G.save.dex)), deerBeaten: G.save.deerBeaten, deerPresent: G.save.deerPresent,
       chapterDone: G.save.chapterDone, player: { x: player.tx, y: player.ty, dir: player.dir },
       alvin: { x: alvin.tx, y: alvin.ty }, trial: trialSnapshot(),
+      settings: { stick: settings.stick }, stickVisible: !deckEl.hidden,
     };
   },
   advanceDay() {
