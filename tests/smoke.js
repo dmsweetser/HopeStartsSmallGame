@@ -1261,6 +1261,77 @@ function findChromium() {
   await tap('z'); await page.waitForTimeout(300);
   await dismissDialogue(8);
 
+  // THE LONG TENDING: the year loop, the pipeline, the goals, the goats.
+  const winAnyTrial = async () => {
+    const st = await S();
+    if (st.mode !== 'trial') return;
+    await page.evaluate(() => { trial.pressure = 3; });
+    await page.waitForTimeout(1400);
+    await tap('z'); await page.waitForTimeout(250);
+    await tap('z'); await page.waitForTimeout(1600);
+    await dismissDialogue(8);
+  };
+  const ltYear = s.year;
+  const g0 = await page.evaluate(() => window.__hss.ltGoals());
+  check('the long tending keeps its goals in pencil', !!g0 && typeof g0.dex === 'boolean' && g0.rowOne === true && (await page.evaluate(() => !ltGoalsMet())), 'goals=' + JSON.stringify(g0));
+  await page.evaluate(() => window.__hss.shareStand());
+  await dismissDialogue(4);
+  s = await S();
+  check('the farm stand shares the surplus down the road', s.wine.shared > 0, 'shared=' + s.wine.shared);
+  await page.evaluate(y => window.__hss.setDay((y - 1) * 56 + 43), ltYear); // winter of the finale year
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(6);
+  await winAnyTrial();
+  await page.evaluate(() => window.__hss.pruneRow(1));
+  await dismissDialogue(4);
+  await page.evaluate(() => window.__hss.sowTrayLT());
+  await dismissDialogue(4);
+  s = await S();
+  check('winter work: Row 1 pruned, the tray sown', (await page.evaluate(() => G.save.cropRows[0].prunedYear)) === ltYear && s.tray.n === 40, 'tray=' + s.tray.n);
+  for (let i = 0; i < 10; i++) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(4); await winAnyTrial(); }
+  await page.evaluate(y => window.__hss.setDay(y * 56 + 1), ltYear); // spring, year +1
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(6);
+  await winAnyTrial();
+  s = await S();
+  check('spring: pruning pays in yield, the tray wakes, the appeal is filed', s.rows[0].yieldRating === 2 && s.tray.ready === true && s.world.flags.goatAppeal === 'filed', 'yield=' + s.rows[0].yieldRating + ' ready=' + s.tray.ready + ' appeal=' + s.world.flags.goatAppeal);
+  const plantsBefore = s.plants.length;
+  await page.evaluate(() => window.__hss.potUpLT());
+  await dismissDialogue(6);
+  s = await S();
+  check('the pipeline runs forever: twelve more, potted and named', s.plants.length === plantsBefore + 12, 'plants=' + s.plants.length);
+  await page.evaluate(() => { const sv = __hss.debugSave(); sv.plants.forEach(p => { if (p.location === 'GREENHOUSE') p.stage = 3; }); __hss.setSave(sv); });
+  await page.evaluate(() => window.__hss.plantNurseryRow(8));
+  await dismissDialogue(6);
+  await page.evaluate(() => window.__hss.plantNurseryRow(9));
+  await dismissDialogue(6);
+  s = await S();
+  check('rows 8 and 9 take the nursery stock', s.plants.some(p => p.row === 8) && s.plants.some(p => p.row === 9), '');
+  await page.evaluate(y => window.__hss.setDay(y * 56 + 15), ltYear); // summer, year +1
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(6);
+  await winAnyTrial();
+  await page.evaluate(() => { const sv = __hss.debugSave(); sv.world.proj = 0; __hss.setSave(sv); });
+  await page.evaluate(() => window.__hss.harvestRow(3));
+  await dismissDialogue(8);
+  s = await S();
+  check('the year loop turns: a second-year harvest', (s.wine.poundsByYear[ltYear + 1] || 0) > 0, 'lbs=' + (s.wine.poundsByYear[ltYear + 1] || 0));
+  await page.evaluate(y => window.__hss.setDay((y + 1) * 56 + 1), ltYear); // spring, year +2
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(6);
+  await winAnyTrial();
+  await page.evaluate(y => window.__hss.setDay((y + 2) * 56 + 1), ltYear); // spring, year +3
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(6);
+  await winAnyTrial();
+  s = await S();
+  check('the goats come home by appeal, in the fullness of forms', s.world.flags.goats === true, 'appeal=' + s.world.flags.goatAppeal);
+
   // a save written in the oldest formats still loads: pots as a bare stage
   // int and as {stage, waterDays} objects both migrate to named plants
   await page.evaluate(() => {

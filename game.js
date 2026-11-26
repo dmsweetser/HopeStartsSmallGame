@@ -1638,6 +1638,12 @@ function barnInteract(f) {
   if (w.ch >= 8 && (w.step || 0) >= 3 && !w.flags.strawDone && ((f.x === 4 || f.x === 5) && f.y === 5)) return strawberryInteract();
   if (w.ch >= 8 && w.flags.butterflyReady && !w.flags.butterflyPlanted && f.x === 19 && f.y === 5) return butterflyPlant();
   if (w.ch === 9 && w.step === 0 && w.flags.forsythiaReady && !w.flags.forsythiaPlanted && f.x === 17 && f.y === 5) return forsythiaPlant();
+  if (w.ch === 11 && w.flags.proudShoot && f.x === 24 && f.y === 11) {
+    return say('THE PROUD WEED\'S SHOOT, UP AGAIN BY THE FENCE — ONE GREEN WHISKER, EVERY SPRING, FROM ROOTS THAT OUTLASTED FIRE.', which => {
+      w.flags.proudShoot = false; w.flags.proudChoice = which === 0 ? 'PULLED' : 'LET STAND'; saveGame();
+      say(which === 0 ? 'PULLED, WITH A NOD. THE REGISTER NOTES IT, WRYLY: PULLED AGAIN. SEE YOU NEXT YEAR.' : 'LET STAND, THEN. THE REGISTER NOTES IT, WRYLY: SOME THINGS A FIELD KEEPS ON PURPOSE.');
+    }, ['PULL IT', 'LET IT STAND']);
+  }
   if (w.ch >= 6 && f.y === 12) return fenceInteract(f);
   if (w.ch >= 6 && f.y >= 13) return fieldInteract(f);
   if (w.ch >= 4 && (f.x === 6 || f.x === 7) && f.y === 5) return irisInteract();
@@ -1690,6 +1696,11 @@ function barnInInteract(f) {
     }
     return say('THE STAIRS. UP AND DOWN, LIKE A FAMILY.');
   }
+  if (ch === 'k' && w.ch === 11 && !s.wine.jar && s.wine.poundsByYear[seasonOf(s.day).year]) {
+    return say('THE BARN KITCHEN, IN WINE SEASON. THE YEAR\'S FRUIT IS IN: ' + (s.wine.poundsByYear[seasonOf(s.day).year] || 0).toFixed(1) + ' LBS. SET THE HONEY FOR BATCH ' + (s.wine.batches.length + 1) + '.', which => {
+      startBatchTwo([0.3, 0.55, 0.65, 0.8, 1.0][which]);
+    }, ['A SPOON — 0.30', 'A MEASURE — 0.55', 'THE LESSON — 0.65', 'A FULL MEASURE — 0.80', 'A GENEROUS CUP — 1.00']);
+  }
   if (ch === 'k' && w.ch === 10 && w.step === 0 && !s.wine.jar) {
     return say('THE BARN KITCHEN. A CLEAN JAR, BOUGHT FRUIT, AND A REHEARSAL TO RUN.', which => { if (which === 0) startBatchOne(); }, ['START BATCH ONE', 'NOT YET']);
   }
@@ -1710,6 +1721,7 @@ function barnInInteract(f) {
     return say('AMONG THE BARN\'S PLUMBING: A VALVE, GREEN WITH AGE, THAT FRANK TURNS WITH BOTH HANDS AND A PRAYER.', which => { if (which === 0) turnValve(); }, ['TURN IT', 'NOT YET']);
   }
   if (ch === 'e' && w.ch === 10 && w.step === 5) return tasting();
+  if (ch === 'e' && w.ch === 11) return say('THE TABLE. THE YEAR\'S SURPLUS COULD GO DOWN THE ROAD — THE FARM STAND BY THE GATE HAS A SIGN NOW, AND THE SIGN HAS A BORDER.', which => { if (which === 0) shareStand(); }, ['SHARE THE SURPLUS', 'NOT TODAY']);
   if (ch === 'e') return say('THE TABLE. IT MADE THE TRIP. EVERYTHING IMPORTANT IN THIS FAMILY HAS BEEN DECIDED AT THIS TABLE, INCLUDING BREAKFAST.');
   if (ch === 'k') return say('THE COUNTER. THE KETTLE HAS FOUND ITS NEW HOME AND APPROVES OF THE VIEW.');
   if (ch === 'm') return say('THE BED. MOVING HOUSE IS A CONTACT SPORT AND EVERYONE IS BRUISED IN PLACES THEY DID NOT KNOW THEY HAD.');
@@ -1751,6 +1763,9 @@ function greenInteract(f) {
     return say('THE LITTLE STOVE, COLD. THE NIGHT WILL BE WHAT IT WILL BE.', which => { if (which === 0) { w.flags.heaterLit = true; saveGame(); say('LIT. THE STOVE SETTLES INTO ITS WORK WITH A TICK AND A SIGH.'); } }, ['LIGHT THE STOVE', 'LEAVE IT']);
   }
   if (ch === 'a') {
+    if (w.ch === 11 && s.tray.ready) {
+      return say('THE TRAY, STRATIFIED THROUGH THE WINTER AND READY: ' + s.tray.n + ' SEEDS, WIDE AWAKE.', which => { if (which === 0) potUpLT(); }, ['POT THEM UP', 'NOT YET']);
+    }
     if (w.ch === 6 && w.step === 4 && w.flags.repotReady) return repot();
     if (w.ch === 6 && w.step <= 3) {
       return say('THE BENCHES. EVERY LEAF IN THE GLASS HOUSE IS A QUESTION.', which => {
@@ -1964,6 +1979,7 @@ function fieldInteract(f) {
   if (inRow.length) {
     const opts = [];
     if ((w.ch === 10 && w.step === 2) || (w.ch === 11 && seasonOf(s.day).idx === 1)) opts.push('HARVEST THE ROW');
+    if (w.ch >= 10 && seasonOf(s.day).idx === 3) opts.push('PRUNE THE ROW');
     if (lv > 0) opts.push('PULL THE WEEDS (LEVEL ' + lv + ')');
     opts.push('WATER THE ROW');
     if (!row.mulched) opts.push('MULCH IT (3 CARTS)');
@@ -1972,6 +1988,7 @@ function fieldInteract(f) {
     return say('ROW ' + rn + ': ' + inRow.length + ' BUSHES. ' + (row.mulched ? 'MULCHED. ' : 'UNMULCHED. ') + (lv > 0 ? 'WEEDS AT LEVEL ' + lv + ' IN THIS SECTION. ' : 'THE SECTION IS CLEAN. ') + inRow.map(p => p.name).slice(0, 4).join(', ') + (inRow.length > 4 ? '…' : ''), which => {
       const pick = opts[which];
       if (pick === 'HARVEST THE ROW') harvestRow(rn);
+      else if (pick === 'PRUNE THE ROW') pruneRow(rn);
       else if (pick && pick.startsWith('PULL')) pullWeeds(sec);
       else if (pick === 'WATER THE ROW') { inRow.forEach(waterPlant); row.watered = true; if (w.ch === 9 && w.step <= 2) { (w.flags.blossomWatered = w.flags.blossomWatered || {})[rn] = true; } saveGame(); say('ROW ' + rn + ' WATERED, BUSH BY BUSH, NAME BY NAME.'); }
       else if (pick === 'MULCH IT (3 CARTS)') mulchRow(rn);
@@ -1985,6 +2002,10 @@ function fieldInteract(f) {
   if (st === 2) return say('COOKED THROUGH. WHAT LIVES UNDER THERE NOW IS SOIL AND SILENCE.', which => { if (which === 0) moveTarp(bi); }, ['MOVE THE TARP', 'NOT YET']);
   // clear ground: the row work that remains
   if (lv > 0) return say('EMPTY GROUND, ROW ' + rn + ', AND THE WEEDS ARE MOVING IN AT LEVEL ' + lv + '.', which => { if (which === 0) pullWeeds(sec); }, ['PULL THE WEEDS', 'NOT YET']);
+  if (w.ch === 11 && !inRow.length) {
+    const stock = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE' && p.stage >= 3);
+    if (stock.length) return say('EMPTY GROUND, ROW ' + rn + ', AND THE NURSERY SHELF HOLDS ' + stock.length + ' BUSHES READY FOR REAL GROUND.', which => { if (which === 0) plantNurseryRow(rn); }, ['PLANT THE NURSERY STOCK', 'NOT YET']);
+  }
   if (row && !row.mulched) return say('CLEAR GROUND, ROW ' + rn + '. IT WANTS MULCH BEFORE IT WANTS PLANTS.', which => { if (which === 0) mulchRow(rn); }, ['MULCH IT (3 CARTS)', 'NOT YET']);
   return say('ROW ' + rn + ', READY. THE PLANTING GATE AT THE FENCE KNOWS WHAT REMAINS.');
 }
@@ -2409,6 +2430,120 @@ TRIAL_OUTCOMES.frostBlossom = {
     say(lines);
   },
 };
+function pruneRow(rn) {
+  const s = G.save, year = seasonOf(s.day).year;
+  const row = s.cropRows[rn - 1];
+  if (row.prunedYear === year) return say('ROW ' + rn + ' IS PRUNED FOR THIS WINTER. THE CANES STAND COUNTED: SEVEN TO TEN, THE CROSSING WOOD GONE.');
+  if (!projUse()) return;
+  row.prunedYear = year; saveGame();
+  say(rn === 1 ? 'ROW 1 PRUNED, ALL SIX TOGETHER, THE WAY THEY DO EVERYTHING. KEEP SEVEN TO TEN CANES; THE CROSSING WOOD GOES FIRST. THE ROW WILL REMEMBER IT IN THE YIELD.' : 'ROW ' + rn + ' PRUNED. KEEP SEVEN TO TEN CANES; THE CROSSING WOOD GOES FIRST. NEXT YEAR\'S YIELD WILL TELL THE STORY.');
+}
+function plantNurseryRow(rn) {
+  const s = G.save;
+  const stock = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE' && p.stage >= 3).sort((a, b) => (b.stage - a.stage) || (b.tended - a.tended)).slice(0, 12);
+  if (!stock.length) return say('THE NURSERY SHELF HOLDS NO ONE READY FOR REAL GROUND.');
+  for (const p of stock) { p.location = 'ROW' + rn; p.row = rn; p.plantedDay = s.day; if (!p.history.includes('PLANTED IN ROW ' + rn)) p.history.push('PLANTED IN ROW ' + rn); }
+  saveGame();
+  say(stock.length + ' BUSHES GO INTO ROW ' + rn + ', NAMES SPOKEN OVER EVERY HOLE: ' + stock.slice(0, 4).map(p => p.name).join(', ') + (stock.length > 4 ? '…' : '') + '. THE FIELD FILLS THE WAY A FAMILY DOES: ONE NAME AT A TIME.');
+}
+function sowTrayLT() {
+  const s = G.save, w = s.world;
+  if (s.tray.n > 0) return say('THE TRAY IS ALREADY SOWN. WINTER WILL DO ITS SLOW WORK.');
+  if (seasonOf(s.day).idx !== 3) return say('THE TRAY IS SOWN IN WINTER. THE FRIDGE KEEPS THE SEEDS\' CALENDAR, AND IT IS NOT WINTER.');
+  s.tray.n = 40; s.tray.sownDay = s.day; s.tray.stratDays = 0; s.tray.ready = false; saveGame();
+  say('FORTY SEEDS INTO THE TRAY, AND THE TRAY INTO THE FRIDGE, TO DREAM OF WINTER FROM INSIDE IT. THE PIPELINE RUNS FOREVER NOW. THAT IS THE POINT OF IT.');
+}
+function potUpLT() {
+  const s = G.save;
+  const made = Math.min(12, s.tray.n);
+  const vars = ['ECHO', 'CHANDLER', 'CLIMAX'];
+  const names = [];
+  for (let i = 0; i < made; i++) {
+    const p = freshPlant(allocName(s.plants), { variety: vars[(s.tray.pottedTotal + i) % 3], stage: 2, location: 'GREENHOUSE', sownDay: s.tray.sownDay || s.day, history: ['SOWN IN THE LONG TENDING'] });
+    s.plants.push(p); names.push(p.name);
+  }
+  s.tray.n -= made; s.tray.pottedTotal += made;
+  if (s.tray.n <= 0) { s.tray.ready = false; s.tray.n = 0; }
+  saveGame();
+  say(made + ' POTTED UP AND NAMED: ' + names.slice(0, 4).join(', ') + (names.length > 4 ? '…' : '') + '. THE NURSERY SHELF FILLS AGAIN. IT ALWAYS FILLS AGAIN.');
+}
+function shareStand() {
+  const s = G.save, w = s.world, year = seasonOf(s.day).year;
+  if (w.flags.standYear === year) return say('THE STAND HAS SHARED THIS YEAR\'S SURPLUS ALREADY. THE ROAD EATS WELL. THE SIGN BY THE GATE SAYS SO, IN FRANK\'S BEST PAINT.');
+  const lbs = Math.floor((s.wine.poundsByYear[year] || 0) * 0.25);
+  if (lbs <= 0) return say('NO SURPLUS YET THIS YEAR. THE STAND WAITS, SIGN PAINTED, BASKETS READY.');
+  s.wine.shared = (s.wine.shared || 0) + lbs; w.flags.standYear = year; saveGame();
+  say(lbs + ' LBS GO DOWN THE ROAD IN BASKETS — NEIGHBOURS, THE CHURCH TABLE, ANYONE WHO DRIVES SLOW PAST THE SIGN. THE CELLAR PAGE KEEPS THE COUNT: ' + s.wine.shared + ' LBS SHARED, ALL TOLD.');
+}
+function ltOpening() {
+  const s = G.save, w = s.world;
+  w.flags.ltStartYear = seasonOf(s.day).year; saveGame();
+  say(['THE STORY IS DONE, AND THE FIELD IS NOT. THAT IS THE BEST KIND OF ENDING: THE KIND YOU GET TO KEEP LIVING IN.', 'THE SEASONS WILL KEEP THEIR ROUNDS — BLOSSOM, FRUIT, WINE, PRUNING, SNOW — AND THE REGISTER KEEPS ITS BACK PAGE OPEN, WITH GOALS WRITTEN IN PENCIL AND STAMPS EARNED IN INK.', 'TEND IT WELL. THERE IS NO LAST PAGE. THERE IS ONLY THE NEXT SEASON.']);
+}
+function ltDawn(ev) {
+  const s = G.save, w = s.world, so = seasonOf(s.day);
+  const pre = [];
+  if (w.flags.wineNote) { pre.push(w.flags.wineNote); w.flags.wineNote = null; }
+  if (s.tray.n > 0 && !s.tray.ready) {
+    if (so.idx === 3) s.tray.stratDays = (s.tray.stratDays || 0) + 1;
+    if ((s.tray.stratDays || 0) >= 10 && so.idx === 0) { s.tray.ready = true; pre.push('THE TRAY IN THE FRIDGE HAS DONE ITS WINTER AND WANTS POTTING. THE GLASS HOUSE BENCH, WHEN YOU ARE READY.'); }
+  }
+  if (pre.length && w.flags.seasonChanged == null) { saveGame(); return pre; }
+  if (w.flags.seasonChanged != null) {
+    const idx = w.flags.seasonChanged; w.flags.seasonChanged = null; saveGame();
+    if (idx === 0) { // spring
+      for (const p of s.plants) if (!p.memorial && p.row && p.stage === 4) { p.stage = 5; if (!p.blossomDay) p.blossomDay = s.day; p.fruitSetOk = true; }
+      for (let rn = 1; rn <= 12; rn++) { const row = s.cropRows[rn - 1]; if (row.prunedYear === so.year - 1) { row.yieldRating = Math.min(3, (row.yieldRating || 1) + 1); row.prunedYear = null; } if (s.plants.some(p => !p.memorial && p.row === rn)) row.fruitSet = 60; }
+      const lines = ['SPRING, AGAIN, TRUE AS A DOG. THE FORSYTHIA GOES FIRST, THE FIELD ANSWERS IN BLOSSOM, AND THE BEES FILE THEIR PAPERWORK.'];
+      if (w.flags.proudRoots && !w.flags.proudShoot) { w.flags.proudShoot = true; lines.push('BY THE FENCE: ONE GREEN SHOOT, UP FROM THE PROUD WEED\'S ROOTS. EVERY YEAR, ONE. THE FIELD KEEPS ITS APPOINTMENTS.'); }
+      if (!w.flags.goats && !w.flags.goatAppeal && so.year >= (w.flags.ltStartYear || so.year) + 1) { w.flags.goatAppeal = 'filed'; lines.push('A LETTER COMES FROM THE TOWN, IN A KINDER HAND THAN LAST TIME: THE ORDINANCE HAS BEEN REVISITED. AN APPEAL MAY BE FILED. FRANK FILES IT BEFORE THE INK ON THE ENVELOPE IS DRY.'); }
+      else if (w.flags.goatAppeal === 'filed') { w.flags.goatAppeal = 'heard'; lines.push('THE APPEAL IS HEARD. THERE ARE FORMS. THERE ARE ALWAYS FORMS. THE FORMS, THIS TIME, ARE LOSING.'); }
+      else if (w.flags.goatAppeal === 'heard' && !w.flags.goats) { w.flags.goats = true; lines.push('THE APPEAL SUCCEEDS. TWO GOATS ARRIVE BY TRAILER, SURVEY THE PEN BY THE GOOD SHED LIKE SMALL LANDLORDS, AND APPROVE IT. THEY GET A PAGE IN THE REGISTER, UNDER GARDEN, WHERE THE JOY IS KEPT.'); }
+      saveGame();
+      return [...pre, ...lines];
+    }
+    if (idx === 1) { // summer
+      for (const p of s.plants) if (!p.memorial && p.row && p.stage === 5) { p.stage = 6; if (!p.fruitDay) p.fruitDay = s.day; }
+      for (let rn = 1; rn <= 12; rn++) if (s.plants.some(p => !p.memorial && p.row === rn)) s.cropRows[rn - 1].ripeDay = s.day;
+      saveGame();
+      return ['SUMMER. THE FIELD TURNS BERRY-DARK AND THE BASKET BY THE BARN DOOR EMPTIES ITS SHADOW INTO THE ROWS. HARVEST WHEN READY.'];
+    }
+    if (idx === 2) { // fall
+      const lines = ['FALL. THE GIFT BUSH TURNS FIRST, DARK RED, THE WAY IT ALWAYS DOES NOW — SOME PLANTS BECOME THE CALENDAR.'];
+      if (s.wine.batches.some(b => b.year === so.year)) lines.push('THE YEAR\'S WINE IS TASTED AT THE TABLE IN THE EVENING — OMA\'S GLASS, THE PASTOR\'S WORD IF HE PASSES BY, AND THE CELLAR PAGE\'S VERDICT, KEPT.');
+      saveGame();
+      return lines;
+    }
+    if (idx === 3) { // winter: the bushes rest back to wood
+      for (const p of s.plants) if (!p.memorial && p.row && p.stage === 6) p.stage = 4;
+      saveGame();
+      return ['WINTER. THE FIELD SLEEPS IN ROWS. PRUNE WHEN YOU ARE READY — SEVEN TO TEN CANES, THE CROSSING WOOD FIRST — AND LET THE TRAY DREAM IN THE FRIDGE.'];
+    }
+  }
+  if (so.idx === 0 && hashDay(s.day) % 7 === 0) { // a spring frost night
+    const rows = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter(rn => s.plants.some(p => !p.memorial && p.row === rn));
+    if (rows.length) {
+      const rn = rows[hashDay(s.day) % rows.length];
+      const inRow = s.plants.filter(p => !p.memorial && p.row === rn);
+      startTrial({ foe: 'FROST', kind: 'frostBlossom', pressure: 45, vigor: 32, snap: true, plantsList: inRow, msg: 'A LATE FROST, IN THE LONG TENDING, COMES FOR ROW ' + rn + ' LIKE IT PAYS RENT THERE. ALVIN — OLDER, NOT SLOWER — TAKES HIS POST.' });
+      return null;
+    }
+  }
+  if (hashDay(s.day) % 11 === 0) { // deer scouts, in the small hours
+    const rowOne = s.plants.filter(p => !p.memorial && p.row === 1);
+    startTrial({ foe: 'DEER', kind: 'deerScoutsLT', pressure: 15, vigor: 30, plantsList: rowOne.length ? rowOne : sixPlants(), msg: 'SCOUTS AT THE FENCE IN THE SMALL HOURS. ALVIN IS ALREADY THERE, AHEAD OF THE ALARM, AS ALWAYS.' });
+    return null;
+  }
+  if (!w.flags.stamp900 && Object.values(s.wine.poundsByYear).some(v => v >= 900)) {
+    w.flags.stamp900 = true; saveGame();
+    return ['NINE HUNDRED POUNDS. THE NUMBER FRANK WROTE AT THE FENCE, IN THE YEAR OF THE FIRST HARVEST, IS A NUMBER THE FIELD HAS NOW PRODUCED IN A SINGLE YEAR.', 'IT GOES IN THE REGISTER IN INK, WITH A STAMP: 900. SOME NUMBERS BECOME PLANS. SOME PLANS BECOME YEARS. THIS ONE BECAME BOTH.'];
+  }
+  return null;
+}
+TRIAL_OUTCOMES.deerScoutsLT = {
+  win(t) { say('THE SCOUTS LEAVE WITH A STORY ABOUT A DOG. THE FIELD KEEPS ITS NIGHT. SOME GUARDS NEVER RETIRE; THEY JUST NAP PROFESSIONALLY.'); },
+  lose(t, fled) { say('THE SCOUTS GRAZE THE FENCE LINE AND GO. NO HARM WORTH WRITING DOWN — THE REGISTER LEAVES THE PAGE BLANK, WHICH IS ITS OWN KIND OF ENTRY.'); },
+};
 function ch4Opening() {
   say(['THE GLASS HOUSE IS SETTLED. THE FAMILY IS SETTLED. WHAT REMAINS IS THE FIELD ITSELF, AND A WINTER TO PLAN IN.', 'STAKES. STRING. A TAPE MEASURE. AND A TOWN CLERK WITH A RULEBOOK — BUT FIRST, THE FIELD. THE GATE SWINGS BOTH WAYS NOW.']);
 }
@@ -2487,6 +2622,7 @@ function houseInteract(f) {
     if (w.flags.tripDay === s.day) return say('ONE TRIP A DAY. THE VAN, AND FRANK, BOTH HAVE LIMITS.');
     return say('BOXES: BOOKS, JARS, AND ONE LABELED "MISC — DO NOT SHAKE (SEEDS?)".', which => { if (which === 0) storageTrip(); }, ['LOAD THE VAN', 'NOT YET']);
   }
+  if (ch === 'r' && w.ch === 11 && seasonOf(s.day).idx === 3 && s.tray.n === 0) return sowTrayLT();
   if (ch === 'r') { // the fridge
     if (w.ch === 2 && w.step === 1 && !w.flags.fridgeTray) {
       return say('THE SECOND PACKET. BLUEBERRY SEEDS NEED A WINTER BEFORE THEY NEED A SPRING.', which => { if (which === 0) fridgeSeeds(); }, ['PUT THE SEEDS IN', 'NOT YET']);
@@ -2638,6 +2774,11 @@ function renderBerry() {
       });
       ctx.fillStyle = '#8a6f45'; ctx.fillRect(1 * TILE - camX + 3, 13 * TILE - camY + 14, 10, 8); // the mulch pile
       ctx.fillStyle = '#5d4a30'; ctx.fillRect(1 * TILE - camX + 5, 13 * TILE - camY + 10, 6, 5);
+      if (s6.world.flags.goats) { // the goats, in their pen by the good shed
+        ctx.fillStyle = '#e8e2d2'; ctx.fillRect(23 * TILE - camX + 3, 5 * TILE - camY + 8, 9, 7); ctx.fillRect(24 * TILE - camX + 6, 6 * TILE - camY + 6, 8, 6);
+        ctx.fillStyle = '#20242a'; ctx.fillRect(23 * TILE - camX + 4, 5 * TILE - camY + 9, 1, 1); ctx.fillRect(24 * TILE - camX + 12, 6 * TILE - camY + 7, 1, 1);
+      }
+      if (s6.world.flags.proudShoot) { ctx.fillStyle = '#3f7a2e'; ctx.fillRect(24 * TILE - camX + 7, 11 * TILE - camY + 16, 2, 8); }
       if (s6.world.ch >= 8) { // the burn pile, and the proud weed while it stands
         ctx.fillStyle = '#38322a'; ctx.fillRect(4 * TILE - camX + 4, 10 * TILE - camY + 16, 10, 6);
         ctx.fillStyle = '#5d4a30'; ctx.fillRect(4 * TILE - camX + 6, 10 * TILE - camY + 12, 6, 5);
@@ -3408,6 +3549,7 @@ function objective() {
   if (w.ch === 8) return ['THE LONG WAR: PULL, FEED, MULCH.', 'A VISIT, AND A SORTING LESSON.', 'THE PROUD WEED STANDS BY THE FENCE.', 'STRAWBERRIES FOR THE FAMILY GARDEN.', 'A BUSH FOR OMA\'S PATIO.', 'HOLD EVERY SECTION AT ZERO, A FULL WEEK.'][w.step] || 'THE LONG WAR.';
   if (w.ch === 9) return ['A FORSYTHIA FOR OMA\'S WINDOW.', 'BLOSSOM WEEK. WATER THE ROWS.', 'THE LATE FROST: THREE NIGHTS. SET THE WATCH AT THE GATE.', 'THE RECKONING OF THE BLOSSOM.'][w.step] || 'TEND THE BLOSSOM.';
   if (w.ch === 10) return ['BATCH ONE: A REHEARSAL, AT THE BARN KITCHEN.', 'MIND THE JAR: SWISH IT, WATCH THE SEAL.', 'THE HARVEST. ROW 1 FIRST, BY NAME.', 'BATCH TWO: YOUR RATIO, FROM THE FIELD\'S OWN FRUIT.', 'MIND THE JAR: SWISH IT, WATCH THE SEAL.', 'THE TASTING, AT THE TABLE.'][w.step] || 'MAKE THE WINE.';
+  if (w.ch === 11) return 'THE LONG TENDING. EVERY YEAR, THE SAME GOOD WORK.';
   if (s.tutorial === 1) return 'THE GRAND PLAN: SIX POTS, SIX PROMISES (A)';
   if (s.tutorial === 2) return 'A DRINK FOR EACH POT: A AT A POT';
   if (s.chapterDone) return 'FREE TENDING. BERRYHILL COMES LATER.';
@@ -3957,6 +4099,11 @@ function ch6DawnPrep() {
     if (w.flags.seasonKey !== seasonKey()) {
       w.flags.seasonKey = seasonKey();
       for (const r of s.cropRows) if (r.fedStamp != null && r.fedStamp !== seasonKey()) { r.yieldRating = Math.max(0, r.yieldRating - 1); r.fedStamp = null; }
+      w.flags.seasonChanged = seasonOf(s.day).idx;
+      for (const p of s.plants) if (!p.memorial && p.location === 'GARDEN') {
+        p.gardenSeasons = (p.gardenSeasons || 0) + 1;
+        if (p.gardenSeasons >= 4) p.gardenState = 'FLOURISHING'; else if (p.gardenSeasons >= 2) p.gardenState = 'ESTABLISHED';
+      }
     }
   }
 }
@@ -4030,7 +4177,7 @@ TRIAL_OUTCOMES.frostTray = {
   },
 };
 
-function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); if (w.ch === 3) return ch3Dawn(ev); if (w.ch === 4) return ch4Dawn(ev); if (w.ch === 5) return ch5Dawn(ev); if (w.ch === 6) return ch6Dawn(ev); if (w.ch === 7) return ch7Dawn(ev); if (w.ch === 8) return ch8Dawn(ev); if (w.ch === 9) return ch9Dawn(ev); if (w.ch === 10) return ch10Dawn(ev); return null; }
+function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); if (w.ch === 3) return ch3Dawn(ev); if (w.ch === 4) return ch4Dawn(ev); if (w.ch === 5) return ch5Dawn(ev); if (w.ch === 6) return ch6Dawn(ev); if (w.ch === 7) return ch7Dawn(ev); if (w.ch === 8) return ch8Dawn(ev); if (w.ch === 9) return ch9Dawn(ev); if (w.ch === 10) return ch10Dawn(ev); if (w.ch === 11) return ltDawn(ev); return null; }
 
 const CHAPTER_INFO = [
   null,
@@ -4820,7 +4967,7 @@ function renderTrial() {
 function cardUpdate() {
   if (Input.aHit || Input.bHit) { mode = 'overworld'; chapterCardDone(cardChapter); } // KEEP TENDING
 }
-function chapterCardDone(n) { if (n === 1) ch2Opening(); if (n === 2) ch3Opening(); if (n === 3) ch4Opening(); if (n === 4) ch5Opening(); if (n === 5) ch6Opening(); if (n === 6) ch7Opening(); if (n === 7) ch8Opening(); if (n === 8) ch9Opening(); if (n === 9) ch10Opening(); }
+function chapterCardDone(n) { if (n === 1) ch2Opening(); if (n === 2) ch3Opening(); if (n === 3) ch4Opening(); if (n === 4) ch5Opening(); if (n === 5) ch6Opening(); if (n === 6) ch7Opening(); if (n === 7) ch8Opening(); if (n === 8) ch9Opening(); if (n === 9) ch10Opening(); if (n === 10) ltOpening(); }
 function renderCard() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
   drawSceneBanner(2, true);
@@ -5045,6 +5192,8 @@ function regIndexEntries() {
   if (G.save.promise) es.push({ kind: 'page', page: 'PROMISE', label: "OMA'S PROMISE" });
   if (G.save.wine.batches.length || G.save.wine.jar) es.push({ kind: 'page', page: 'CELLAR', label: 'THE CELLAR' });
   if (G.save.world.flags.barberKnown) es.push({ kind: 'page', page: 'BARBER', label: 'THE BARBER' });
+  if (G.save.world.ch >= 11) es.push({ kind: 'page', page: 'TENDING', label: 'THE LONG TENDING' });
+  if (G.save.world.flags.goats) es.push({ kind: 'page', page: 'GOATS', label: 'THE GOATS' });
   return es;
 }
 function dayOr(day, none) { return day != null ? 'DAY ' + day : none; }
@@ -5167,6 +5316,8 @@ function regPageLines() {
   const s = G.save;
   if (regPage === 'GERMINATION' && s.germ) return { title: 'GERMINATION', lines: ['SOWN: ' + s.germ.sown + ' SEEDS, LATE FALL.', 'POTTED UP: ' + s.germ.potted + ', EVERY ONE NAMED.', 'LOST ALONG THE WAY: ' + s.germ.lost + '.', 'THE TRAY IS EMPTY NOW. THE SHELF IS NOT.'] };
   if (regPage === 'PROMISE') return { title: "OMA'S PROMISE", lines: ['SHE PROMISED TO STAY', 'UNTIL SHE TASTES THE FIRST WINE', 'MADE FROM THIS FIELD\'S FRUIT.', '', s.wine.batches.some(b => b.verdict) ? 'THE JAR IS FILLED. SHE TASTED IT.' : 'THE JAR WAITS, EMPTY, PATIENT AS SHE IS.'] };
+  if (regPage === 'TENDING') { const g = ltGoals(); const mark = b => b ? '* ' : '- '; return { title: 'THE LONG TENDING', lines: [mark(g.dex) + 'BERRYDEX: ' + G.save.dex.cells.length + '/18 CELLS', mark(g.rows) + 'ALL 12 ROWS PLANTED', mark(g.nineHundred) + 'A 900-LB YEAR', mark(g.lovely) + 'A LOVELY BATCH', mark(g.streak) + 'CELLAR STREAK: 3 LOVELY YEARS', mark(g.garden) + 'EVERY GARDEN ENTRY FLOURISHING', mark(g.rowOne) + 'ROW 1 ACCOUNTED FOR', mark(g.rollCall) + 'ROLL CALL: ' + G.save.plants.length + '/100 NAMED', '', ltGoalsMet() ? 'WELL TENDED.' : 'THE FIELD IS YOUNG. TEND IT.'] }; }
+  if (regPage === 'GOATS') return { title: 'THE GOATS', lines: ['TWO GOATS, BY APPEAL, IN THE PEN', 'BY THE GOOD SHED. THEY ARE NOT', 'PLANTS. THEY ARE IN THE GARDEN', 'PAGES ANYWAY, BECAUSE JOY IS A', 'CATEGORY HERE, AND THE REGISTER', 'HAS NEVER ONCE APOLOGIZED FOR IT.', '', 'THEY EAT EVERYTHING EXCEPT THE', 'BLUEBERRIES. THIS WAS NEGOTIATED.'] };
   if (regPage === 'BARBER') return { title: 'THE BARBER', lines: ['UNKNOWN — SMALL — PRECISE.', 'IT CUT THE SMALLEST, AT AN ANGLE,', 'IN THE NIGHT, AND WAS NEVER', 'NAMED, NEVER CAUGHT, NEVER', 'SEEN AGAIN AFTER ALVIN FACED IT.', '', 'THE NURSERY REMEMBERS. SO DOES', 'THE DOG. ESPECIALLY THE DOG.'] };
   if (regPage === 'CELLAR') {
     const lines = s.wine.batches.map(b => 'BATCH ' + b.n + ': ' + b.verdict + ' (HONEY ' + b.index.toFixed(2) + ', CARE ' + b.care + ')');
@@ -5175,7 +5326,24 @@ function regPageLines() {
   }
   return { title: 'THE REGISTER', lines: [] };
 }
-function ltGoalsMet() { return false; } // Long Tending goals; replaced at the endgame
+function ltGoals() {
+  const s = G.save;
+  const years = [...new Set(s.wine.batches.filter(b => b.verdict === 'LOVELY').map(b => b.year))].sort((a, b) => a - b);
+  let streak = false;
+  for (const y of years) if (years.includes(y + 1) && years.includes(y + 2)) streak = true;
+  const garden = s.plants.filter(p => p.location === 'GARDEN' && !p.memorial);
+  return {
+    dex: s.dex.cells.length >= 18,
+    rows: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].every(rn => s.plants.some(p => !p.memorial && p.row === rn)),
+    nineHundred: Object.values(s.wine.poundsByYear).some(v => v >= 900),
+    lovely: s.wine.batches.some(b => b.verdict === 'LOVELY'),
+    streak,
+    garden: garden.length > 0 && garden.every(p => p.gardenState === 'FLOURISHING'),
+    rowOne: s.plants.filter(p => p.firstSix).every(p => p.memorial || p.firstHarvestDay != null),
+    rollCall: s.plants.length >= 100,
+  };
+}
+function ltGoalsMet() { const g = ltGoals(); return Object.values(g).every(Boolean); }
 
 /* ============================== MAIN LOOP ============================== */
 let perfNow = 0, lastT = 0;
@@ -5315,6 +5483,12 @@ window.__hss = {
   bottleJar() { bottleJar(); },
   harvestRow(rn) { harvestRow(rn); },
   tasting() { tasting(); },
+  ltGoals() { return ltGoals(); },
+  plantNurseryRow(rn) { plantNurseryRow(rn); },
+  pruneRow(rn) { pruneRow(rn); },
+  sowTrayLT() { sowTrayLT(); },
+  potUpLT() { potUpLT(); },
+  shareStand() { shareStand(); },
   carryPlants() { carryPlants(); },
   warp(x, y) { player.tx = x; player.ty = y; syncPixels(player); alvin.tx = x; alvin.ty = Math.min(AH - 1, y + 1); syncPixels(alvin); },
   gotoArea(a, x, y) { setArea(a, x, y); },
