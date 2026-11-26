@@ -3,8 +3,10 @@
    A tiny Pokémon-style tending game. Vanilla JS, no dependencies.
    All art is drawn in code from pixel maps. No image assets. */
 
-// The book's Audible page — the game's one funnel target.
+// The book's Audible page — the game's funnel target.
 const AUDIBLE_URL = 'https://www.audible.com/pd/Hope-Starts-Small-Audiobook/B0DZPCHT4M';
+// The book's Amazon page — the title menu's second funnel link.
+const BOOK_URL = 'https://www.amazon.com/dp/B0DXVKQHZ2';
 const SAVE_KEY = 'hss-save-v1';
 const VW = 160, VH = 144, TILE = 16;
 
@@ -2730,6 +2732,8 @@ function renderRegister() {
 let perfNow = 0, lastT = 0;
 const audibleBtn = document.getElementById('audibleBtn');
 audibleBtn.href = AUDIBLE_URL;
+const bookBtn = document.getElementById('bookBtn');
+bookBtn.href = BOOK_URL;
 function update(dt) {
   themeSync(); // the theme song lives on the title screen, and only there
   if (toastT > 0) toastT -= dt;
@@ -2746,6 +2750,7 @@ function update(dt) {
     case 'controls': controlsUpdate(); break;
   }
   audibleBtn.hidden = !(mode === 'title' || mode === 'card');
+  bookBtn.hidden = mode !== 'title'; // the buy link lives on the title menu only — the card stays Audible-only
 }
 function render() {
   switch (mode) {

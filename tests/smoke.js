@@ -74,6 +74,26 @@ function findChromium() {
   check('boots to title', s.mode === 'title', s.mode);
   await page.screenshot({ path: path.join(SHOTS, 'title.png') });
 
+  // TITLE FUNNEL LINKS: the Audible listen link and the Amazon buy link
+  // sit as a tidy pair on the title menu. The buy link is title-only —
+  // the chapter card (checked later) stays Audible-only.
+  const urls = await page.evaluate(() => ({ audible: AUDIBLE_URL, book: BOOK_URL }));
+  check('AUDIBLE_URL constant unchanged', urls.audible === 'https://www.audible.com/pd/Hope-Starts-Small-Audiobook/B0DZPCHT4M', urls.audible);
+  check('BOOK_URL constant is the clean Amazon link', urls.book === 'https://www.amazon.com/dp/B0DXVKQHZ2', urls.book);
+  const titleLinks = await page.evaluate(() => {
+    const a = document.getElementById('audibleBtn'), b = document.getElementById('bookBtn');
+    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    return {
+      aHref: a.href, aTarget: a.target, aHidden: a.hidden,
+      bHref: b.href, bTarget: b.target, bHidden: b.hidden,
+      overlap: ra.left < rb.right && rb.left < ra.right && ra.top < rb.bottom && rb.top < ra.bottom,
+      aBox: [ra.left, ra.top, ra.right, ra.bottom].map(Math.round), bBox: [rb.left, rb.top, rb.right, rb.bottom].map(Math.round),
+    };
+  });
+  check('title shows the audible link', !titleLinks.aHidden && titleLinks.aHref === urls.audible && titleLinks.aTarget === '_blank', JSON.stringify(titleLinks));
+  check('title shows the book buy link beside it', !titleLinks.bHidden && titleLinks.bHref === urls.book && titleLinks.bTarget === '_blank', JSON.stringify(titleLinks));
+  check('title link pair does not overlap', titleLinks.overlap === false, JSON.stringify([titleLinks.aBox, titleLinks.bBox]));
+
   // THEME SONG (pass 8): browsers block audio before a user gesture, so
   // the title sits silent until the player's first interaction — then
   // TERRA BEATA starts, looping, and stops the moment the game starts.
@@ -361,6 +381,8 @@ function findChromium() {
   check('chapter card showing', s.mode === 'card', s.mode);
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(SHOTS, 'card.png') });
+  const cardLinks = await page.evaluate(() => ({ audibleHidden: document.getElementById('audibleBtn').hidden, bookHidden: document.getElementById('bookBtn').hidden }));
+  check('chapter card keeps the audible link only', cardLinks.audibleHidden === false && cardLinks.bookHidden === true, JSON.stringify(cardLinks));
   const savedDay = s.day, savedStages = JSON.stringify(s.pots.map(p => p.stage));
 
   // Continue round-trip

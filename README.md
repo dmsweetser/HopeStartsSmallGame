@@ -2,6 +2,8 @@
 
 A tiny Pokémon-style tending game: plant seeds, water them day by day, face the trials a garden attracts, and grow something that started small. Chapter 1: **Seeds**.
 
+It is a companion to the novel it is named for — the title screen links out to the book: **hear it on Audible** or **buy it on Amazon**.
+
 ## Play
 
 Open the GitHub Pages site, or run it locally (below). Progress saves automatically in your browser's local storage.
