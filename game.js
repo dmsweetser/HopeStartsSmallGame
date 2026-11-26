@@ -2558,7 +2558,7 @@ function renderTrial() {
 
 /* ============================== CARD / DEX / MENU ============================== */
 function cardUpdate() {
-  if (Input.aHit || Input.bHit) mode = 'overworld'; // KEEP TENDING; the Audible button is the page link
+  if (Input.aHit || Input.bHit) mode = 'overworld'; // KEEP TENDING
 }
 function renderCard() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
@@ -2569,19 +2569,20 @@ function renderCard() {
   else { ctx.fillRect(133, 71, 1, 3); ctx.fillRect(132, 72, 3, 1); }
   drawText('SEEDS', 80 - textW('SEEDS', 2) / 2, 78, '#ffd94a', 2);
   const teaser = wrapText('SIX POTS, SIX PROMISES. NO LAND YET — BUT A START.', 34);
-  teaser.forEach((l, i) => drawText(l, 80 - textW(l, 1) / 2, 91 + i * 7, '#ffffff', 1));
+  teaser.forEach((l, i) => drawText(l, 80 - textW(l, 1) / 2, 94 + i * 7, '#ffffff', 1));
   // the roll call: the six, named, cycling two at a time so it never crowds
   const names = G.save.pots.map(p => p.name);
   const pair = Math.floor(perfNow / 2.5) % 3;
   const roll = names[pair * 2] + ' · ' + names[pair * 2 + 1];
   const pre = 'THE SIX: ';
   const rx = 80 - (textW(pre, 1) + textW(roll, 1)) / 2;
-  drawText(pre, rx, 106, '#cfe8cf', 1);
-  drawText(roll, rx + textW(pre, 1), 106, '#ffd94a', 1);
+  drawText(pre, rx, 110, '#cfe8cf', 1);
+  drawText(roll, rx + textW(pre, 1), 110, '#ffd94a', 1);
   const l = 'KEEP TENDING (A)';
-  ctx.fillStyle = '#ffd94a'; ctx.fillRect(Math.round(80 - textW(l, 1) / 2 - 4), 113, textW(l, 1) + 8, 9);
-  drawText(l, 80 - textW(l, 1) / 2, 115, '#20242a', 1);
-  drawText('HEAR CHAPTER 1:', 80 - textW('HEAR CHAPTER 1:', 1) / 2, 126, '#cfe8cf', 1);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(Math.round(80 - textW(l, 1) / 2 - 4), 118, textW(l, 1) + 8, 9);
+  drawText(l, 80 - textW(l, 1) / 2, 120, '#20242a', 1);
+  // no book links on the card — Daniel's ruling: links live on the title
+  // menu only, so the card is text + KEEP TENDING and nothing else
 }
 const MENU_ITEMS = ['RESUME', 'CONTROLS', 'SAVE & QUIT'];
 function menuUpdate() {
@@ -2778,8 +2779,10 @@ function update(dt) {
     case 'register': registerUpdate(); break;
     case 'controls': controlsUpdate(); break;
   }
-  audibleBtn.hidden = !(mode === 'title' || mode === 'card');
-  bookBtn.hidden = mode !== 'title'; // the buy link lives on the title menu only — the card stays Audible-only
+  // Daniel's ruling: the book links live on the title menu and nowhere
+  // else — the chapter card and every other screen stay link-free.
+  audibleBtn.hidden = mode !== 'title';
+  bookBtn.hidden = mode !== 'title';
 }
 function render() {
   switch (mode) {

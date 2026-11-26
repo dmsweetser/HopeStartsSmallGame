@@ -75,8 +75,9 @@ function findChromium() {
   await page.screenshot({ path: path.join(SHOTS, 'title.png') });
 
   // TITLE FUNNEL LINKS: the Audible listen link and the Amazon buy link
-  // sit as a tidy pair on the title menu. The buy link is title-only —
-  // the chapter card (checked later) stays Audible-only.
+  // sit as a tidy pair on the title menu — the ONLY place book links may
+  // appear (Daniel's ruling). The chapter card (checked later) is
+  // link-free: text + KEEP TENDING only.
   const urls = await page.evaluate(() => ({ audible: AUDIBLE_URL, book: BOOK_URL }));
   check('AUDIBLE_URL constant unchanged', urls.audible === 'https://www.audible.com/pd/Hope-Starts-Small-Audiobook/B0DZPCHT4M', urls.audible);
   check('BOOK_URL constant is the clean Amazon link', urls.book === 'https://www.amazon.com/dp/B0DXVKQHZ2', urls.book);
@@ -382,7 +383,7 @@ function findChromium() {
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(SHOTS, 'card.png') });
   const cardLinks = await page.evaluate(() => ({ audibleHidden: document.getElementById('audibleBtn').hidden, bookHidden: document.getElementById('bookBtn').hidden }));
-  check('chapter card keeps the audible link only', cardLinks.audibleHidden === false && cardLinks.bookHidden === true, JSON.stringify(cardLinks));
+  check('chapter card shows no book links', cardLinks.audibleHidden === true && cardLinks.bookHidden === true, JSON.stringify(cardLinks));
   const savedDay = s.day, savedStages = JSON.stringify(s.pots.map(p => p.stage));
 
   // Continue round-trip

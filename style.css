@@ -21,8 +21,8 @@ canvas#game {
   image-rendering: pixelated; image-rendering: crisp-edges;
 }
 /* the title screen's funnel pair: listen on Audible / buy the book.
-   The pair is centred as one row; on the chapter card the buy link hides
-   and the Audible link centres on its own, as it always has. */
+   The pair is centred as one row, and the title menu is the ONLY place
+   book links appear — every other screen stays link-free. */
 #titleLinks {
   position: absolute; left: 50%; bottom: 3.5%; transform: translateX(-50%);
   display: flex; gap: 8px; z-index: 5;
