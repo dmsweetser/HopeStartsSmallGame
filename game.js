@@ -8,6 +8,7 @@ const AUDIBLE_URL = 'https://www.audible.com/pd/Hope-Starts-Small-Audiobook/B0DZ
 // The book's Amazon page — the title menu's second funnel link.
 const BOOK_URL = 'https://www.amazon.com/dp/B0DXVKQHZ2';
 const SAVE_KEY = 'hss-save-v1';
+const TRIAL_OUTCOMES = {}; // trial kind -> {win(t), lose(t, fled)} — chapters register their outcomes here
 const VW = 160, VH = 144, TILE = 16;
 
 /* ============================== FONT (3x5) ============================== */
@@ -1259,84 +1260,544 @@ const MAP = [
 'nfFFFFHHHHMGGHHHHHHHHFfn',
 ];
 const MAP_W = 24, MAP_H = 18;
+function snowify(img, alpha) {
+  try {
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+    g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(232,240,248,' + alpha + ')'; g.fillRect(0, 0, c.width, c.height);
+    return c;
+  } catch (e) { return null; }
+}
+const SNOW_TILES = {};
+let SNOW_TREE = null;
+function buildSnow() {
+  for (const k of ['grass', 'grass2', 'grass3', 'grass4', 'tuft', 'tuftB', 'flower', 'flowerB', 'flower2', 'flower3', 'path', 'pathStone', 'soil']) if (TILES[k]) SNOW_TILES[k] = snowify(TILES[k], 0.66);
+  SNOW_TREE = snowify(TREE, 0.45);
+}
 const TILEMAP = { n: 'lawn', f: 'fenceV', v: 'fenceVine', H: 'fenceH', F: 'fenceBloom', G: 'gate', R: 'roof', c: 'chimney', W: 'wall', E: 'wallBase', i: 'window', D: 'door', g: 'grass', u: 'grass2', o: 'flower', O: 'flower2', Q: 'flower3', p: 'path', j: 'pathStone', P: 'porch', B: 'bench', C: 'compost', T: 'grass', s: 'soil', S: 'soilSprout', U: 'bush', b: 'birdbath', M: 'mailbox', K: 'crate', w: 'can', A: 'bedA', Y: 'bedB' };
 const SOLID = new Set(['n', 'f', 'v', 'H', 'F', 'G', 'R', 'c', 'W', 'E', 'i', 'D', 'B', 'C', 'T', 'U', 'b', 'M', 'K']);
-function mapChar(x, y) { if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return 'f'; return MAP[y][x]; }
-function isSolid(x, y) { return SOLID.has(mapChar(x, y)); }
+/* Areas: the yard is the first of several maps. Each area has its own rows,
+   dimensions, and (optionally) its own solid set; movement, camera and
+   rendering all read the current area, so a new place is data, not surgery. */
+let area = 'yard';
+const HOUSE_MAP = [
+  'HHHHHHHHHHHHHHHHHHHH',
+  'HaaaaaaaazzkrrkzzzzH',
+  'HzzzzzzzzzzzzzzzzzzH',
+  'HzzzzzzzzzzzzzzzzzzH',
+  'HzzzZzzzzzzzzzzzzzzH',
+  'HzzZZZzzzeeeezzzzzzH',
+  'HhzzZZzzzeeeezzzzzzH',
+  'HzzZZZzzzzzzzzzzzzzH',
+  'HzzzzzzzzzzzzzzzzzzH',
+  'HzzzzzzzzzzzzzzzzzzH',
+  'HzzzzzzzzzzzzzzzzzxH',
+  'HzzzzzzzzzzzzzzzzzzH',
+  'HHHHHHHHHHDHHHHHHHHH',
+];
+const HOUSE_SOLID = new Set(['H', 'a', 'r', 'k', 'h', 'e', 'x', 'f']);
+const AREAS = {
+  yard: { rows: MAP, w: MAP_W, h: MAP_H, name: 'DEERBROOK' },
+  house: { rows: HOUSE_MAP, w: 20, h: 13, name: 'THE HOUSE', solid: HOUSE_SOLID },
+};
+let AW = MAP_W, AH = MAP_H;
+let npcList = []; // runtime NPCs in the current area: {id,tx,ty,dir,set,name}
+function curArea() { return AREAS[area]; }
+function mapChar(x, y) { const a = curArea(); if (x < 0 || y < 0 || x >= a.w || y >= a.h) return 'f'; return a.rows[y][x]; }
+function isSolid(x, y) { const a = curArea(); return (a.solid || SOLID).has(mapChar(x, y)); }
+function setArea(name, tx, ty) {
+  area = name; const a = curArea(); AW = a.w; AH = a.h;
+  G.save.world.area = name;
+  player.tx = tx; player.ty = ty; syncPixels(player);
+  alvin.tx = tx; alvin.ty = Math.min(AH - 1, ty + 1); syncPixels(alvin);
+  alvinTarget = null;
+  layoutNPCs();
+  saveGame();
+}
+function exitsFor(a) { return EXITS[a] ? EXITS[a]() : []; }
+const EXITS = { // area -> () => [{x,y,to,tx,ty}] (state-dependent)
+  house: () => [{ x: 10, y: 12, to: 'yard', tx: 10, ty: 5 }],
+};
+/* NPCs: simple folk, placed by chapter and step. Sets are palettes for the
+   little figure drawer; Constance uses her real sprite set. */
+const NPC_SETS = {
+  jeremiah: { skin: '#e8b98a', hair: '#4a2f1d', top: '#3b6fe0', legs: '#2a4a7f', h: 15 },
+  zoey: { skin: '#f0c8a0', hair: '#7a4a21', top: '#e06a9a', legs: '#e06a9a', h: 12 },
+  oma: { skin: '#eec39b', hair: '#d8d8d8', top: '#7a5aa0', legs: '#4a3a5e', h: 13 },
+  friend: { skin: '#d9a06b', hair: '#2a2a2a', top: '#5a7a4a', legs: '#3a3a3a', h: 15 },
+  pastor: { skin: '#e8b98a', hair: '#5a5148', top: '#3a3f4a', legs: '#2a2d33', h: 15 },
+  pastorwife: { skin: '#f0c8a0', hair: '#8a6a3a', top: '#a03a5e', legs: '#5e2a3f', h: 14 },
+  mom: { skin: '#eec39b', hair: '#9a8a7a', top: '#b07f2a', legs: '#5e4a2a', h: 14 },
+};
+function npcsFor(a) {
+  const s = G.save, w = s.world, list = [];
+  if (!s || w.ch < 2) return list;
+  if (a === 'yard' && w.ch === 2) {
+    if (w.step >= 1) list.push({ id: 'jeremiah', tx: 14, ty: 12, dir: 'left', set: 'jeremiah', name: 'JEREMIAH' });
+    if (w.step >= 2) {
+      list.push({ id: 'zoey', tx: 6, ty: 13, dir: 'down', set: 'zoey', name: 'ZOEY' });
+      list.push({ id: 'lily', tx: 12, ty: 6, dir: 'down', set: 'lily', name: 'LILY' });
+    }
+  }
+  if (a === 'house' && w.ch === 2) {
+    list.push({ id: 'constance', tx: 5, ty: 4, dir: 'down', set: 'constance', name: 'CONSTANCE' });
+    if (w.step === 1) list.push({ id: 'jeremiah', tx: 8, ty: 3, dir: 'down', set: 'jeremiah', name: 'JEREMIAH' });
+    if (w.flags.omaVisit) list.push({ id: 'oma', tx: 11, ty: 4, dir: 'down', set: 'oma', name: 'OMA' });
+  }
+  return list;
+}
+function drawNPCFigure(n, sx, sy, talking) {
+  if (n.set === 'constance') { charSprite({ px: sx + camX, py: sy + camY, dir: n.dir || 'down', moving: false, blinkOff: 1.9, talk: talking }, CONSTANCE_SET); return; }
+  if (n.set === 'lily') { // the stroller, with its supervisor aboard
+    ctx.fillStyle = '#5a6270'; ctx.fillRect(sx + 2, sy + 7, 12, 6);
+    ctx.fillStyle = '#3a3f4a'; ctx.fillRect(sx + 2, sy + 5, 12, 3);
+    ctx.fillStyle = '#f0c8a0'; ctx.fillRect(sx + 6, sy + 2, 4, 4);
+    ctx.fillStyle = '#e06a9a'; ctx.fillRect(sx + 6, sy + 1, 4, 2);
+    ctx.fillStyle = '#20242a'; ctx.fillRect(sx + 3, sy + 13, 2, 2); ctx.fillRect(sx + 11, sy + 13, 2, 2);
+    return;
+  }
+  const P = NPC_SETS[n.set] || NPC_SETS.jeremiah;
+  const bob = 0;
+  ctx.fillStyle = P.legs; ctx.fillRect(sx + 5, sy + P.h - 4 + bob, 2, 4); ctx.fillRect(sx + 9, sy + P.h - 4 + bob, 2, 4);
+  ctx.fillStyle = P.top; ctx.fillRect(sx + 4, sy + 6 + bob, 8, P.h - 9);
+  ctx.fillStyle = P.skin; ctx.fillRect(sx + 5, sy + 1 + bob, 6, 5);
+  ctx.fillStyle = P.hair; ctx.fillRect(sx + 5, sy + bob, 6, 2);
+  if (n.set === 'oma') { ctx.fillStyle = '#d8d8d8'; ctx.fillRect(sx + 7, sy - 2 + bob, 3, 2); } // the bun
+  if (talking && Math.floor(perfNow * 7) % 2 === 0) { ctx.fillStyle = '#7a3b2e'; ctx.fillRect(sx + 7, sy + 4 + bob, 2, 1); }
+}
+
+function npcTalk(npc) {
+  const s = G.save, w = s.world;
+  if (npc.id === 'constance') {
+    const lines = [
+      'CONSTANCE: THE HOUSE IS MOSTLY BOXES AND OPINIONS NOW. THE PLANTS HAVE THE BEST ROOM. THIS SEEMS FAIR.',
+      'CONSTANCE: WATER THE SHELF, FRANK. THE SMALL ONES CANNOT ASK, SO I AM ASKING FOR THEM.',
+      'CONSTANCE: LAND FIRST. HOUSE SECOND. GOATS — WE WILL DISCUSS THE GOATS NEVER.',
+    ];
+    return say(lines[s.day % lines.length]);
+  }
+  if (npc.id === 'jeremiah') {
+    if (w.ch === 2 && w.step === 1 && !w.flags.carried) {
+      w.flags.carried = true; saveGame();
+      return say(['JEREMIAH: I CAN CARRY THE PEAT PELLETS. I AM BASICALLY A FORKLIFT.', 'HE CARRIES THEM LIKE THEY ARE MADE OF GLASS AND DYNAMITE. NOTHING BREAKS.', 'JEREMIAH: FOR THE RECORD — I STILL DO NOT LIKE BLUEBERRIES.', 'FRANK: NOTED IN THE REGISTER. UNDER "HONEST MEN".']);
+    }
+    if (w.jeremiahDay !== s.day) {
+      const target = s.plants.find(p => !p.memorial && p.stage >= 1 && !p.watered);
+      if (target) {
+        return say('JEREMIAH IS AROUND. ASK HIM TO WATER SOMETHING?', which => {
+          if (which === 0) { w.jeremiahDay = s.day; waterPlant(target); say('JEREMIAH WATERS ' + target.name + '. CAREFULLY. LIKE IT OWES HIM NOTHING AND HE INTENDS TO KEEP IT THAT WAY.'); }
+        }, ['ASK HIM', 'NOT NOW']);
+      }
+    }
+    const lines = [
+      'JEREMIAH: I HELP WITH THE PLANTS. I DO NOT EAT THE PLANTS. THESE ARE SEPARATE DEPARTMENTS.',
+      'JEREMIAH: WHEN THERE IS A FIELD, I WILL HELP DIG. DIGGING IS JUST CARRYING, DOWNWARD.',
+      'JEREMIAH: THE SPROUTS HAVE NAMES. THE CAR DOES NOT. PRIORITIES.',
+    ];
+    return say(lines[s.day % lines.length]);
+  }
+  if (npc.id === 'zoey') {
+    const lines = [
+      'ZOEY: I HAVE RANKED THE SPROUTS BY LIKELIHOOD OF GREATNESS. THE RANKINGS ARE CONFIDENTIAL.',
+      'ZOEY: IF THE NEW HOUSE DOES NOT HAVE A GOOD WINDOW, WE RIOT. POLITELY. WITH SIGNS.',
+      'ZOEY: I WATERED THE ONES ON THE END. THEY LOOKED THIRSTY AND ALSO BRAVE.',
+    ];
+    return say(lines[s.day % lines.length]);
+  }
+  if (npc.id === 'lily') {
+    const lines = [
+      'LILY SUPERVISES FROM THE STROLLER. HER STANDARDS ARE HIGH AND HER NAP IS NON-NEGOTIABLE.',
+      'LILY HAS BEEN GIVEN A LEAF TO HOLD. SHE HOLDS IT LIKE A SCEPTRE.',
+    ];
+    return say(lines[s.day % lines.length]);
+  }
+  if (npc.id === 'oma') {
+    return say(['OMA: I BROUGHT MY OWN TEA. YOURS IS FINE. MINE IS BETTER. THIS IS NOT A COMPETITION, BUT IF IT WERE —', 'OMA: SHOW ME THE SPROUTS AGAIN. SLOWLY. I AM MEMORIZING THEM.']);
+  }
+  say('...');
+}
+
+function areaInteract(f) {
+  if (area === 'house') return houseInteract(f);
+}
+function houseInteract(f) {
+  const s = G.save, w = s.world, ch = mapChar(f.x, f.y);
+  // the moving boxes stand on floor tiles in the corner
+  if (w.ch === 2 && w.step === 5 && f.y === 10 && f.x >= 15 && f.x <= 17 && (w.flags.trips || 0) < 3) {
+    if (w.flags.tripDay === s.day) return say('ONE TRIP A DAY. THE VAN, AND FRANK, BOTH HAVE LIMITS.');
+    return say('BOXES: BOOKS, JARS, AND ONE LABELED "MISC — DO NOT SHAKE (SEEDS?)".', which => { if (which === 0) storageTrip(); }, ['LOAD THE VAN', 'NOT YET']);
+  }
+  if (ch === 'r') { // the fridge
+    if (w.ch === 2 && w.step === 1 && !w.flags.fridgeTray) {
+      return say('THE SECOND PACKET. BLUEBERRY SEEDS NEED A WINTER BEFORE THEY NEED A SPRING.', which => { if (which === 0) fridgeSeeds(); }, ['PUT THE SEEDS IN', 'NOT YET']);
+    }
+    if (w.flags.fridgeTray && !s.tray.ready) return say('THE TRAY SLEEPS IN THE COLD AND DARK. WINTER DAYS BANKED: ' + s.tray.stratDays + ' OF 10.');
+    if (s.tray.ready) return say('THE FRIDGE IS JUST A FRIDGE AGAIN. ITS TENANTS MOVED TO THE SHELF.');
+    return say('THE FRIDGE HUMS. INSIDE: LEFTOVERS, AND PLANS.');
+  }
+  if (ch === 'a') { // the window shelf
+    if (f.x === 1) { // the tray end
+      if (s.tray.ready && s.tray.n > 0) {
+        return say('THE TRAY: ' + s.tray.n + ' SPROUTS, ALL UPRIGHT, ALL UNNAMED. THIS WILL NOT STAND.', which => {
+          if (which === 0) potUp();
+          else if (which === 1) waterShelf();
+        }, ['POT UP A SPROUT', 'WATER THE SHELF', 'NOT NOW']);
+      }
+      if (s.tray.ready) return say('THE TRAY IS EMPTY. THE SHELF IS NOT.', which => { if (which === 0) waterShelf(); }, ['WATER THE SHELF', 'NOT NOW']);
+      if (w.flags.fridgeTray) return say('AN EMPTY TRAY, WAITING FOR ITS TENANTS TO WAKE.');
+      return say('A TRAY OF PEAT PELLETS, PATIENT AS JANUARY.');
+    }
+    if (f.x >= 2 && f.x <= 7) { // a member of the six, in window order
+      const p = sixPlants().find(q => q.location === 'WINDOW' && q.slot === f.x - 2);
+      if (p) return potInteract(p);
+      return say('AN EMPTY SPOT ON THE SHELF. THE LIGHT HUMS OVER IT, HOPEFUL.');
+    }
+    // the grow-light end
+    if (w.flags.coldComing && !w.flags.blanket) {
+      return say('THE OLD WOOL BLANKET, FOLDED AND READY. TONIGHT WILL BE COLD ENOUGH TO ARGUE ABOUT.', which => {
+        if (which === 0) { w.flags.blanket = true; saveGame(); say('TUCKED IN. THE SHELF CROWD SLEEPS UNDER WOOL AND GOOD WISHES.'); }
+      }, ['TUCK THE BLANKET IN', 'NOT NOW']);
+    }
+    return say('THE GROW LIGHT HUMS ITS ONE NOTE, ALL DAY, LIKE IT IS PRACTICING.');
+  }
+  if (ch === 'e') { // the dining table
+    if (w.ch === 2 && w.step === 8) {
+      return say('THE SALE PAPERS. EVERYTHING THE HOUSE IS, IN A STACK THE SIZE OF A SANDWICH.', which => { if (which === 0) signSale(); }, ['SIGN THE PAPERS', 'NOT YET']);
+    }
+    if (w.flags.omaVisit) return say(['OMA, AT THE TABLE, WITH TEA SHE MADE HERSELF AT HOME AND BROUGHT ANYWAY:', 'OMA: YOU SELL THE HOUSE FOR DIRT, FRANK. YOUR OPA WOULD HAVE DONE THE SAME, AND DENIED IT AT SUPPER.', 'OMA: WHEN THE LAND COMES, I COME WITH IT. THERE IS A ROOM WITH MY NAME ON IT SOMEWHERE. THAT IS THE ARRANGEMENT.']);
+    return say('THE TABLE WHERE SEEDS WERE COUNTED AND PLANS WERE MADE. IT HAS HEARD EVERYTHING TWICE.');
+  }
+  if (ch === 'h') return say('THE FIREPLACE. FRANK READS SEED CATALOGUES BY IT AND PRETENDS THEY ARE NOVELS.');
+  if (ch === 'k') return say('THE COUNTER. A KETTLE, TWO MUGS, AND A NOTE IN CONSTANCE\'S HAND: "WE ARE NOT BUYING A GOAT."');
+  if (ch === 'x') return say('UPSTAIRS: BEDROOMS, BOXES, AND THE GOOD QUIET.');
+  return say('THE HOUSE, HOLDING ITS BREATH BETWEEN ONE LIFE AND THE NEXT.');
+}
+function waterShelf() {
+  let n = 0;
+  for (const p of G.save.plants) if (!p.memorial && p.location === 'WINDOW' && p.stage >= 1 && !p.watered) { waterPlant(p); n++; }
+  saveGame();
+  say(n ? 'THE WHOLE SHELF, END TO END. ' + n + ' DRINKS POURED. THE LIGHT APPROVES.' : 'EVERYONE ON THE SHELF IS ALREADY WATERED.');
+}
+function fridgeSeeds() {
+  const s = G.save, w = s.world;
+  w.flags.fridgeTray = true; s.tray.sownDay = s.day; saveGame();
+  say(['INTO THE FRIDGE THEY GO — NINETY-SIX SEEDS IN A DAMP PAPER TOWEL, IN THE DARK, LIKE WINTER IN A BOX.', 'FRANK: SLEEP WELL, SMALL ONES. DREAM OF APRIL.', 'CONSTANCE: THEY ARE SEEDS, FRANK.', 'FRANK: AND APRIL IS COMING ANYWAY.']);
+}
+function storageTrip() {
+  const s = G.save, w = s.world;
+  w.flags.tripDay = s.day; w.flags.trips = (w.flags.trips || 0) + 1; saveGame();
+  if (w.flags.trips >= 3) {
+    w.step = 6; layoutNPCs();
+    return say(['THE LAST LOAD GOES INTO STORAGE. THE HOUSE ECHOES NOW.', 'CONSTANCE TRIES THE ECHO WITH SOMETHING APPROVING. IT COMES BACK APPROVING.', 'NOW: A RENTAL, A WINTER, AND A FRIDGE FULL OF PROMISES.']);
+  }
+  say(['LOAD ' + w.flags.trips + ' OF 3: THE VAN SWALLOWS BOXES AND ASKS FOR MORE.', 'THE HOUSE GETS EMPTIER AND THE PLAN GETS REALER.']);
+}
+function potUp() {
+  const s = G.save, w = s.world;
+  if (!s.tray.ready || s.tray.n <= 0) return;
+  const variety = s.tray.pottedTotal % 2 === 0 ? 'ECHO' : 'CHANDLER';
+  const name = allocName(s.plants);
+  const slot = 6 + s.plants.filter(p => p.location === 'WINDOW' && !p.firstSix).length;
+  const p = freshPlant(name, { variety, stage: 2, sownDay: s.tray.sownDay, sproutedDay: s.day, location: 'WINDOW', slot, history: ['GERMINATED IN THE FRIDGE FLOOD'] });
+  s.plants.push(p);
+  s.tray.n--; s.tray.pottedTotal++;
+  dexAdd('SPROUT', variety);
+  saveGame();
+  if (s.tray.pottedTotal === 1) {
+    return say(['POTTING UP: ONE SPROUT, ONE POT, ONE NAME. FRANK DOES THE HONOURS IN A WHISPER, LIKE A CHRISTENING ON A TRAIN.', 'MEET ' + name + ', OF THE ' + variety + ' LINE. THE SHELF MAKES ROOM.', 'THERE ARE ' + s.tray.n + ' MORE IN THE TRAY. THE AFTERNOON IS YOUNG.']);
+  }
+  if (s.tray.n === 0) return finishPotting();
+  toast('POTTED UP: ' + name + ' (' + variety + ') · ' + s.tray.n + ' TO GO');
+}
+function finishPotting() {
+  const s = G.save, w = s.world;
+  for (const p of sixPlants()) if (p.location === 'BENCH' && !p.memorial) p.location = 'WINDOW';
+  s.germ = { sown: 96, potted: s.tray.pottedTotal, lost: 0 };
+  w.step = 8; saveGame(); layoutNPCs();
+  say(['THE LAST ONE IS POTTED. THE BENCH COMES IN FROM THE COLD TOO — THE SIX TAKE THE WINDOW IN ORDER, LIKE A ROLL CALL.', 'THE REGISTER RECORDS THE GERMINATION: 96 SOWN, ' + s.tray.pottedTotal + ' POTTED UP, EVERY ONE NAMED.', 'CONSTANCE: NOW THE HOUSE, FRANK. THE PAPERS ARE ON THE TABLE. THE LAND IS WAITING SOMEWHERE.']);
+}
+function signSale() {
+  const s = G.save;
+  say(['THE PAPERS ARE SIGNED AT THE TABLE WHERE THE SEEDS WERE COUNTED.', 'THE HOUSE IS SOLD. THE RENTAL IS SMALL AND WARM AND COMES WITH AN AGENT\'S PROMISE: "SUITABLE HOUSING" FOR EVERYONE, BY SPRING.', 'FRANK: SUITABLE HOUSING. FOR FORTY-ODD BLUEBERRY PLANTS.', 'CONSTANCE: THEY WILL FIND US LAND, FRANK. HOUSES FOLLOW LAND. THEY ALWAYS HAVE.'], () => completeChapter(2));
+}
+
+function renderArea() {
+  ctx.fillStyle = '#17110c'; ctx.fillRect(0, 0, VW, VH);
+  camX = Math.round(Math.max(0, Math.min(AW * TILE - VW, player.px + 8 - VW / 2)));
+  camY = Math.round(Math.max(0, Math.min(AH * TILE - VH, player.py + 8 - VH / 2)));
+  const x0 = Math.floor(camX / TILE), y0 = Math.floor(camY / TILE);
+  for (let ty = y0; ty <= y0 + 9; ty++) for (let tx = x0; tx <= x0 + 10; tx++) {
+    if (tx < 0 || ty < 0 || tx >= AW || ty >= AH) continue;
+    drawAreaTile(mapChar(tx, ty), tx * TILE - camX, ty * TILE - camY, tx, ty);
+  }
+  const spk = (mode === 'dialogue' && dlg) ? dlg.lines[dlg.idx] : null;
+  const spkName = spk && dlg.chars < spk.text.length ? spk.name : null;
+  player.talk = spkName === 'FRANK';
+  const ents = [];
+  for (const n of npcList) ents.push({ y: n.ty * TILE, draw: () => drawNPCFigure(n, n.tx * TILE - camX, n.ty * TILE - camY, spkName === n.name) });
+  if (!alvinAway()) ents.push({ y: alvin.py, draw: () => charSprite(alvin, ALVIN_SET) });
+  ents.push({ y: player.py, draw: () => charSprite(player, FRANK_SET) });
+  ents.sort((a, b) => a.y - b.y).forEach(e => e.draw());
+  drawAreaProps();
+  ctx.fillStyle = 'rgba(20,26,20,0.8)'; ctx.fillRect(2, 2, 34, 9);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(2, 10, 34, 1);
+  drawText('DAY ' + G.save.day, 4, 4, '#ffffff', 1);
+}
+function drawAreaTile(ch, sx, sy, tx, ty) {
+  if (area === 'house') return drawHouseTile(ch, sx, sy, tx, ty);
+  ctx.fillStyle = '#2a2f26'; ctx.fillRect(sx, sy, TILE, TILE);
+}
+function drawHouseTile(ch, sx, sy, tx, ty) {
+  // warm wood floor everywhere first
+  ctx.fillStyle = '#9a6b42'; ctx.fillRect(sx, sy, TILE, TILE);
+  ctx.fillStyle = '#8a5f38'; ctx.fillRect(sx, sy + 7, TILE, 1); ctx.fillRect(sx + ((tx * 7 + ty * 3) % 9), sy, 1, 7);
+  if (ch === 'z') return;
+  if (ch === 'Z') { // the rug: deep red, bordered, worn in the middle
+    ctx.fillStyle = '#8e3b34'; ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#a34a41'; ctx.fillRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
+    ctx.fillStyle = '#8e3b34'; ctx.fillRect(sx + 5, sy + 5, TILE - 10, TILE - 10);
+    return;
+  }
+  if (ch === 'H') { // interior wall: warm cream over wainscot
+    ctx.fillStyle = '#6b5136'; ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#e6d9bd'; ctx.fillRect(sx, sy, TILE, 9);
+    ctx.fillStyle = '#cbb894'; ctx.fillRect(sx, sy + 9, TILE, 1);
+    return;
+  }
+  if (ch === 'a') { // the window shelf: pale wood under a bright window
+    ctx.fillStyle = '#cfe4f7'; ctx.fillRect(sx, sy, TILE, 9);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 2, sy + 2, 4, 3);
+    ctx.fillStyle = '#a8895c'; ctx.fillRect(sx, sy + 9, TILE, 7);
+    ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx, sy + 14, TILE, 2);
+    return;
+  }
+  if (ch === 'r') { // the fridge: tall, white, humming faintly with importance
+    ctx.fillStyle = '#eef1f4'; ctx.fillRect(sx + 1, sy - 6, 14, 22);
+    ctx.fillStyle = '#c9ced4'; ctx.fillRect(sx + 1, sy + 3, 14, 1);
+    ctx.fillStyle = '#8a919c'; ctx.fillRect(sx + 12, sy - 3, 2, 5); ctx.fillRect(sx + 12, sy + 5, 2, 7);
+    ctx.fillStyle = '#ffd94a'; ctx.fillRect(sx + 3, sy - 4, 4, 5); // a note, held by a magnet
+    ctx.fillStyle = '#b03030'; ctx.fillRect(sx + 4, sy - 5, 2, 2);
+    return;
+  }
+  if (ch === 'k') { // kitchen counter
+    ctx.fillStyle = '#7a6248'; ctx.fillRect(sx, sy + 4, TILE, 12);
+    ctx.fillStyle = '#d8cfc0'; ctx.fillRect(sx, sy + 2, TILE, 4);
+    ctx.fillStyle = '#5e4c36'; ctx.fillRect(sx + 3, sy + 9, 10, 1);
+    return;
+  }
+  if (ch === 'h') { // the fireplace
+    ctx.fillStyle = '#7a4636'; ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#5e3427'; ctx.fillRect(sx + 3, sy + 6, 10, 10);
+    const fl = Math.floor(perfNow * 6) % 2;
+    ctx.fillStyle = '#e07b2a'; ctx.fillRect(sx + 5, sy + 10 - fl, 6, 5 + fl);
+    ctx.fillStyle = '#ffd94a'; ctx.fillRect(sx + 7, sy + 11 - fl, 2, 3 + fl);
+    return;
+  }
+  if (ch === 'e') { // the dining table
+    ctx.fillStyle = '#8a5f38'; ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#e8e2d2'; ctx.fillRect(sx + 1, sy + 3, TILE - 2, 9);
+    ctx.fillStyle = '#c9bfa8'; ctx.fillRect(sx + 1, sy + 11, TILE - 2, 1);
+    return;
+  }
+  if (ch === 'x') { // stairs up: bedrooms and boxes
+    ctx.fillStyle = '#6b5136'; ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx, sy + 10, TILE, 3); ctx.fillRect(sx, sy + 5, TILE, 3); ctx.fillRect(sx, sy, TILE, 3);
+    return;
+  }
+  if (ch === 'D') { // the door mat
+    ctx.fillStyle = '#5e7a4a'; ctx.fillRect(sx + 1, sy + 4, 14, 9);
+    ctx.fillStyle = '#4a6339'; ctx.fillRect(sx + 3, sy + 6, 10, 5);
+    return;
+  }
+}
+function drawAreaProps() {
+  if (area !== 'house') return;
+  const s = G.save;
+  // plants on the window shelf, in their slots; the tray at the west end
+  for (const p of s.plants) {
+    if (p.location !== 'WINDOW' || p.memorial) continue;
+    const sx = (2 + (p.slot || 0)) * TILE - camX, sy = 1 * TILE - camY;
+    ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], sx, sy - 3, 14, 14);
+    if (p.watered) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(sx + 11, sy - 6, 2, 3); }
+    if (p.husk) { ctx.fillStyle = '#5a5148'; ctx.fillRect(sx + 3, sy, 8, 3); }
+  }
+  if (s.tray.n > 0 || s.world.flags.fridgeTray) {
+    const sx = 1 * TILE - camX, sy = 1 * TILE - camY;
+    ctx.fillStyle = '#5e4c36'; ctx.fillRect(sx + 1, sy + 6, 14, 6);
+    ctx.fillStyle = s.tray.ready ? '#7ed957' : '#c9b18a';
+    for (let i = 0; i < 5; i++) ctx.fillRect(sx + 2 + i * 3, sy + 4, 2, 3);
+  }
+  // the great emptying: boxes multiply, then vanish, as the trips are made
+  const trips = s.world.flags.trips || 0;
+  if (s.world.ch === 2 && s.world.step >= 5 && trips < 3) {
+    for (let i = 0; i < 3 - trips; i++) {
+      const sx = (15 + i) * TILE - camX, sy = 10 * TILE - camY;
+      ctx.fillStyle = '#b08d57'; ctx.fillRect(sx + 1, sy + 3, 13, 11);
+      ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx + 1, sy + 8, 13, 1); ctx.fillRect(sx + 7, sy + 3, 1, 11);
+    }
+  }
+  if (s.world.ch === 2 && s.world.step >= 8) { // the sale papers wait on the table
+    const sx = 10 * TILE - camX, sy = 5 * TILE - camY;
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 3, sy + 5, 10, 7);
+    ctx.fillStyle = '#8a919c'; ctx.fillRect(sx + 5, sy + 7, 6, 1); ctx.fillRect(sx + 5, sy + 9, 6, 1);
+  }
+}
+
+function layoutNPCs() { npcList = npcsFor(area); }
 
 /* ============================== STATE ============================== */
-const STAGE_NAMES = ['EMPTY', 'SEED', 'SPROUT', 'SEEDLING'];
-const MAX_VIGOR = [0, 0, 22, 28];
+const STAGE_NAMES = ['EMPTY', 'SEED', 'SPROUT', 'SEEDLING', 'BUSH', 'BLOSSOM', 'FRUITING'];
+const MAX_VIGOR = [0, 0, 22, 28, 36, 32, 40]; // Blossom dips: a flowering bush is tender
+/* Seasons: 56-day years, 14-day seasons (spec 0.1). Everything seasonal —
+   growth gates, chill, rain, the yard's snow — reads this one function. */
+const SEASON_NAMES = ['SPRING', 'SUMMER', 'FALL', 'WINTER'];
+function seasonOf(day) {
+  const doy = ((day - 1) % 56) + 1;
+  return { year: Math.floor((day - 1) / 56) + 1, idx: Math.floor((doy - 1) / 14), dos: ((doy - 1) % 14) + 1, doy };
+}
+function hashDay(n) { let x = (n * 374761393 + 668265263) >>> 0; x = Math.imul(x ^ (x >>> 13), 1274126177) >>> 0; return (x ^ (x >>> 16)) >>> 0; }
+const SIX_VARIETY = ['ECHO', 'ECHO', 'CHANDLER', 'CHANDLER', 'CHANDLER', 'CHANDLER'];
+const HEALTH_NAMES = ['FINE', 'STRESSED', 'DECLINING', 'CRITICAL', 'DEAD'];
+const DRY_THRESH = { pot: [2, 3, 4], garden: [4, 6, 8], field: [5, 8, 11] }; // dry days to STRESSED/DECLINING/CRITICAL, by housing
+/* Frank's naming pools, in the order he reaches for them: the ranks he has
+   not used, the virtues he has not used, then the deep bench of good names.
+   A trailing 2 is an honour suffix — ADMIRAL2 is christened ADMIRAL II. */
+const NAME_POOLS = [
+  ['ENSIGN', 'LIEUTENANT', 'MAJOR', 'COLONEL', 'SERGEANT', 'CORPORAL', 'PRIVATE', 'COMMODORE', 'BRIGADIER', 'SCOUT'],
+  ['MERCY', 'GRACE', 'JOY', 'PEACE', 'KINDNESS', 'FAITH', 'CHARITY', 'TEMPERANCE', 'COURAGE', 'HUMILITY'],
+  ['BUTTON', 'BISCUIT', 'PICKLE', 'MARBLE', 'ACORN', 'PEBBLE', 'WIDGET', 'SPROCKET', 'MITTEN', 'POCKET', 'LANTERN', 'COMPASS', 'ANCHOR', 'BEACON', 'HARBOUR', 'SUMMIT', 'EMBER', 'CLOVER', 'FERN', 'JUNIPER', 'MAGPIE', 'WREN', 'FINCH', 'OTTER', 'BADGER', 'MARMALADE', 'TOFFEE', 'BRAMBLE', 'HAZEL', 'ROWAN', 'ALDER', 'BIRCH', 'CEDAR', 'MAPLE', 'WILLOW', 'POPLAR', 'THISTLE', 'HEATHER', 'BRIAR', 'TANSY', 'SORREL', 'CHIVE', 'BASIL', 'MINTY', 'PARSLEY', 'DILL', 'FENNEL', 'OKRA', 'QUINCE', 'MEDLAR', 'SLOE', 'HUCKLE', 'BILBERRY', 'DEWBERRY', 'CLOUDBERRY', 'ADMIRAL2', 'CAPTAIN2', 'GENERAL2', 'HOPE2', 'PATIENCE2', 'PROFESSOR2'],
+];
+function allocName(plants) {
+  const used = new Set(plants.filter(p => !p.memorial).map(p => p.name));
+  for (const pool of NAME_POOLS) for (const raw of pool) {
+    const nm = raw.endsWith('2') ? raw.slice(0, -1) + ' II' : raw;
+    if (!used.has(nm)) return nm;
+  }
+  let n = plants.length + 1;
+  while (used.has('PLANT ' + n)) n++;
+  return 'PLANT ' + n;
+}
 /* Every plant is an individual with a name Frank gave it (roll call order —
    Constance noted, correctly, that it is alphabetical). A plant lives on the
    bench; the register is a journal of lives, never a storage box. */
 const PLANT_NAMES = ['ADMIRAL', 'CAPTAIN', 'GENERAL', 'HOPE', 'PATIENCE', 'PROFESSOR'];
-function freshPot(i) {
-  return {
-    name: PLANT_NAMES[i], stage: 0, wateredDays: 0, watered: false, vigor: 0, tended: 0,
-    sownDay: null, sproutedDay: null, seedlingDay: null, location: 'BENCH',
+function freshPlant(name, o) {
+  o = o || {};
+  return Object.assign({
+    name, variety: 'CHANDLER', stage: 0, wateredDays: 0, watered: false, vigor: 0, tended: 0,
+    sownDay: null, sproutedDay: null, seedlingDay: null, bushDay: null, blossomDay: null, fruitDay: null,
+    location: 'BENCH', slot: null, row: null,
     dirt: false, dirtCredit: 0, // good dirt: a permanent mark + banked growth credit
-  };
+    health: 0, dryDays: 0, critSince: null, warnedDay: null, lastRescue: null,
+    wintered: false, chill: 0, history: [], harvestByYear: {},
+    memorial: false, diedDay: null, cause: null, husk: false,
+    firstSix: false, gardenState: null, giftName: false, fruitSetOk: false,
+  }, o);
 }
 /* Old saves stored pots as bare stage ints, then as {stage, waterDays, ...}
-   objects. Bring any of them up to the named-plant shape, inventing nothing
+   objects. Bring any of them up to the v2 plant shape, inventing nothing
    the player did: stage days fall back to day 1, names to the roll call. */
 function migratePot(p, i) {
   if (typeof p === 'number') p = { stage: p };
   p = p || {};
   const st = p.stage | 0;
-  return {
-    name: (typeof p.name === 'string' && p.name.trim()) ? p.name : PLANT_NAMES[i],
-    stage: st,
+  return freshPlant((typeof p.name === 'string' && p.name.trim()) ? p.name : PLANT_NAMES[i], {
+    variety: SIX_VARIETY[i], stage: st,
     wateredDays: p.wateredDays != null ? p.wateredDays : (p.waterDays || 0),
     watered: !!p.watered, vigor: p.vigor || 0, tended: p.tended || 0,
     sownDay: p.sownDay != null ? p.sownDay : (st >= 1 ? 1 : null),
     sproutedDay: p.sproutedDay != null ? p.sproutedDay : (st >= 2 ? 1 : null),
     seedlingDay: p.seedlingDay != null ? p.seedlingDay : (st >= 3 ? 1 : null),
-    location: 'BENCH',
+    location: 'BENCH', slot: i, firstSix: true,
     dirt: !!p.dirt, dirtCredit: p.dirtCredit || 0,
-  };
+  });
 }
-function migrateSave(s) {
-  s.pots = s.pots.map((p, i) => migratePot(p, i));
-  // pass 8 fields (the weeds loop): saves from before it have none of
-  // this — weeds start absent, purses empty, the two lines unheard.
-  s.weeds = Array.isArray(s.weeds)
-    ? s.weeds.filter(w => w && Number.isInteger(w.x) && Number.isInteger(w.y)).map(w => ({ x: w.x, y: w.y, deep: !!w.deep }))
-    : [];
-  if (typeof s.compost !== 'number') s.compost = 0;
-  if (typeof s.goodDirt !== 'number') s.goodDirt = 0;
-  s.weedLineSeen = !!s.weedLineSeen;
-  s.cornerLineSeen = !!s.cornerLineSeen;
-  return s;
-}
+function freshRow() { return { yieldRating: 1, fruitSet: 0, wateredDays: 0, watered: false, poundsByYear: {} }; }
 let G = null; // game state (serializable part in G.save)
 function newSave() {
-  return {
-    v: 1, day: 1, seedsLeft: 6, tea: 3, teaBrewedDay: 0,
-    pots: PLANT_NAMES.map((n, i) => freshPot(i)),
-    dex: { blueberry: [] },
+  const s = attachPotsAlias({
+    v: 2, day: 1, seedsLeft: 6, tea: 3, teaBrewedDay: 0,
+    plants: PLANT_NAMES.map((n, i) => freshPlant(n, { variety: SIX_VARIETY[i], location: 'BENCH', slot: i, firstSix: true })),
+    tray: { n: 0, watered: false, sownDay: null, stratDays: 0, ready: false, pottedTotal: 0 },
+    dex: { blueberry: [], garden: [], cells: [] },
     deerBeaten: false, deerPresent: false, chapterDone: false,
     tutorial: 0, // 0 intro dialogue, 1 plant, 2 water, 3 done
-    player: { x: 10, y: 6, dir: 'down' },
     constanceLine: 0,
     weeds: [], compost: 0, goodDirt: 0, weedLineSeen: false, cornerLineSeen: false,
-  };
+    world: { ch: 1, step: 0, flags: {}, area: 'yard', proj: 0, projDay: 1, lastSeason: 0, rainToday: false, jeremiahDay: 0, omaReqDay: 0, watchRow: null, alvinDown: false },
+    cropRows: [], field: { tarp: [0, 0, 0, 0, 0], tarpDay: [0, 0, 0, 0, 0], fence: 0, protoNet: false, protoWire: false, pipe: false, irrigation: false, mulch: 0, weedLv: [0, 0, 0, 0, 0, 0], vent: false, heater: false },
+    wine: { jar: null, batches: [], honey: 6, pounds: 0, poundsByYear: {}, shared: 0 },
+    germ: null, promise: false,
+    player: { x: 10, y: 6, dir: 'down' },
+  });
+  for (let i = 0; i < 12; i++) s.cropRows.push(freshRow());
+  return s;
+}
+function ensureV2(s) {
+  attachPotsAlias(s);
+  if (!s.world) s.world = { ch: 1, step: 0, flags: {}, area: 'yard', proj: 0, projDay: 1, lastSeason: 0, rainToday: false, jeremiahDay: 0, omaReqDay: 0, watchRow: null, alvinDown: false };
+  if (!s.world.flags) s.world.flags = {};
+  if (!s.field) s.field = { tarp: [0, 0, 0, 0, 0], tarpDay: [0, 0, 0, 0, 0], fence: 0, protoNet: false, protoWire: false, pipe: false, irrigation: false, mulch: 0, weedLv: [0, 0, 0, 0, 0, 0], vent: false, heater: false };
+  if (!s.wine) s.wine = { jar: null, batches: [], honey: 6, pounds: 0, poundsByYear: {}, shared: 0 };
+  if (!s.tray) s.tray = { n: 0, watered: false, sownDay: null, stratDays: 0, ready: false, pottedTotal: 0 };
+  if (!Array.isArray(s.cropRows) || s.cropRows.length !== 12) { const old = s.cropRows || []; s.cropRows = []; for (let i = 0; i < 12; i++) s.cropRows.push(Object.assign(freshRow(), old[i] || {})); }
+  if (!Array.isArray(s.plants) || !s.plants.length) s.plants = PLANT_NAMES.map((n, i) => freshPlant(n, { variety: SIX_VARIETY[i], location: 'BENCH', slot: i, firstSix: true }));
+  s.plants = s.plants.map((p, i) => Object.assign(freshPlant(p.name || PLANT_NAMES[i] || 'PLANT', { firstSix: !!p.firstSix }), p));
+  if (!s.dex) s.dex = { blueberry: [], garden: [], cells: [] };
+  if (!Array.isArray(s.dex.blueberry)) s.dex.blueberry = [];
+  if (!Array.isArray(s.dex.garden)) s.dex.garden = [];
+  if (!Array.isArray(s.dex.cells)) s.dex.cells = [];
+  s.weeds = Array.isArray(s.weeds) ? s.weeds.filter(w => w && Number.isInteger(w.x) && Number.isInteger(w.y)).map(w => ({ x: w.x, y: w.y, deep: !!w.deep })) : [];
+  if (typeof s.compost !== 'number') s.compost = 0;
+  if (typeof s.goodDirt !== 'number') s.goodDirt = 0;
+  if (s.germ === undefined) s.germ = null;
+  if (s.promise === undefined) s.promise = false;
+  if (!s.player) s.player = { x: 10, y: 6, dir: 'down' };
+  return s;
+}
+function migrateSaveV1(s1) {
+  const s = newSave();
+  for (const k of ['day', 'seedsLeft', 'tea', 'teaBrewedDay', 'deerBeaten', 'deerPresent', 'chapterDone', 'tutorial', 'constanceLine', 'compost', 'goodDirt', 'weedLineSeen', 'cornerLineSeen']) if (s1[k] !== undefined) s[k] = s1[k];
+  if (s1.player) s.player = s1.player;
+  s.plants = (s1.pots || []).map((p, i) => migratePot(p, i));
+  if (s1.dex && Array.isArray(s1.dex.blueberry)) s.dex.blueberry = s1.dex.blueberry.slice();
+  if (Array.isArray(s1.weeds)) s.weeds = s1.weeds;
+  if (s.chapterDone) { s.world.ch = 2; s.world.step = 0; }
+  return ensureV2(s);
 }
 function saveGame() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(G.save)); } catch (e) {} }
 function loadSave() {
-  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.v === 1 && Array.isArray(s.pots)) return migrateSave(s); } catch (e) {}
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (s && s.v === 2 && Array.isArray(s.plants)) return ensureV2(s);
+    if (s && s.v === 1 && Array.isArray(s.pots)) return migrateSaveV1(s);
+  } catch (e) {}
   return null;
 }
-function dexAdd(stageName) {
-  if (!G.save.dex.blueberry.includes(stageName)) G.save.dex.blueberry.push(stageName);
+function sixPlants() { return G.save.plants.filter(p => p.firstSix); }
+/* Back-compat alias: older tooling (and the shipped smoke suite) pokes
+   save.pots for the six. A non-enumerable getter keeps it out of the
+   serialized save while always pointing at the living six. */
+function attachPotsAlias(s) {
+  if (!Object.getOwnPropertyDescriptor(s, 'pots')) {
+    Object.defineProperty(s, 'pots', { enumerable: false, configurable: true, get() { return s.plants.filter(p => p.firstSix); } });
+  }
+  return s;
 }
-function anyStageAtLeast(n) { return G.save.pots.some(p => p.stage >= n); }
+function plantsAt(loc) { return G.save.plants.filter(p => !p.memorial && (loc === 'ROW' ? p.row != null : p.location === loc)); }
+function livingPlants() { return G.save.plants.filter(p => !p.memorial); }
+function housingOf(p) { return p.row != null ? 'field' : p.location === 'GARDEN' ? 'garden' : 'pot'; }
+function dexAdd(stageName, variety) {
+  if (!G.save.dex.blueberry.includes(stageName)) G.save.dex.blueberry.push(stageName);
+  if (variety) { const cell = variety + ':' + stageName; if (!G.save.dex.cells.includes(cell)) G.save.dex.cells.push(cell); }
+}
+function anyStageAtLeast(n) { return sixPlants().some(p => p.stage >= n); }
 function strongestPot() {
   let best = -1, bi = -1;
-  G.save.pots.forEach((p, i) => { if (p.stage >= 2 && p.stage > best) { best = p.stage; bi = i; } });
+  sixPlants().forEach((p, i) => { if (p.stage >= 2 && p.stage > best) { best = p.stage; bi = i; } });
   return bi;
 }
+
 
 /* ============================== SETTINGS ============================== */
 /* Persisted separately from the game save, so starting a New Game (which
@@ -1703,11 +2164,13 @@ function frontTile(e) {
 function entityBlocked(x, y, self) {
   if (isSolid(x, y)) return true;
   if (self !== player && x === player.tx && y === player.ty) return true;
-  if (self !== alvin && x === alvin.tx && y === alvin.ty) return true;
-  if (x === constance.tx && y === constance.ty) return true;
-  if (G.save.deerPresent && !G.save.deerBeaten && x === DEER_POS.x && y === DEER_POS.y) return true;
+  if (self !== alvin && x === alvin.tx && y === alvin.ty && !alvinAway()) return true;
+  if (area === 'yard' && x === constance.tx && y === constance.ty) return true;
+  if (area === 'yard' && G.save.deerPresent && !G.save.deerBeaten && x === DEER_POS.x && y === DEER_POS.y) return true;
+  if (npcList.some(n => n.tx === x && n.ty === y)) return true;
   return false;
 }
+function alvinAway() { return !!(G && G.save.world.flags.alvinDown && area !== 'oma'); }
 function stepEntity(e, dx, dy, dt) {
   if (!e.moving) {
     if ((dx || dy) && !entityBlocked(e.tx + dx, e.ty + dy, e)) {
@@ -1757,7 +2220,7 @@ let diagX = true; // diagonal stick input alternates axes per step (staircase)
 function overworldUpdate(dt) {
   if (fade > 0) { fade -= dt * 2; if (fade < 0) fade = 0; }
   // Constance idles between watching the yard and checking on the pots
-  constance.dir = (perfNow % 9 < 6.5) ? 'left' : 'down';
+  if (area === 'yard') constance.dir = (perfNow % 9 < 6.5) ? 'left' : 'down';
   const dx0 = Input.dir.x, dy0 = Input.dir.y;
   playerIdleT = (!player.moving && !dx0 && !dy0) ? playerIdleT + dt : 0;
   alvin.sit = playerIdleT > 3.5 && !alvin.moving &&
@@ -1770,13 +2233,15 @@ function overworldUpdate(dt) {
     stepped = stepPlayer(dx0 - dx, dy0 - dy, dt); // preferred axis blocked: try the other
   }
   if (stepped) {
+    const ex = exitsFor(area).find(e => e.x === player.tx && e.y === player.ty);
+    if (ex) { setArea(ex.to, ex.tx, ex.ty); return; }
     player.stepAlt = !player.stepAlt;
     if (dx0 && dy0) diagX = !diagX;
     alvinTarget = { x: player.tx - lastStep.dx, y: player.ty - lastStep.dy }; // tile the player just left
   }
   if (!wasMoving && player.moving) lastStep = { dx: player.mx, dy: player.my };
   // Alvin follows toward the tile the player vacated
-  if (!alvin.moving && alvinTarget) {
+  if (!alvin.moving && alvinTarget && !alvinAway()) {
     const ddx = alvinTarget.x - alvin.tx, ddy = alvinTarget.y - alvin.ty;
     if (ddx || ddy) {
       let mx = 0, my = 0;
@@ -1806,8 +2271,8 @@ function overworldUpdate(dt) {
   // across the yard that appear only while moving (Daniel's "weird black
   // lines", Nov 26). With an integer camera every tile, prop and shadow
   // lands on whole pixels and no seam can form on any rasteriser.
-  camX = Math.round(Math.max(0, Math.min(MAP_W * TILE - VW, player.px + 8 - VW / 2)));
-  camY = Math.round(Math.max(0, Math.min(MAP_H * TILE - VH, player.py + 8 - VH / 2)));
+  camX = Math.round(Math.max(0, Math.min(AW * TILE - VW, player.px + 8 - VW / 2)));
+  camY = Math.round(Math.max(0, Math.min(AH * TILE - VH, player.py + 8 - VH / 2)));
 }
 let lastStep = { dx: 0, dy: 1 };
 let menuSel = 0;
@@ -1815,9 +2280,18 @@ let menuSel = 0;
 function potIndexAt(x, y) { return (y === 10 && x >= 9 && x <= 14) ? x - 9 : -1; }
 function interact() {
   const f = frontTile(player), s = G.save;
+  const npc = npcList.find(n => n.tx === f.x && n.ty === f.y);
+  if (npc) return npcTalk(npc);
+  if (area !== 'yard') return areaInteract(f);
   const pi = potIndexAt(f.x, f.y);
-  if (pi >= 0) return potInteract(pi);
+  if (pi >= 0) { const bp = sixPlants().find(p => p.location === 'BENCH' && p.slot === pi); if (bp) return potInteract(bp); return say('THE BENCH IS EMPTY HERE NOW. THE POTS LIVE ON — CHECK THE REGISTER.'); }
   if (f.x === 11 && f.y === 3) { // house door
+    if (s.world.ch >= 2) {
+      return say('THE DOOR. INSIDE SMELLS OF TEA AND CARDBOARD.', which => {
+        if (which === 0) restDay();
+        else if (which === 1) setArea('house', 10, 11);
+      }, ['REST', 'GO INSIDE', 'NOT YET']);
+    }
     return say('REST UNTIL MORNING?', which => { if (which === 0) restDay(); }, ['REST', 'NOT YET']);
   }
   if (f.x === 11 && f.y === 4) { // Frank's garden journal sits on the porch
@@ -1862,12 +2336,13 @@ function interact() {
   const uw = weedAt(player.tx, player.ty); // or the weed under Frank's own boots
   if (uw) return pullWeed(uw);
 }
-function potInteract(pi) {
-  const s = G.save, p = s.pots[pi];
+function potInteract(p) {
+  const s = G.save;
+  if (p.memorial) return clearHusk(p);
   if (p.stage === 0) {
     if (s.seedsLeft <= 0) return say('NO SEEDS LEFT IN THE PACKET.');
-    p.stage = 1; p.sownDay = s.day; s.seedsLeft--; dexAdd('SEED'); saveGame();
-    if (s.tutorial === 1 && s.pots.every(q => q.stage >= 1)) {
+    p.stage = 1; p.sownDay = s.day; s.seedsLeft--; dexAdd('SEED', p.variety); saveGame();
+    if (s.tutorial === 1 && sixPlants().every(q => q.stage >= 1)) {
       s.tutorial = 2; saveGame();
       return say([
         'PLANTED! SIX LITTLE PROMISES IN PEAT.',
@@ -1880,8 +2355,8 @@ function potInteract(pi) {
     return say('ANOTHER SEED TUCKED INTO PEAT. SMALL AS A SECRET.');
   }
   if (!p.watered) {
-    p.watered = true; saveGame();
-    if (s.tutorial === 2 && s.pots.every(q => q.watered)) {
+    waterPlant(p); saveGame();
+    if (s.tutorial === 2 && sixPlants().every(q => q.watered)) {
       s.tutorial = 3; saveGame();
       return say(['CONSTANCE: NOW WE WAIT. FRANK HAS ALREADY NAMED ALL SIX. IT IS DAY ONE.', 'REST AT THE HOUSE DOOR TO PASS THE DAY. WATER AGAIN TOMORROW.']);
     }
@@ -1890,51 +2365,254 @@ function potInteract(pi) {
   if (s.goodDirt > 0) { // a watered pot can be fed: the good dirt goes in
     return say([p.name + ' IS WATERED AND WAITING.', 'FEED ' + p.name + ' THE GOOD DIRT? (YOU HOLD ' + s.goodDirt + ')'], which => {
       if (which === 0) {
-        s.goodDirt--; p.dirt = true; p.dirtCredit = (p.dirtCredit || 0) + 1; p.vigor += 8; saveGame();
+        feedDirt(p);
         say('GOOD DIRT FOR ' + p.name + '. +8 VIGOR, AND THE NEXT STAGE COMES A DAY SOONER.');
       }
     }, ['FEED IT', 'NOT NOW']);
   }
   return say('ALREADY WATERED TODAY. WAITING IS MOST OF THE WORK.');
 }
+
+/* Watering a plant: sets its flag, and — if it stands CRITICAL — records
+   the rescue the mortality doctrine asks about at dawn (spec 2.8). */
+function waterPlant(p) {
+  p.watered = true;
+  if (p.health === 3) p.lastRescue = G.save.day;
+  saveGame();
+}
+function feedDirt(p) { // good dirt: +8 Vigor, +1 growth credit, one health step up
+  const s = G.save;
+  s.goodDirt--; p.dirt = true; p.dirtCredit = (p.dirtCredit || 0) + 1; p.vigor += 8;
+  if (p.health > 0) p.health--;
+  if (p.health === 3) p.lastRescue = s.day;
+  saveGame();
+}
+function killPlant(p, cause) {
+  p.health = 4; p.memorial = true; p.diedDay = G.save.day; p.cause = cause || 'IT WAS NOT WATERED IN TIME'; p.husk = true; p.watered = false;
+  saveGame();
+}
+/* Clearing a husk: one interact, and the plant goes to the compost —
+   nothing in this yard is wasted (spec 2.8). */
+function clearHusk(p) {
+  p.husk = false; p.location = 'MEMORIAL'; p.row = null; p.slot = null;
+  G.save.compost += 2; saveGame();
+  return say(['FRANK CLEARS WHAT IS LEFT OF ' + p.name + '.', 'INTO THE COMPOST IT GOES. NOTHING IN THIS YARD IS WASTED.', '(+2 COMPOST)']);
+}
+function growthCheck(p, so, ev) {
+  const eff = () => p.wateredDays + (p.dirtCredit || 0);
+  const spend = need => { const use = Math.max(0, Math.ceil(need - p.wateredDays)); p.dirtCredit = Math.max(0, (p.dirtCredit || 0) - use); p.wateredDays = 0; };
+  if (p.stage === 1 && eff() >= 2) { spend(2); p.stage = 2; p.sproutedDay = G.save.day; ev.sprouted = true; dexAdd('SPROUT', p.variety); }
+  else if (p.stage === 2 && eff() >= 3) { spend(3); p.stage = 3; p.seedlingDay = G.save.day; ev.seedled = true; dexAdd('SEEDLING', p.variety); }
+  else if (p.stage === 3 && eff() >= 8 && p.wintered) { spend(8); p.stage = 4; p.bushDay = G.save.day; dexAdd('BUSH', p.variety); }
+  else if (p.stage === 4 && so.idx === 0 && p.chill >= (p.variety === 'CLIMAX' ? 6 : 10) && eff() >= 3) { spend(3); p.stage = 5; p.blossomDay = G.save.day; dexAdd('BLOSSOM', p.variety); }
+  else if (p.stage === 5 && p.fruitSetOk && eff() >= 6) { spend(6); p.stage = 6; p.fruitDay = G.save.day; dexAdd('FRUITING', p.variety); }
+}
+/* One plant's dawn (spec 2.8): water climbs the ladder, neglect descends
+   it by housing thresholds, winter banks chill, and death — only from
+   CRITICAL, only after a warned dawn spent unrescued — is carried out. */
+function plantDawn(p, so, ev) {
+  if (p.memorial) return;
+  const s = G.save, housing = housingOf(p);
+  const winter = so.idx === 3;
+  const rowW = p.row != null && s.cropRows[p.row].watered;
+  const wasWatered = p.watered || rowW;
+  if (p.health === 3 && p.warnedDay != null && p.warnedDay < s.day && !wasWatered) {
+    killPlant(p, p.dryDays >= DRY_THRESH[housing][2] ? 'A DRY SPELL, AND NO RESCUE CAME' : (p.cause || 'IT FAILED, AND WAS REMEMBERED'));
+    ev.deaths.push(p.name);
+    return;
+  }
+  if (wasWatered) {
+    p.dryDays = 0;
+    if (p.health > 0) p.health--;
+    p.tended++;
+    let pace = 1;
+    if (winter) pace = housing === 'pot' ? 0.5 : 0;
+    if (pace > 0 && p.stage >= 1) { p.wateredDays += pace; growthCheck(p, so, ev); }
+  } else if (p.stage >= 1 && s.world.ch >= 2 && (!winter || housing === 'pot')) {
+    // the health ladder arrives with Sprouts (spec 2.8, tutorial form);
+    // in the Seeds chapter a dry pot simply waits, as it always has
+    p.dryDays++;
+    const th = DRY_THRESH[housing];
+    const implied = (p.dryDays >= th[0] ? 1 : 0) + (p.dryDays >= th[1] ? 1 : 0) + (p.dryDays >= th[2] ? 1 : 0);
+    if (implied > p.health) { p.health = implied; if (implied === 3) p.critSince = s.day; }
+  }
+  if (winter && p.stage >= 3) p.chill++;
+  p.watered = false;
+  p.vigor = MAX_VIGOR[p.stage] || 0;
+}
+const SEASON_LINES = [
+  'SPRING. THE YEAR TURNS ITS FACE BACK TO THE SUN.',
+  'SUMMER. EVERYTHING GROWS LIKE IT MEANS IT.',
+  'FALL. THE LIGHT GOES GOLD AND HONEST.',
+  'WINTER. THE GARDEN SLEEPS UNDER ITS BREATH.',
+];
 function restDay() {
   fading = 'dawn'; fade = 1;
   setTimeout(() => { dawn(); }, 350);
 }
 function dawn() {
-  const s = G.save; s.day++;
-  const wateredYesterday = s.pots.some(p => p.watered); // weeds love a watered yard
-  let sprouted = false, seedled = false;
-  for (const p of s.pots) {
-    if (p.watered) { p.wateredDays++; p.tended++; p.watered = false; }
-    // good dirt banks growth credit: each credit counts as one extra
-    // watered day toward the next stage, and only the credits the stage
-    // change actually needs are spent — the rest stay banked.
-    const credit = p.dirtCredit || 0;
-    if (p.stage === 1 && p.wateredDays + credit >= 2) { p.dirtCredit = Math.max(0, credit - (2 - p.wateredDays)); p.stage = 2; p.wateredDays = 0; p.sproutedDay = s.day; sprouted = true; dexAdd('SPROUT'); }
-    else if (p.stage === 2 && p.wateredDays + credit >= 3) { p.dirtCredit = Math.max(0, credit - (3 - p.wateredDays)); p.stage = 3; p.wateredDays = 0; p.seedlingDay = s.day; seedled = true; dexAdd('SEEDLING'); }
-    p.vigor = MAX_VIGOR[p.stage] || 0;
+  const s = G.save, w = s.world;
+  const prev = seasonOf(s.day);
+  s.day++;
+  const so = seasonOf(s.day);
+  w.proj = 0; w.projDay = s.day;
+  // Berryhill weather (from ch. 3): a deterministic rain about a day in five
+  w.rainToday = w.ch >= 3 && so.idx !== 3 && (hashDay(s.day) % 5 === 0);
+  if (w.rainToday) {
+    for (const p of s.plants) if (!p.memorial && housingOf(p) !== 'pot') p.watered = true;
+    for (const r of s.cropRows) r.watered = true;
   }
-  spawnWeeds(wateredYesterday ? 3 : 2);
-  if (sprouted && !s.deerBeaten && !s.deerPresent) s.deerPresent = true;
+  const ev = { sprouted: false, seedled: false, deaths: [], ups: [] };
+  const anyWatered = s.plants.some(p => p.watered) || s.cropRows.some(r => r.watered);
+  for (const p of s.plants) plantDawn(p, so, ev);
+  for (const r of s.cropRows) { if (r.watered) r.wateredDays++; r.watered = false; }
+  if (s.tray.n > 0) { if (s.tray.watered) s.tray.stratDays++; s.tray.watered = false; }
+  wineDawn();
+  const failing = [];
+  for (const p of s.plants) if (!p.memorial && p.health === 3) { p.warnedDay = s.day; failing.push(p.name); }
+  if (w.ch <= 2) spawnWeeds(anyWatered ? 3 : 2);
+  if (sixPlants().some(p => p.stage >= 2) && !s.deerBeaten && !s.deerPresent) s.deerPresent = true;
+  let seasonLine = null;
+  if (so.idx !== prev.idx) {
+    seasonLine = SEASON_LINES[so.idx];
+    if (so.idx === 0) for (const p of s.plants) if (p.stage >= 3) p.wintered = true;
+    w.lastSeason = so.idx;
+  }
+  chapterDawnPrep(ev);
   saveGame();
   fading = null;
   if (checkChapter()) return;
-  let line;
-  if (sprouted && s.deerPresent && !s.deerBeaten) line = 'SOMETHING SPROUTED! BUT ALVIN IS BARKING AT THE FENCE... A DEER IS IN THE YARD!';
-  else if (sprouted) line = 'TWO SMALL LEAVES IN THE NIGHT! COME AND SEE!';
-  else if (seedled) line = 'A SPROUT BECAME A SEEDLING OVERNIGHT. LEAVES AND EVERYTHING.';
-  else if (s.day >= 2 && !s.deerBeaten) line = MORNING_FORE[Math.floor(Math.random() * MORNING_FORE.length)];
-  else line = MORNING_LINES[Math.floor(Math.random() * MORNING_LINES.length)];
-  say(['DAY ' + s.day + '.', line]);
+  const beat = chapterDawn(ev);
+  layoutNPCs();
+  if (mode === 'card' || mode === 'trial') return;
+  let lines = [];
+  if (ev.deaths.length) lines.push('IN THE NIGHT, QUIETLY: ' + ev.deaths.join(', ') + '. THE REGISTER TURNS A PAGE.');
+  if (failing.length) lines.push(failing[0] + ' IS FAILING. WATER, OR GOOD DIRT — TODAY.');
+  if (seasonLine) lines.push(seasonLine);
+  if (w.rainToday) lines.push('RAIN IN THE NIGHT. EVERYTHING OUTDOORS DRANK ITS FILL.');
+  if (beat) lines = lines.concat(beat);
+  if (!lines.length) {
+    let line;
+    if (ev.sprouted && s.deerPresent && !s.deerBeaten && w.ch === 1) line = 'SOMETHING SPROUTED! BUT ALVIN IS BARKING AT THE FENCE... A DEER IS IN THE YARD!';
+    else if (ev.sprouted) line = 'TWO SMALL LEAVES IN THE NIGHT! COME AND SEE!';
+    else if (ev.seedled) line = 'A SPROUT BECAME A SEEDLING OVERNIGHT. LEAVES AND EVERYTHING.';
+    else if (w.ch >= 3) line = BERRY_MORNING[Math.floor(hashDay(s.day) % BERRY_MORNING.length)];
+    else if (s.day >= 2 && !s.deerBeaten && w.ch === 1) line = MORNING_FORE[Math.floor(Math.random() * MORNING_FORE.length)];
+    else line = MORNING_LINES[Math.floor(Math.random() * MORNING_LINES.length)];
+    lines = [line];
+  }
+  const soNow = seasonOf(s.day); // chapter beats may move the calendar (a summer passes)
+  lines.unshift('DAY ' + s.day + ' · ' + SEASON_NAMES[soNow.idx] + ', YEAR ' + soNow.year + '.');
+  say(lines);
+}
+const BERRY_MORNING = [
+  'THE FIELD IS STILL THERE. IT IS PATIENT THAT WAY.',
+  'SOMEWHERE A ROOSTER HAS OPINIONS. NOT OURS. NO CHICKENS. TOWN RULES.',
+  'THE BARN SMELLS OF HAY AND SECOND CHANCES.',
+  'ALVIN HAS ALREADY INSPECTED EVERYTHING. TWICE.',
+  'A GOOD DAY TO TEND SOMETHING SMALL.',
+  'THE MOUNTAINS ARE DOING THEIR LONG BLUE STAND AT THE EDGE OF EVERYTHING.',
+];
+function wineDawn() {} // spliced full by the Wine chapter
+function chapterDawnPrep(ev) { const w = G.save.world; if (w.ch === 2) ch2DawnPrep(ev); }
+function ch2DawnPrep(ev) {
+  const s = G.save, w = s.world;
+  // stratification: the fridge tray banks one day per winter day
+  if (w.flags.fridgeTray && !s.tray.ready && seasonOf(s.day).idx === 3) s.tray.stratDays++;
+}
+function ch2Opening() {
+  say(['FALL IS COMING ON. THE SIX ARE SEEDLINGS, AND THE SECOND PACKET HAD MORE TO SAY.', 'FRANK: THE REST OF THE SEEDS NEED A WINTER FIRST. COLD, DARK, PATIENT. LIKE A FRIDGE, BUT WITH BEARS.', 'CONSTANCE: THE FRIDGE WILL DO, FRANK. NO BEARS REQUIRED.', 'AND THERE IS THE OTHER THING: THIS YARD IS LOVELY. IT IS ALSO SMALL.', 'CONSTANCE: LAND, THEN. WE START LOOKING. QUIETLY. THE HOUSE, FRANK — INSIDE, WHERE THE FRIDGE IS.']);
+}
+function ch2Dawn(ev) {
+  const s = G.save, w = s.world;
+  if (w.step === 0) {
+    if (s.day < 36) s.day = 36; // the summer passes, the way summers do
+    w.step = 1;
+    return ['THE SUMMER PASSES THE WAY SUMMERS DO — ALL AT ONCE, LOOKING BACK.', 'FALL, THEN. THE SECOND PACKET COMES OUT OF THE DRAWER. THE FRIDGE GETS A TENANT.'];
+  }
+  if (w.step === 1) {
+    if (w.flags.fridgeTray && w.flags.carried) { w.step = 2; return null; }
+    if (!w.flags.fridgeTray) return ['THE SEEDS WAIT IN THEIR PACKET. THE FRIDGE, FRANK. COLD FIRST.'];
+    return null;
+  }
+  if (w.step === 2) { w.step = 3; return ['THE FIRST HOUSE: A FINE HOUSE. THE LAND WAS A POSTAGE STAMP WITH AMBITIONS.', 'CONSTANCE: NEXT.']; }
+  if (w.step === 3) { w.step = 4; return ['THE SECOND HOUSE HAD LAND ENOUGH FOR A GOAT AND STRONG OPINIONS ABOUT BOTH. THE HOUSE ITSELF WAS LEANING. IT HAD A SLOPE AND A SMELL.', 'CONSTANCE: NEXT.']; }
+  if (w.step === 4) {
+    w.step = 5; w.flags.omaVisit = true; w.flags.trips = 0;
+    return ['THE THIRD HOUSE: PERFECT LAND. ALSO A TRAIN, WITH RIGHT OF WAY THROUGH THE MIDDLE OF EVERYTHING.', 'CONSTANCE: WE SELL THIS ONE FIRST. NO MORE FALLING FOR FIELDS WE CANNOT CARRY.', 'FRANK: SELL THE HOUSE TO BUY THE LAND. WE PACK LIKE WE MEAN IT — ONE VAN LOAD A DAY. THE BOXES ARE BY THE STAIRS.'];
+  }
+  if (w.step === 5) { w.flags.omaVisit = false; return null; }
+  if (w.step === 6) {
+    // the winter deepens until the tray has had its ten cold days
+    if (s.tray.stratDays < 10) { if (s.day < 54) s.day = 54; s.tray.stratDays = 12; }
+    s.tray.ready = true; s.tray.n = 40;
+    w.step = 7; w.flags.frostIn = 2;
+    return ['IN THE NIGHT, IN THE COLD, IN THE DARK OF THE FRIDGE — EVERYTHING GERMATED. ALL OF IT. AT ONCE.', 'FRANK: THEY ALL CAME UP! EVERY LAST ONE! IT IS A SMALL GREEN RIOT!', 'CONSTANCE: THEN WE POT THEM UP, FRANK. ONE AT A TIME. AT THE SHELF, BY THE TRAY.', 'FRANK: WITH NAMES. OBVIOUSLY. WITH NAMES.'];
+  }
+  if (w.step === 7) {
+    if (w.flags.frostIn > 0 && !w.flags.frostDone) {
+      w.flags.frostIn--;
+      if (w.flags.frostIn === 1) { w.flags.coldComing = true; return ['THE RADIO SAYS A HARD FREEZE TONIGHT. THE SHELF CROWD WILL FEEL IT.', 'A BLANKET OVER THE SHELF — AT THE GROW-LIGHT END OF IT — WOULD KEEP THE COLD OFF. OR ALVIN STANDS GUARD. HE WOULD PREFER TO STAND GUARD.']; }
+      if (w.flags.frostIn === 0) { startFrostTrial(); return null; }
+    }
+    return null;
+  }
+  return null;
+}
+function startFrostTrial() {
+  const s = G.save, w = s.world;
+  const sprouts = s.plants.filter(p => !p.memorial && p.location === 'WINDOW' && !p.firstSix);
+  if (!w.flags.blanket) for (const p of sprouts) if (p.health === 0) p.health = 1; // the cold finds them first
+  saveGame();
+  startTrial({ foe: 'FROST', kind: 'frostTray', pressure: 25, vigor: 22, plantsList: sprouts.length ? sprouts : sixPlants(), msg: 'THE COLD COMES FOR THE SHELF! ALVIN PLANTS HIMSELF IN THE DRAFT AND GROWLS AT THE WEATHER ITSELF!' });
+}
+TRIAL_OUTCOMES.frostTray = {
+  win(t) {
+    G.save.world.flags.frostDone = true; G.save.world.flags.coldComing = false; saveGame();
+    say(['THE FREEZE BREAKS AGAINST ONE SMALL DOG AND A CLOSED DOOR. THE SHELF CROWD STANDS. EVERY LEAF ACCOUNTED FOR.', 'ALVIN IS FROSTED AT THE TIPS AND PLEASED WITH HIMSELF.']);
+  },
+  lose(t, fled) {
+    const s = G.save, w = s.world;
+    if (fled) { w.flags.frostIn = 1; saveGame(); return say('ALVIN BACKS OFF TO REGROUP. THE COLD WILL TRY AGAIN TOMORROW NIGHT. IT ALWAYS DOES.'); }
+    w.flags.frostDone = true; w.flags.coldComing = false;
+    for (const p of s.plants) {
+      if (p.memorial || p.location !== 'WINDOW') continue;
+      if (p.health < 3) p.health++;
+    }
+    for (const p of sixPlants()) { if (!p.memorial) { if (p.health < 3) p.health++; p.wateredDays = Math.max(0, p.wateredDays - 1); } }
+    saveGame();
+    say(['THE COLD GOT IN. LEAVES CURL, SHOULDERS HUNCH — A STEP BACK FOR THE WHOLE SHELF, AND THE SIX FEEL IT TOO.', 'CONSTANCE: THEY ARE ALIVE, FRANK. SORE, AND ALIVE. WE WATER, WE WAIT, WE LEARN WHERE THE DRAFT LIVES.']);
+  },
+};
+
+function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); return null; }
+
+const CHAPTER_INFO = [
+  null,
+  { name: 'SEEDS', teaser: 'SIX POTS, SIX PROMISES. NO LAND YET — BUT A START.' },
+  { name: 'SPROUTS', teaser: 'A HUNDRED LITTLE PROMISES, AND NOWHERE TO PUT THEM. YET.' },
+  { name: 'LANDING', teaser: 'THE BARN WAS NEVER THE PLAN. THE FIELD WAS. THEY CAME AS A SET.' },
+  { name: 'PLANS', teaser: 'HE MEASURED IT TWICE. IT WAS SQUARE. SOME DREAMS HAVE CORNERS.' },
+  { name: 'DOWNSTAIRS', teaser: 'SHE GOT THE DOWNSTAIRS. THE DOG GOT HER FEET. EVERYONE LANDED SOFTLY.' },
+  { name: 'THE FIELD', teaser: 'THEY STARTED IN A FRIDGE AND A PRAYER. NOW THEY HAVE AN ADDRESS: ROW ONE.' },
+  { name: 'THE BARBER', teaser: 'SOMETHING OUT THERE GIVES HAIRCUTS. FRANK HAS DECIDED TO LET IT.' },
+  { name: 'WEEDS', teaser: "THE WEEDS WILL BE BACK THURSDAY. SO WILL HE. IT ISN'T A WAR, EXACTLY. IT'S A MARRIAGE." },
+  { name: 'THE FORSYTHIA', teaser: 'FIRST THE YELLOW BUSH. THEN THE WHOLE FIELD, HOLDING ITS BREATH, IN WHITE.' },
+  { name: 'WINE', teaser: 'HE ASKED WHAT HE WOULD DO WITH NINE HUNDRED POUNDS OF BLUEBERRIES. THE ANSWER FIT IN A SMALL GLASS.' },
+];
+let cardChapter = 1;
+function completeChapter(n) {
+  const w = G.save.world;
+  if (n === 1) G.save.chapterDone = true;
+  w.ch = n + 1; w.step = 0; saveGame();
+  cardChapter = n; mode = 'card'; cardSel = 0;
 }
 function checkChapter() {
   const s = G.save;
-  if (!s.chapterDone && s.deerBeaten && anyStageAtLeast(3)) {
-    s.chapterDone = true; saveGame(); mode = 'card'; cardSel = 0; return true;
-  }
+  if (s.world.ch === 1 && !s.chapterDone && s.deerBeaten && anyStageAtLeast(3)) { completeChapter(1); return true; }
   return false;
 }
+
 let cardSel = 0;
 
 /* ============================== WEEDS -> COMPOST -> GOOD DIRT ============================== */
@@ -2009,17 +2687,32 @@ function startIntro() {
    lose, and the deer gets past him and nibbles the strongest sprout back. */
 let trial = null;
 const MOVES = ['LUNGE', 'GUARD', 'DIG IN', 'BARK'];
-function startTrial() {
-  const pi = strongestPot();
-  if (pi < 0) return;
-  const p = G.save.pots[pi];
+/* Trials, generalized (spec 2.5): Alvin's moves never change; the foe,
+   the stakes and the outcome do. cfg: {foe, kind, pressure, vigor, pot
+   (index into the six, for the snapshot), plantsList, msg, graze, snap,
+   row}. With no cfg this is the chapter-1 deer, exactly as shipped. */
+// TRIAL_OUTCOMES is declared at the top of the file (chapters register into it)
+function startTrial(cfg) {
+  cfg = cfg || {};
+  const foe = cfg.foe || 'DEER';
+  let pot = cfg.pot != null ? cfg.pot : strongestPot();
+  if (pot < 0) pot = 0;
+  const p = sixPlants()[pot];
   trial = {
-    pot: pi, pressure: 30, phase: 'intro', msg: 'ALVIN LEAPS IN FRONT OF THE BENCH, BARKING!', timer: 0,
+    foe, kind: cfg.kind || 'deer',
+    pot, pressure: cfg.pressure || 30, maxPressure: cfg.pressure || 30,
+    phase: 'intro', msg: cfg.msg || 'ALVIN LEAPS IN FRONT OF THE BENCH, BARKING!', timer: 0,
     menu: 0, moveSel: 0, shield: false, armor: false, over: false, result: null,
-    vigor: MAX_VIGOR[p.stage], maxVigor: MAX_VIGOR[p.stage], anim: null,
+    vigor: cfg.vigor || MAX_VIGOR[p.stage], maxVigor: cfg.vigor || MAX_VIGOR[p.stage], anim: null,
+    plantsList: cfg.plantsList || null, row: cfg.row != null ? cfg.row : null,
+    turn: 0, foeTurns: 0, telly: null, snapUsed: false, snap: !!cfg.snap,
+    foeArmor: foe === 'WEEDS', graze: !!cfg.graze, grazeStreak: 0, grazeLands: 0,
+    lastMove: null, sameMove: 0, wave: cfg.wave || 1, waves: cfg.waves || null,
+    watch: cfg.watch || null,
   };
   mode = 'trial';
 }
+
 function trialSetMsg(m, phase) { trial.msg = m; trial.phase = phase || 'wait'; trial.timer = 0; }
 function trialUpdate(dt) {
   const t = trial;
@@ -2027,7 +2720,7 @@ function trialUpdate(dt) {
   if (t.phase === 'intro' && t.timer > 1.1) { t.phase = 'menu'; t.menu = 0; t.sel = 0; }
   else if (t.phase === 'wait' && t.timer > 1.15) {
     if (t.over) return endTrial();
-    if (t.foeTurn) { t.foeTurn = false; deerAct(); }
+    if (t.foeTurn) { t.foeTurn = false; foeAct(); }
     else { t.phase = 'menu'; t.menu = 0; t.sel = 0; t.anim = null; }
   }
   if (t.phase === 'menu' || t.phase === 'moves' || t.phase === 'plants' || t.phase === 'bag') {
@@ -2058,7 +2751,7 @@ function trialChoose() {
     if (t.sel === 0) { t.phase = 'moves'; t.sel = 0; }
     else if (t.sel === 1) { t.phase = 'plants'; t.sel = 0; }
     else if (t.sel === 2) { t.phase = 'bag'; t.sel = 0; }
-    else { trialSetMsg('YOU BACK AWAY SLOWLY. THE DEER WINS THIS ROUND OF STARING.'); t.over = true; t.result = 'flee'; }
+    else { trialSetMsg(t.foe === 'DEER' ? 'YOU BACK AWAY SLOWLY. THE DEER WINS THIS ROUND OF STARING.' : 'ALVIN BACKS OFF, SLOWLY. THIS IS NOT OVER — ONLY POSTPONED.'); t.over = true; t.result = 'flee'; }
     return;
   }
   if (t.phase === 'plants') { t.phase = 'menu'; t.sel = 0; return; } // a peek costs no turn
@@ -2069,32 +2762,99 @@ function trialChoose() {
     } else trialSetMsg('NO TEA LEFT! (BREW MORE AT THE COMPOST.)');
     return;
   }
-  // moves — all Alvin's, numbers mapped 1:1 from the old plant slots
+  // moves — all Alvin's; the numbers bend a little by foe (spec 2.5)
   const mv = MOVES[t.sel];
+  if (mv === t.lastMove) t.sameMove++; else { t.lastMove = mv; t.sameMove = 1; }
+  t.turn++;
+  const pdmg = base => {
+    let d = base;
+    if (t.foe === 'BARBER' && mv === 'LUNGE') d = Math.ceil(base / 2);
+    if (t.foe === 'WEEDS' && t.foeArmor && (mv === 'LUNGE' || mv === 'BARK')) d = Math.max(1, base - 2);
+    if (t.foe === 'WEEDS' && mv === 'BARK') d = 2;
+    return d;
+  };
+  const foeName = t.foe === 'DEER' ? 'THE DEER' : t.foe === 'FROST' ? 'THE COLD' : t.foe === 'WEEDS' ? 'THE WEEDS' : 'THE BARBER';
   if (mv === 'LUNGE') {
     t.anim = 'lunge';
-    t.pressure = Math.max(0, t.pressure - 6);
-    if (t.pressure <= 0) { trialSetMsg('ALVIN LUNGES! THE DEER BOLTS OVER THE FENCE!'); t.over = true; t.result = 'win'; saveGame(); return; }
-    trialSetMsg('ALVIN LUNGES! THE DEER STAGGERS BACK.');
+    t.pressure = Math.max(0, t.pressure - pdmg(6));
+    if (t.pressure <= 0) { trialSetMsg('ALVIN LUNGES! ' + foeName + ' BREAKS AND RUNS!'); t.over = true; t.result = 'win'; saveGame(); return; }
+    trialSetMsg('ALVIN LUNGES! ' + foeName + ' STAGGERS BACK.');
   }
   else if (mv === 'GUARD') { t.shield = true; trialSetMsg('ALVIN PLANTS HIS PAWS. HE WILL TAKE THE NEXT HIT HIMSELF.'); }
-  else if (mv === 'DIG IN') { t.armor = true; trialSetMsg('ALVIN DIGS IN. NO DEER PUSHES PAST HIM EASILY.'); }
+  else if (mv === 'DIG IN') {
+    t.armor = true;
+    if (t.foe === 'WEEDS') {
+      if (t.foeArmor) { t.foeArmor = false; t.pressure = Math.max(0, t.pressure - 4); trialSetMsg('ALVIN TEARS AT THE ROOTS! THE MAT GIVES — AND THE WEEDS REEL!'); if (t.pressure <= 0) { t.over = true; t.result = 'win'; saveGame(); return; } }
+      else { t.pressure = Math.max(0, t.pressure - 4); trialSetMsg('ALVIN DIGS IN AMONG THE ROOTS. THE WEEDS HATE THIS.'); if (t.pressure <= 0) { t.over = true; t.result = 'win'; saveGame(); return; } }
+    } else trialSetMsg('ALVIN DIGS IN. NOTHING PUSHES PAST HIM EASILY.');
+  }
   else if (mv === 'BARK') {
     t.anim = 'bark';
-    t.pressure = Math.max(0, t.pressure - 8);
-    if (t.pressure <= 0) { trialSetMsg('ALVIN BARKS HIS BRAVE HEART OUT! THE DEER BOUNDED AWAY!'); t.over = true; t.result = 'win'; saveGame(); return; }
-    if (Math.random() < 0.3) { trialSetMsg('ALVIN USED BARK! THE DEER FLINCHED!'); saveGame(); return; } // foe loses turn
-    trialSetMsg('ALVIN USED BARK! THE DEER STAMPS, UNIMPRESSED BUT RATTLED.');
+    t.pressure = Math.max(0, t.pressure - pdmg(8));
+    if (t.pressure <= 0) { trialSetMsg('ALVIN BARKS HIS BRAVE HEART OUT! ' + foeName + ' IS GONE!'); t.over = true; t.result = 'win'; saveGame(); return; }
+    const flinchP = t.foe === 'BARBER' ? 0.45 : t.foe === 'WEEDS' ? 0 : 0.3;
+    if (Math.random() < flinchP) { trialSetMsg('ALVIN USED BARK! ' + foeName + ' FLINCHED!'); saveGame(); return; } // foe loses turn
+    trialSetMsg('ALVIN USED BARK! ' + foeName + ' STAMPS, UNIMPRESSED BUT RATTLED.');
   }
   t.foeTurn = true;
 }
+function foeAct() {
+  const t = trial;
+  if (t.foe === 'FROST') return frostAct();
+  if (t.foe === 'WEEDS') return weedsAct();
+  if (t.foe === 'BARBER') return barberAct();
+  return deerAct();
+}
+function foeHit(dmg, name, flavor) {
+  const t = trial;
+  if (t.armor) dmg = Math.max(1, dmg - 2);
+  if (t.shield) { dmg = Math.floor(dmg / 2); t.shield = false; }
+  t.vigor = Math.max(0, t.vigor - dmg);
+  trialSetMsg(flavor ? flavor.replace('%D', dmg) : (t.foe + ' USED ' + name + '! IT GETS AT ALVIN. (-' + dmg + ')'));
+  if (t.vigor <= 0) { t.over = true; t.result = 'lose'; }
+  t.foeTurn = false;
+}
+function frostAct() {
+  const t = trial; t.foeTurns++;
+  // SETTLE: the cold exploits a repeated move (spec 2.5)
+  if (t.sameMove >= 3) { t.pressure += 5; t.sameMove = 0; trialSetMsg('THE COLD SETTLES INTO THE PATTERN OF IT. (+5 PRESSURE)'); t.foeTurn = false; return; }
+  if (t.telly) {
+    const kind = t.telly; t.telly = null;
+    if (kind === 'SNAP') { t.snapUsed = true; foeHit(t.kind === 'frostBlossom' ? 10 : 9, 'SNAP', 'THE COLD SNAPS SHUT LIKE A TRAP! (-%D)'); }
+    else foeHit(6, 'GUST', 'THE GUST HITS LIKE A SLAP OF ICE WATER! (-%D)');
+    return;
+  }
+  if (t.snap && !t.snapUsed && t.foeTurns % 4 === 3) { t.telly = 'SNAP'; foeHit(5, 'CREEP', 'THE COLD CREEPS IN — AND SOMEWHERE, WOOD TICKS. SOMETHING IS COMING. (-%D)'); return; }
+  if (t.foeTurns % 3 === 0) { t.telly = 'GUST'; foeHit(4, 'CREEP', 'THE COLD CREEPS IN. THE AIR THICKENS — A GUST IS GATHERING. (-%D)'); return; }
+  foeHit(4, 'CREEP');
+}
+function weedsAct() {
+  const t = trial; t.foeTurns++;
+  if (Math.random() < 0.45) { t.pressure += 4; trialSetMsg('THE WEEDS CREEP — A ROOT RUNNER FINDS NEW GROUND. (+4 PRESSURE)'); t.foeTurn = false; return; }
+  foeHit(t.kind === 'weedsWar' ? 7 : 5, 'CHOKE');
+}
+function barberAct() {
+  const t = trial; t.foeTurns++;
+  if (t.foeTurns % 3 === 0) { t.pressure += 5; trialSetMsg('THE BARBER IS GONE. JUST — GONE. AND THE PRESSURE OF NOT KNOWING GROWS. (+5)'); t.foeTurn = false; return; }
+  if (t.shield) { t.shield = false; trialSetMsg('A SNIP IN THE DARK — AND ALVIN IS THERE. THE CUT FINDS ONLY FUR AND SPITE. (0)'); t.foeTurn = false; return; }
+  foeHit(3, 'SNIP');
+}
+
 function deerAct() {
   const t = trial;
   const r = Math.random();
   let dmg, name;
+  if (t.graze && r >= 0.85) { // GRAZE: no wound — the deer settles in to eat
+    t.grazeStreak++; t.grazeLands++;
+    if (t.grazeStreak >= 2) { t.pressure += 3; trialSetMsg('THE DEER SETTLES IN TO GRAZE, PERFECTLY AT HOME. (+3 PRESSURE)'); }
+    else trialSetMsg('THE DEER LOWERS ITS HEAD TO GRAZE. IT IS IN NO HURRY AT ALL.');
+    t.foeTurn = false;
+    return;
+  }
   if (r < 0.5) { dmg = 7; name = 'NIBBLE'; }
   else if (r < 0.8) { dmg = 4; name = 'STOMP'; }
   else { dmg = 2; name = 'STARE'; }
+  t.grazeStreak = 0;
   if (t.armor) dmg = Math.max(1, dmg - 2);
   if (t.shield) { dmg = Math.floor(dmg / 2); t.shield = false; }
   t.vigor = Math.max(0, t.vigor - dmg);
@@ -2105,21 +2865,31 @@ function deerAct() {
 }
 function endTrial() {
   const t = trial, s = G.save; trial = null; mode = 'overworld';
-  if (t.result === 'win') {
-    s.deerBeaten = true; s.deerPresent = false; saveGame();
-    say('THE YARD IS SAFE. ALVIN TAKES A SMALL, PROUD BOW. THE SPROUTS STAND TALL. WELL. TALL-ISH.', () => { checkChapter(); });
-  } else if (t.result === 'lose') {
-    const p = s.pots[t.pot];
-    if (p.stage > 1) { p.stage--; if (p.stage < 3) p.seedlingDay = null; if (p.stage < 2) p.sproutedDay = null; }
-    p.wateredDays = 0; p.vigor = MAX_VIGOR[p.stage] || 0;
-    saveGame();
-    say('THE DEER GOT PAST ALVIN AND MOWED THE SPROUT DOWN. IT WILL GROW BACK. SO WILL YOU.', () => { fading = 'dawn'; fade = 1; setTimeout(dawn, 350); });
+  if (t.kind === 'deer') {
+    if (t.result === 'win') {
+      s.deerBeaten = true; s.deerPresent = false; saveGame();
+      say('THE YARD IS SAFE. ALVIN TAKES A SMALL, PROUD BOW. THE SPROUTS STAND TALL. WELL. TALL-ISH.', () => { checkChapter(); });
+    } else if (t.result === 'lose') {
+      const p = sixPlants()[t.pot];
+      if (p.stage > 1) { p.stage--; if (p.stage < 3) p.seedlingDay = null; if (p.stage < 2) p.sproutedDay = null; }
+      p.wateredDays = 0; p.vigor = MAX_VIGOR[p.stage] || 0;
+      saveGame();
+      say('THE DEER GOT PAST ALVIN AND MOWED THE SPROUT DOWN. IT WILL GROW BACK. SO WILL YOU.', () => { fading = 'dawn'; fade = 1; setTimeout(dawn, 350); });
+    }
+    return;
+  }
+  const oc = TRIAL_OUTCOMES[t.kind];
+  if (oc) {
+    if (t.result === 'win') oc.win(t);
+    else oc.lose(t, t.result === 'flee');
   }
 }
+
+function trialPlantsList() { return trial && trial.plantsList ? trial.plantsList : sixPlants(); }
 function trialSnapshot() {
   if (!trial) return null;
-  const p = G.save.pots[trial.pot];
-  return { actor: 'ALVIN', pressure: trial.pressure, vigor: trial.vigor, maxVigor: trial.maxVigor, pot: trial.pot, stage: p.stage, phase: trial.phase, over: trial.over, result: trial.result, msg: trial.msg, plants: G.save.pots.map(q => q.name + ':' + q.stage) };
+  const p = sixPlants()[trial.pot];
+  return { actor: 'ALVIN', foe: trial.foe, kind: trial.kind, pressure: trial.pressure, maxPressure: trial.maxPressure, vigor: trial.vigor, maxVigor: trial.maxVigor, pot: trial.pot, stage: p.stage, phase: trial.phase, over: trial.over, result: trial.result, msg: trial.msg, wave: trial.wave, plants: trialPlantsList().map(q => q.name + ':' + q.stage) };
 }
 
 /* ============================== RENDER: TITLE / CHAPTERS ============================== */
@@ -2144,7 +2914,7 @@ function titleUpdate() {
   }
 }
 function startNewGame() {
-  G.save = newSave(); titleSel = 0;
+  G.save = newSave(); titleSel = 0; area = 'yard'; AW = MAP_W; AH = MAP_H; npcList = [];
   player.tx = 11; player.ty = 6; syncPixels(player);
   alvin.tx = 10; alvin.ty = 7; syncPixels(alvin);
   mode = 'overworld'; startIntro();
@@ -2152,7 +2922,10 @@ function startNewGame() {
 function continueGame() {
   const s = loadSave(); if (!s) return;
   G.save = s;
+  area = AREAS[s.world.area] ? s.world.area : 'yard';
+  AW = curArea().w; AH = curArea().h;
   player.tx = s.player.x; player.ty = s.player.y; player.dir = s.player.dir || 'down'; syncPixels(player);
+  layoutNPCs();
   alvin.tx = s.player.x; alvin.ty = Math.min(MAP_H - 1, s.player.y + 1); syncPixels(alvin);
   constance.tx = 13; constance.ty = 5;
   mode = 'overworld';
@@ -2258,18 +3031,29 @@ function renderTitle() {
 }
 function renderChapters() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
-  drawText('CHAPTERS', 80 - textW('CHAPTERS', 2) / 2, 12, '#ffffff', 2);
-  drawBox(30, 30); drawText('1 · SEEDS', 10, 36, '#20242a', 1);
-  drawText(G.save.chapterDone ? 'COMPLETE' : (hasSaveFile() ? 'IN PROGRESS' : 'NEW'), 96, 36, '#2e8b3a', 1);
-  drawText('SIX POTS. NO LAND. YET.', 10, 47, '#5a6270', 1);
-  ctx.drawImage(POT_SEEDLING, 140, 36, 13, 13);
-  drawBox(66, 30); drawText('2 · SPROUTS', 10, 72, '#8a919c', 1);
-  ctx.globalAlpha = 0.45; ctx.drawImage(POT_SEED, 140, 72, 13, 13); ctx.globalAlpha = 1;
-  drawText('COMING SOON', 96, 72, '#8a919c', 1);
-  drawText('THE FIELD IS OUT THERE,', 10, 83, '#8a919c', 1);
-  drawText('WAITING FOR ITS DAY.', 10, 91, '#8a919c', 1);
-  drawText('B: BACK', 8, 132, '#9fc79f', 1);
+  drawText('THE JOURNAL', 80 - textW('THE JOURNAL', 2) / 2, 8, '#ffffff', 2);
+  drawText('WHAT THE FIELD REMEMBERS', 80 - textW('WHAT THE FIELD REMEMBERS', 1) / 2, 21, '#9fc79f', 1);
+  const ch = G.save ? G.save.world.ch : 1;
+  const rows = [];
+  for (let n = 1; n <= 10; n++) rows.push({ n, info: CHAPTER_INFO[n] });
+  rows.push({ n: 11, info: { name: 'THE LONG TENDING', teaser: 'NO LAST PAGE. JUST SEASONS, AND A FIELD THAT KNOWS YOUR STEP.' } });
+  rows.slice(0, 11).forEach((r, i) => {
+    const y = 30 + i * 8;
+    const done = r.n < ch || (r.n === 11 && ch === 11);
+    const current = r.n === ch;
+    const col = done ? '#cfe8cf' : current ? '#ffd94a' : '#5f7263';
+    const label = (r.n === 11 ? '∞' : r.n) + ' · ' + r.info.name;
+    drawText(label.slice(0, 22), 10, y, col, 1);
+    drawText(done ? 'LIVED' : current ? 'NOW' : '—', 132, y, col, 1);
+  });
+  const cur = rows[Math.min(ch, 11) - 1];
+  if (cur && ch <= 11) {
+    const t = wrapText(cur.info.teaser, 36).slice(0, 2);
+    t.forEach((l, i) => drawText(l, 80 - textW(l, 1) / 2, 121 + i * 7, '#9fc79f', 1));
+  }
+  drawText('B: BACK', 126, 8, '#9fc79f', 1);
 }
+
 function chaptersUpdate() { if (Input.bHit || Input.aHit) mode = 'title'; }
 
 /* ============================== RENDER: OVERWORLD ============================== */
@@ -2309,25 +3093,29 @@ function charSprite(e, set) {
   drawSprite(img, shx, shy, e.dir === 'left');
 }
 function renderOverworld() {
-  camX = Math.round(Math.max(0, Math.min(MAP_W * TILE - VW, player.px + 8 - VW / 2)));
-  camY = Math.round(Math.max(0, Math.min(MAP_H * TILE - VH, player.py + 8 - VH / 2)));
+  if (area !== 'yard') return renderArea();
+  camX = Math.round(Math.max(0, Math.min(AW * TILE - VW, player.px + 8 - VW / 2)));
+  camY = Math.round(Math.max(0, Math.min(AH * TILE - VH, player.py + 8 - VH / 2)));
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VW, VH);
   const x0 = Math.floor(camX / TILE), y0 = Math.floor(camY / TILE);
   for (let ty = y0; ty <= y0 + 9; ty++) for (let tx = x0; tx <= x0 + 10; tx++) {
-    if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H) continue;
+    if (tx < 0 || ty < 0 || tx >= AW || ty >= AH) continue;
     const ch = mapChar(tx, ty), sx = tx * TILE - camX, sy = ty * TILE - camY;
     // ambient sway: flowers and grass tufts lean with a slow two-frame breeze,
     // neighbouring tiles out of phase so the yard shimmers instead of pulsing
     const sway = (Math.floor(perfNow * 1.5) + tx + ty) % 2 === 0;
+    const winter = seasonOf(G.save.day).idx === 3;
     let base = TILES.grass; // plain grass tiles get a hashed variety so the lawn isn't flat
     if (ch === 'g') { const h = (tx * 31 + ty * 17) % 9; base = h === 0 ? (sway ? TILES.tuftB : TILES.tuft) : h === 4 ? TILES.grass3 : h === 6 ? TILES.grass4 : h === 7 ? TILES.grass2 : TILES.grass; }
+    if (winter && SNOW_TILES.grass) base = SNOW_TILES[base === TILES.tuft ? 'tuft' : base === TILES.tuftB ? 'tuftB' : base === TILES.grass3 ? 'grass3' : base === TILES.grass4 ? 'grass4' : base === TILES.grass2 ? 'grass2' : 'grass'] || base;
     ctx.drawImage(base, sx, sy);
     let t = TILES[TILEMAP[ch]];
     if (ch === 'o') t = sway ? TILES.flowerB : TILES.flower;
+    if (winter && SNOW_TILES[TILEMAP[ch]]) t = SNOW_TILES[TILEMAP[ch]];
     if (t && TILEMAP[ch] !== 'grass') ctx.drawImage(t, sx, sy);
     if (ch === 'T') {
       ctx.fillStyle = SHADOW; ctx.fillRect(sx + 2, sy + 13, 12, 2); ctx.fillRect(sx + 3, sy + 15, 10, 1); // the canopy's ground shadow
-      ctx.drawImage(TREE, sx, sy);
+      ctx.drawImage(winter && SNOW_TREE ? SNOW_TREE : TREE, sx, sy);
       // now and then a leaf lets go and spirals down the canopy
       const lt = (perfNow * 0.22 + tx * 0.37 + ty * 0.11) % 1;
       if (lt < 0.7) {
@@ -2383,11 +3171,13 @@ function renderOverworld() {
   }
   // the bench throws a soft shadow onto the grass below it
   ctx.fillStyle = SHADOW; ctx.fillRect(9 * TILE - camX, 11 * TILE - camY, 6 * TILE, 2);
-  // pots on the bench
-  G.save.pots.forEach((p, i) => {
-    const sx = (9 + i) * TILE - camX, sy = 10 * TILE - camY;
+  // pots on the bench (only plants that still live there)
+  sixPlants().forEach(p => {
+    if (p.location !== 'BENCH') return;
+    const i = p.slot, sx = (9 + i) * TILE - camX, sy = 10 * TILE - camY;
     ctx.fillStyle = '#8a5a30'; ctx.fillRect(sx + 3, sy + 9, 10, 2); // the pot's shadow on the bench slats
-    ctx.drawImage(POT_SPRITES[p.stage], sx, sy - 2);
+    ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], sx, sy - 2);
+    if (p.husk) { ctx.fillStyle = '#5a5148'; ctx.fillRect(sx + 4, sy + 2, 8, 3); }
     if (p.dirt) { // good dirt reads as a dark, rich cap of soil in the pot
       ctx.fillStyle = '#3d2412'; ctx.fillRect(sx + 4, sy + 7, 8, 2);
       ctx.fillStyle = '#5a3a1e'; ctx.fillRect(sx + 5, sy + 7, 2, 1); ctx.fillRect(sx + 9, sy + 8, 2, 1);
@@ -2399,6 +3189,7 @@ function renderOverworld() {
       ctx.fillStyle = '#a8dcff'; ctx.fillRect(sx + 12, sy - 4 + bob, 1, 1);
     }
   });
+
   // entities sorted by y — each stands on a soft contact shadow
   const contactShadow = (px, py) => {
     ctx.fillStyle = SHADOW;
@@ -2414,6 +3205,7 @@ function renderOverworld() {
   if (G.save.deerPresent && !G.save.deerBeaten) ents.push({ y: DEER_POS.y * TILE, draw: () => { contactShadow(DEER_POS.x * TILE, DEER_POS.y * TILE); const bob = Math.floor(perfNow * 1.5) % 2; ctx.drawImage(DEER_SMALL, DEER_POS.x * TILE - camX, DEER_POS.y * TILE - camY + bob); } });
   ents.push({ y: alvin.py, draw: () => { contactShadow(alvin.px, alvin.py); charSprite(alvin, ALVIN_SET); } });
   ents.push({ y: player.py, draw: () => { contactShadow(player.px, player.py); charSprite(player, FRANK_SET); } });
+  for (const n of npcList) ents.push({ y: n.ty * TILE, draw: () => { contactShadow(n.tx * TILE, n.ty * TILE); drawNPCFigure(n, n.tx * TILE - camX, n.ty * TILE - camY, spkName === n.name); } });
   ents.sort((a, b) => a.y - b.y).forEach(e => e.draw());
   // two butterflies wander the flower beds (pure ambience), each with the
   // little shadow that gives its flutter height
@@ -2481,10 +3273,27 @@ function renderTrial() {
   // the deer idles with a slow bob, ear twitching between two frames;
   // once its Pressure runs low the white tail stays flagged (alarmed)
   const dbob = Math.floor(perfNow * 1.5) % 2;
-  const deerImg = (t.pressure <= 10 || dbob) ? DEER_BIG2 : DEER_BIG;
-  // a fresh hit from Alvin makes the deer flinch for a beat
+  // a fresh hit from Alvin makes the foe flinch for a beat
   const flinch = (t.phase === 'wait' && t.timer < 0.25 && (t.anim === 'lunge' || t.anim === 'bark')) ? (Math.floor(perfNow * 20) % 2 ? 1 : -1) : 0;
-  ctx.drawImage(deerImg, 86 + flinch, 5 + dbob, 64, 48);
+  if (t.foe === 'FROST') { // a low bank of glittering cold, breathing frost
+    const pu = Math.sin(perfNow * 1.3) * 2;
+    ctx.fillStyle = '#dceefb'; ctx.fillRect(92 + flinch, 26 + pu, 52, 22); ctx.fillRect(100 + flinch, 18 + pu, 36, 10);
+    ctx.fillStyle = '#bcd9f2'; ctx.fillRect(98 + flinch, 34 + pu, 40, 4); ctx.fillRect(106 + flinch, 22 + pu, 20, 3);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(104 + flinch, 28 + pu, 4, 2); ctx.fillRect(124 + flinch, 38 + pu, 3, 2); ctx.fillRect(134 + flinch, 24 + pu, 2, 2);
+    ctx.fillStyle = '#9fc6ea'; for (let i = 0; i < 5; i++) ctx.fillRect(96 + ((i * 13 + Math.floor(perfNow * 9)) % 46) + flinch, 44 + pu + (i % 3), 2, 2);
+  } else if (t.foe === 'WEEDS') { // a mat of roots and ambition
+    ctx.fillStyle = '#3f7a2e'; ctx.fillRect(90 + flinch, 34, 56, 14);
+    ctx.fillStyle = '#4cab36'; for (let i = 0; i < 7; i++) { const wx = 94 + i * 8 + flinch, wh = 10 + (i * 7) % 12; ctx.fillRect(wx, 34 - wh + (i % 2) * 2, 3, wh); }
+    ctx.fillStyle = '#6a4a26'; ctx.fillRect(96 + flinch, 44, 44, 2); ctx.fillRect(104 + flinch, 47, 30, 1);
+  } else if (t.foe === 'BARBER') { // never quite seen: a neat shadow, and shears
+    const sh = Math.floor(perfNow * 0.8) % 3;
+    ctx.fillStyle = '#20242a'; ctx.fillRect(108 + flinch + sh, 22, 18, 24); ctx.fillRect(112 + flinch + sh, 14, 10, 9);
+    ctx.fillStyle = '#c9ced4'; ctx.fillRect(126 + flinch + sh, 26, 8, 2); ctx.fillRect(126 + flinch + sh, 31, 8, 2);
+    ctx.fillStyle = '#20242a'; ctx.fillRect(124 + flinch + sh, 27, 3, 4);
+  } else {
+    const deerImg = (t.pressure <= 10 || dbob) ? DEER_BIG2 : DEER_BIG;
+    ctx.drawImage(deerImg, 86 + flinch, 5 + dbob, 64, 48);
+  }
   // what Alvin defends: the garden bench with all six pots, as scenery —
   // the yard's picket fence peeks over the bench, and the bench casts a shadow
   ctx.fillStyle = '#f4f4f0';
@@ -2492,7 +3301,7 @@ function renderTrial() {
   ctx.fillRect(0, 91, 94, 1);
   ctx.fillStyle = SHADOW; ctx.fillRect(0, 106, 52, 3);
   for (let i = 0; i < 3; i++) ctx.drawImage(TILES.bench, 2 + i * 16, 92);
-  G.save.pots.forEach((p, i) => ctx.drawImage(POT_SPRITES[p.stage], 4 + i * 10, 84, 10, 10));
+  trialPlantsList().slice(0, 6).forEach((p, i) => ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], 4 + i * 10, 84, 10, 10));
   // Alvin, the only actor on this side — he hops forward on LUNGE, pops up on BARK
   let ax = 20, ay = 56;
   if (t.anim && t.phase === 'wait') {
@@ -2515,9 +3324,9 @@ function renderTrial() {
   // status boxes: DEER pressure above, ALVIN's HP below — one box per side
   ctx.fillStyle = '#20242a'; ctx.fillRect(3, 5, 76, 25); ctx.fillStyle = '#f8f8f8'; ctx.fillRect(5, 7, 72, 21);
   ctx.fillStyle = '#ffd94a'; ctx.fillRect(5, 27, 72, 1); // gold trim, as on the panels
-  drawText('DEER', 8, 9, '#20242a', 1);
+  drawText(t.foe, 8, 9, '#20242a', 1);
   drawText('PRESSURE', 8, 17, '#5a6270', 1);
-  drawBar(8, 23, 62, t.pressure / 30, t.pressure > 10 ? '#37b24d' : '#e0483e');
+  drawBar(8, 23, 62, t.pressure / t.maxPressure, t.pressure > t.maxPressure / 3 ? '#37b24d' : '#e0483e');
   ctx.fillStyle = '#20242a'; ctx.fillRect(81, 66, 76, 27); ctx.fillStyle = '#f8f8f8'; ctx.fillRect(83, 68, 72, 23);
   ctx.fillStyle = '#ffd94a'; ctx.fillRect(83, 90, 72, 1);
   drawText('ALVIN', 86, 70, '#20242a', 1);
@@ -2540,7 +3349,7 @@ function renderTrial() {
   } else if (t.phase === 'plants' || t.phase === 'bag') {
     if (t.phase === 'plants') {
       drawText('THE GARDEN ALVIN GUARDS:', 7, 107, '#20242a', 1);
-      G.save.pots.forEach((q, i) => {
+      trialPlantsList().forEach((q, i) => {
         const x = 7 + (i % 2) * 78, y = 117 + Math.floor(i / 2) * 8;
         drawText((q.name || '').slice(0, 9) + ' ' + STAGE_NAMES[q.stage], x, y, '#20242a', 1);
       });
@@ -2558,8 +3367,9 @@ function renderTrial() {
 
 /* ============================== CARD / DEX / MENU ============================== */
 function cardUpdate() {
-  if (Input.aHit || Input.bHit) mode = 'overworld'; // KEEP TENDING
+  if (Input.aHit || Input.bHit) { mode = 'overworld'; chapterCardDone(cardChapter); } // KEEP TENDING
 }
+function chapterCardDone(n) { if (n === 1) ch2Opening(); }
 function renderCard() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
   drawSceneBanner(2, true);
@@ -2567,23 +3377,31 @@ function renderCard() {
   ctx.fillStyle = '#ffd94a'; // two little stars, twinkling in turn
   if (Math.floor(perfNow * 2) % 2 === 0) { ctx.fillRect(24, 71, 1, 3); ctx.fillRect(23, 72, 3, 1); }
   else { ctx.fillRect(133, 71, 1, 3); ctx.fillRect(132, 72, 3, 1); }
-  drawText('SEEDS', 80 - textW('SEEDS', 2) / 2, 78, '#ffd94a', 2);
-  const teaser = wrapText('SIX POTS, SIX PROMISES. NO LAND YET — BUT A START.', 34);
+  const info = CHAPTER_INFO[cardChapter] || CHAPTER_INFO[1];
+  drawText(info.name, 80 - textW(info.name, 2) / 2, 78, '#ffd94a', 2);
+  const teaser = wrapText(info.teaser, 34);
   teaser.forEach((l, i) => drawText(l, 80 - textW(l, 1) / 2, 94 + i * 7, '#ffffff', 1));
-  // the roll call: the six, named, cycling two at a time so it never crowds
-  const names = G.save.pots.map(p => p.name);
-  const pair = Math.floor(perfNow / 2.5) % 3;
-  const roll = names[pair * 2] + ' · ' + names[pair * 2 + 1];
-  const pre = 'THE SIX: ';
-  const rx = 80 - (textW(pre, 1) + textW(roll, 1)) / 2;
-  drawText(pre, rx, 110, '#cfe8cf', 1);
-  drawText(roll, rx + textW(pre, 1), 110, '#ffd94a', 1);
+  if (cardChapter === 1) {
+    // the roll call: the six, named, cycling two at a time so it never crowds
+    const names = sixPlants().map(p => p.name);
+    const pair = Math.floor(perfNow / 2.5) % 3;
+    const roll = names[pair * 2] + ' · ' + names[pair * 2 + 1];
+    const pre = 'THE SIX: ';
+    const rx = 80 - (textW(pre, 1) + textW(roll, 1)) / 2;
+    drawText(pre, rx, 110, '#cfe8cf', 1);
+    drawText(roll, rx + textW(pre, 1), 110, '#ffd94a', 1);
+  } else {
+    const liv = livingPlants().length, mem = G.save.plants.length - liv;
+    const line = 'THE REGISTER: ' + liv + ' LIVING' + (mem ? ' · ' + mem + ' REMEMBERED' : '');
+    drawText(line, 80 - textW(line, 1) / 2, 110, '#cfe8cf', 1);
+  }
   const l = 'KEEP TENDING (A)';
   ctx.fillStyle = '#ffd94a'; ctx.fillRect(Math.round(80 - textW(l, 1) / 2 - 4), 118, textW(l, 1) + 8, 9);
   drawText(l, 80 - textW(l, 1) / 2, 120, '#20242a', 1);
   // no book links on the card — Daniel's ruling: links live on the title
   // menu only, so the card is text + KEEP TENDING and nothing else
 }
+
 const MENU_ITEMS = ['RESUME', 'CONTROLS', 'SAVE & QUIT'];
 function menuUpdate() {
   if (Input.bHit || Input.startHit) { mode = 'overworld'; return; }
@@ -2673,29 +3491,105 @@ function renderControls() {
    simply remembers their lives — the Berrydex, kept by hand. Progress is
    the stages witnessed across the six lives (G.save.dex). */
 let regView = 'list', regSel = 0, regCardSel = 0;
-function openRegister() { regView = 'list'; regSel = 0; mode = 'register'; }
-function renamePlant(i) {
-  const p = G.save.pots[i];
+let regLoc = 'BENCH', regPage = 0, regPlant = -1; // regPlant: index into G.save.plants for the open card
+const REG_LOCS = ['BENCH', 'WINDOW', 'FRIDGE', 'GREENHOUSE', 'NURSERY', 'OFFICE', 'ROW1', 'ROW2', 'ROW3', 'ROW4', 'ROW5', 'ROW6', 'ROW7', 'ROW8', 'ROW9', 'ROW10', 'ROW11', 'ROW12', 'GARDEN', 'MEMORIAL'];
+const LOC_PRETTY = { BENCH: 'THE BENCH', WINDOW: 'THE WINDOW SHELF', FRIDGE: 'THE FRIDGE', GREENHOUSE: 'THE GREENHOUSE', NURSERY: 'THE NURSERY', OFFICE: "FRANK'S OFFICE", GARDEN: 'THE GARDEN', MEMORIAL: 'THE BACK PAGES' };
+function locPretty(loc) { return LOC_PRETTY[loc] || (loc.startsWith('ROW') ? 'FIELD ' + loc.replace('ROW', 'ROW ') : loc); }
+function regLocPlants(loc) {
+  if (loc.startsWith('AZ:')) return G.save.plants.filter(p => p.name.startsWith(loc.slice(3)));
+  if (loc === 'MEMORIAL') return G.save.plants.filter(p => p.memorial);
+  if (loc.startsWith('ROW')) { const r = parseInt(loc.slice(3), 10) - 1; return G.save.plants.filter(p => p.row === r && !p.memorial); }
+  return G.save.plants.filter(p => p.location === loc && !p.memorial);
+}
+function regLocationsPresent() {
+  return REG_LOCS.filter(l => regLocPlants(l).length > 0 || (l === 'MEMORIAL' && G.save.plants.some(p => p.memorial)));
+}
+function openRegister() {
+  regView = 'list'; regSel = 0; regPage = 0;
+  const six = sixPlants().find(p => !p.memorial);
+  regLoc = six ? (six.row != null ? 'ROW' + (six.row + 1) : six.location) : 'BENCH';
+  if (!regLocPlants(regLoc).length) { const ls = regLocationsPresent(); if (ls.length) regLoc = ls[0]; }
+  mode = 'register';
+}
+function renamePlantObj(p) {
   let v = null;
   try { v = window.prompt('A NAME FOR THIS PLANT:', p.name); } catch (e) {}
   if (v == null) return; // blank/cancel keeps the name Frank gave
-  v = String(v).trim().toUpperCase().replace(/[^A-Z0-9 .,'&!?-]/g, '').slice(0, 10).trim();
+  v = String(v).trim().toUpperCase().replace(/[^A-Z0-9 .,'&!?-]/g, '').slice(0, 14).trim();
   if (v) { p.name = v; saveGame(); toast('RENAMED: ' + v); }
 }
 function registerUpdate() {
+  const locs = regLocationsPresent();
   if (regView === 'list') {
+    const plants = regLocPlants(regLoc);
+    const pageCount = Math.max(1, Math.ceil(plants.length / 6));
     if (Input.bHit) { mode = 'overworld'; return; }
-    if (menuNavHit('up')) regSel = (regSel + 5) % 6;
-    if (menuNavHit('down')) regSel = (regSel + 1) % 6;
-    if (Input.aHit) { regView = 'card'; regCardSel = 0; }
-  } else {
-    if (Input.bHit) { regView = 'list'; return; }
+    if (regSel < 0) { // the location header is selected
+      if (menuNavHit('left') || menuNavHit('right')) {
+        const d = menuNavHit('left') ? -1 : 1;
+        let i = locs.indexOf(regLoc); i = (i + d + locs.length) % locs.length;
+        regLoc = locs[i]; regPage = 0;
+      }
+      if (menuNavHit('down')) regSel = plants.length ? 0 : -1;
+      if (Input.aHit) { regView = 'index'; regSel = 0; }
+      return;
+    }
+    if (menuNavHit('up')) { regSel--; if (regSel < 0) regSel = -1; }
+    if (menuNavHit('down')) { const pageItems = plants.slice(regPage * 6, regPage * 6 + 6).length; regSel = Math.min(pageItems - 1, regSel + 1); }
+    if (menuNavHit('left')) { regPage = (regPage + pageCount - 1) % pageCount; regSel = 0; }
+    if (menuNavHit('right')) { regPage = (regPage + 1) % pageCount; regSel = 0; }
+    if (Input.aHit && plants.length) {
+      regPlant = G.save.plants.indexOf(plants[regPage * 6 + regSel]);
+      regView = 'card'; regCardSel = 0;
+    }
+  } else if (regView === 'index') {
+    const entries = regIndexEntries();
+    if (Input.bHit) { regView = 'list'; regSel = -1; return; }
+    if (menuNavHit('up')) regSel = (regSel + entries.length - 1) % entries.length;
+    if (menuNavHit('down')) regSel = (regSel + 1) % entries.length;
+    if (Input.aHit) {
+      const e = entries[regSel];
+      if (e.kind === 'loc') { regLoc = e.loc; regPage = 0; regSel = -1; regView = 'list'; }
+      else if (e.kind === 'az') { regView = 'az'; regSel = 0; }
+      else if (e.kind === 'back') { regView = 'back'; regSel = 0; }
+      else if (e.kind === 'page') { regView = 'page'; regPage = e.page; regSel = 0; }
+    }
+  } else if (regView === 'az') {
+    if (Input.bHit) { regView = 'index'; regSel = 0; return; }
+    if (menuNavHit('left')) regSel = (regSel + 25) % 26;
+    if (menuNavHit('right')) regSel = (regSel + 1) % 26;
+    if (menuNavHit('up')) regSel = (regSel + 20) % 26;
+    if (menuNavHit('down')) regSel = (regSel + 6) % 26;
+    if (Input.aHit) {
+      const letter = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[regSel];
+      const found = G.save.plants.filter(p => p.name.startsWith(letter));
+      if (found.length) { regLoc = 'AZ:' + letter; regPage = 0; regSel = -1; regView = 'list'; }
+    }
+  } else if (regView === 'back') {
+    if (Input.bHit) { regView = 'index'; regSel = 0; return; }
+    const mems = G.save.plants.filter(p => p.memorial);
+    if (menuNavHit('up')) regSel = (regSel + Math.max(1, mems.length) - 1) % Math.max(1, mems.length);
+    if (menuNavHit('down')) regSel = (regSel + 1) % Math.max(1, mems.length);
+    if (Input.aHit && mems.length) { regPlant = G.save.plants.indexOf(mems[regSel]); regView = 'card'; regCardSel = 0; }
+  } else if (regView === 'page') {
+    if (Input.bHit || Input.aHit) { regView = 'index'; regSel = 0; return; }
+  } else { // card
+    if (Input.bHit) { regView = regLoc === 'MEMORIAL' || (G.save.plants[regPlant] && G.save.plants[regPlant].memorial) ? 'back' : 'list'; if (regView === 'list') regSel = 0; return; }
     if (menuNavHit('up') || menuNavHit('down')) regCardSel = 1 - regCardSel;
     if (Input.aHit) {
-      if (regCardSel === 0) renamePlant(regSel);
-      else regView = 'list';
+      if (regCardSel === 0) renamePlantObj(G.save.plants[regPlant]);
+      else { regView = 'list'; regSel = 0; }
     }
   }
+}
+function regIndexEntries() {
+  const es = regLocationsPresent().map(l => ({ kind: 'loc', loc: l, label: locPretty(l) + ' (' + regLocPlants(l).length + ')' }));
+  es.push({ kind: 'az', label: 'A–Z NAME INDEX' });
+  es.push({ kind: 'back', label: 'THE BACK PAGES — IN MEMORY' });
+  if (G.save.germ) es.push({ kind: 'page', page: 'GERMINATION', label: 'GERMINATION RECORD' });
+  if (G.save.promise) es.push({ kind: 'page', page: 'PROMISE', label: "OMA'S PROMISE" });
+  if (G.save.wine.batches.length || G.save.wine.jar) es.push({ kind: 'page', page: 'CELLAR', label: 'THE CELLAR' });
+  return es;
 }
 function dayOr(day, none) { return day != null ? 'DAY ' + day : none; }
 function drawPaw(x, y, col) { // Alvin has signed the journal, in his own way
@@ -2703,52 +3597,108 @@ function drawPaw(x, y, col) { // Alvin has signed the journal, in his own way
   ctx.fillRect(x + 2, y + 4, 5, 3); ctx.fillRect(x + 3, y + 7, 3, 1);
   ctx.fillRect(x, y + 1, 2, 2); ctx.fillRect(x + 3, y, 2, 2); ctx.fillRect(x + 6, y + 1, 2, 2);
 }
+const HEALTH_COL = ['#2e8b3a', '#b07f2a', '#d2691e', '#e0483e', '#5a5148'];
+function healthGlyph(p) { return p.memorial ? '' : ['', '!', '!!', '!!!', ''][p.health] || ''; }
+function plantStageLabel(p) {
+  if (p.location === 'GARDEN' && p.gardenState) return p.gardenState;
+  return STAGE_NAMES[p.stage];
+}
 function renderRegister() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
   drawPanel(4, 4, 152, 136);
   const s = G.save;
   if (regView === 'list') {
+    const az = regLoc.startsWith('AZ:');
+    const plants = az ? s.plants.filter(p => p.name.startsWith(regLoc.slice(3))) : regLocPlants(regLoc);
     drawText('PLANT REGISTER', 80 - textW('PLANT REGISTER', 2) / 2, 10, '#20242a', 2);
-    drawText('THE BERRYDEX · KEPT BY HAND', 80 - textW('THE BERRYDEX · KEPT BY HAND', 1) / 2, 24, '#2e8b3a', 1);
-    s.pots.forEach((p, i) => {
-      const y = 36 + i * 15;
+    const head = az ? 'NAMES: ' + regLoc.slice(3) : '◀ ' + locPretty(regLoc) + ' ▶';
+    if (regSel < 0) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(9, 21, 142, 10); drawText('▶', 11, 23, '#b03030', 1); }
+    drawText(head, 80 - textW(head, 1) / 2, 23, '#20242a', 1);
+    const pageCount = Math.max(1, Math.ceil(plants.length / 6));
+    if (pageCount > 1) drawText('PAGE ' + (regPage + 1) + '/' + pageCount, 128, 23, '#5a6270', 1);
+    plants.slice(regPage * 6, regPage * 6 + 6).forEach((p, i) => {
+      const y = 38 + i * 14;
       if (i === regSel) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(9, y - 3, 142, 12); drawText('▶', 11, y, '#b03030', 1); }
-      ctx.fillStyle = '#dfe9f5'; ctx.fillRect(12, y + 9, 136, 1); // a ruled line under each journal entry
-      ctx.drawImage(POT_SPRITES[p.stage], 20, y - 4, 12, 12);
-      drawText(p.name, 36, y, '#20242a', 1);
-      drawText(STAGE_NAMES[p.stage], 82, y, '#5a6270', 1);
-      const st = p.stage === 0 ? '-' : (p.watered ? 'WET' : 'DRY');
-      drawText(st, 128, y, p.watered ? '#3b6fe0' : '#b07f2a', 1);
+      ctx.fillStyle = '#dfe9f5'; ctx.fillRect(12, y + 9, 136, 1);
+      ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], 20, y - 4, 12, 12);
+      drawText(p.name.slice(0, 14), 36, y, '#20242a', 1);
+      drawText(plantStageLabel(p).slice(0, 9), 92, y, '#5a6270', 1);
+      const hg = healthGlyph(p);
+      if (p.memorial) drawText('RESTS', 128, y, '#5a6270', 1);
+      else if (hg) drawText(hg, 128, y, HEALTH_COL[p.health], 1);
+      else drawText(p.watered ? 'WET' : '', 128, y, '#3b6fe0', 1);
     });
-    const seen = s.dex.blueberry;
-    drawText('STAGES SEEN: ' + (seen.length ? seen.join(' · ') : 'NONE YET'), 12, 129, '#5a6270', 1);
+    if (!plants.length) drawText('NOTHING HERE. YET.', 14, 44, '#5a6270', 1);
+    drawText('A: CARD · B: CLOSE · SEL: PLACE', 12, 129, '#5a6270', 1);
+    drawPaw(142, 124, '#b09a72');
+  } else if (regView === 'index') {
+    drawText('THE REGISTER', 80 - textW('THE REGISTER', 2) / 2, 10, '#20242a', 2);
+    drawText('EVERY PLANT, BY NAME', 80 - textW('EVERY PLANT, BY NAME', 1) / 2, 24, '#2e8b3a', 1);
+    regIndexEntries().slice(0, 9).forEach((e, i) => {
+      const y = 38 + i * 11;
+      if (i === regSel) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(9, y - 3, 142, 11); drawText('▶', 11, y, '#b03030', 1); }
+      drawText(e.label.slice(0, 34), 20, y, '#20242a', 1);
+    });
+    drawText('B: BACK', 12, 129, '#5a6270', 1);
+    drawPaw(142, 124, '#b09a72');
+  } else if (regView === 'az') {
+    drawText('NAME INDEX', 80 - textW('NAME INDEX', 2) / 2, 10, '#20242a', 2);
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach((L, i) => {
+      const x = 16 + (i % 6) * 22, y = 34 + Math.floor(i / 6) * 16;
+      const has = s.plants.some(p => p.name.startsWith(L));
+      if (i === regSel) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(x - 3, y - 3, 12, 12); }
+      drawText(L, x, y, has ? '#20242a' : '#b9c0c9', 1);
+    });
+    drawText('A: NAMES UNDER THE LETTER · B: BACK', 12, 129, '#5a6270', 1);
+  } else if (regView === 'back') {
+    drawText('THE BACK PAGES', 80 - textW('THE BACK PAGES', 2) / 2, 10, '#20242a', 2);
+    drawText('IN MEMORY', 80 - textW('IN MEMORY', 1) / 2, 24, '#5a6270', 1);
+    const mems = s.plants.filter(p => p.memorial);
+    mems.slice(0, 5).forEach((p, i) => {
+      const y = 38 + i * 11;
+      if (i === regSel) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(9, y - 3, 142, 11); drawText('▶', 11, y, '#b03030', 1); }
+      drawText(p.name.slice(0, 16), 20, y, '#20242a', 1);
+      drawText('DAY ' + (p.diedDay || '?'), 108, y, '#5a6270', 1);
+    });
+    if (!mems.length) drawText('NO ONE RESTS HERE. MAY IT STAY SO.', 14, 40, '#5a6270', 1);
+    const named = s.plants.length, living = livingPlants().length;
+    drawText('ROLL CALL: ' + named + ' NAMED · ' + living + ' LIVING · ' + mems.length + ' REMEMBERED', 12, 100, '#20242a', 1);
+    drawText('BERRYDEX: ' + s.dex.cells.length + '/18 CELLS SEEN', 12, 110, '#20242a', 1);
+    if (ltGoalsMet()) drawText('WELL TENDED.', 80 - textW('WELL TENDED.', 1) / 2, 124, '#2e8b3a', 1);
+    drawText('B: BACK', 12, 129, '#5a6270', 1);
+    drawPaw(142, 124, '#b09a72');
+  } else if (regView === 'page') {
+    const pg = regPageLines();
+    drawText(pg.title, 80 - textW(pg.title, 2) / 2, 10, '#20242a', 2);
+    pg.lines.slice(0, 12).forEach((l, i) => drawText(l.slice(0, 36), 14, 32 + i * 9, '#20242a', 1));
+    drawText('B: BACK', 12, 129, '#5a6270', 1);
     drawPaw(142, 124, '#b09a72');
   } else {
-    const p = s.pots[regSel];
-    drawText(p.name, 14, 11, '#20242a', 2);
-    ctx.fillStyle = '#dfe9f5'; ctx.fillRect(14, 22, 100, 1); // ruled line under the name, as in the list
-    ctx.drawImage(POT_SPRITES[p.stage], 122, 8, 30, 30);
-    // a soft ground shade under the portrait, so the pot sits on the page
+    const p = s.plants[regPlant];
+    if (!p) { regView = 'list'; return; }
+    drawText(p.name.slice(0, 12), 14, 11, '#20242a', 2);
+    ctx.fillStyle = '#dfe9f5'; ctx.fillRect(14, 22, 100, 1);
+    ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], 122, 8, 30, 30);
     ctx.fillStyle = '#c9ced4'; ctx.fillRect(126, 38, 22, 1);
     ctx.fillStyle = '#dfe9f5'; ctx.fillRect(129, 39, 16, 1);
-    if (p.dirt) { // the good-dirt mark: a little mound of dark soil under the portrait, noted in the journal
+    if (p.dirt) {
       ctx.fillStyle = '#3d2412'; ctx.fillRect(133, 40, 8, 2); ctx.fillRect(135, 39, 4, 1);
       ctx.fillStyle = '#5a3a1e'; ctx.fillRect(136, 40, 2, 1);
       drawText('GOOD DIRT', 118, 44, '#5a3a1e', 1);
     }
-    drawText('BLUEBERRY · ' + STAGE_NAMES[p.stage], 14, 25, '#2e8b3a', 1);
-    drawText('LIVES AT: THE BENCH', 14, 34, '#5a6270', 1);
+    drawText((p.variety || 'BLUEBERRY') + ' · ' + plantStageLabel(p), 14, 25, '#2e8b3a', 1);
+    drawText('LIVES AT: ' + (p.memorial ? 'THE BACK PAGES' : locPretty(p.row != null ? 'ROW' + (p.row + 1) : p.location)), 14, 34, '#5a6270', 1);
+    drawText('HEALTH: ' + HEALTH_NAMES[p.health], 14, 43, HEALTH_COL[p.health], 1);
     const rows = [
-      'SOWN: ' + dayOr(p.sownDay, 'NOT YET'),
-      'SPROUTED: ' + dayOr(p.sproutedDay, 'NOT YET'),
-      'SEEDLING: ' + dayOr(p.seedlingDay, 'NOT YET'),
-      'DAYS TENDED: ' + p.tended,
-      'TODAY: ' + (p.stage === 0 ? '-' : (p.watered ? 'WATERED' : 'THIRSTY')),
+      'SOWN: ' + dayOr(p.sownDay, 'NOT YET') + (p.sproutedDay ? ' · SPROUTED: DAY ' + p.sproutedDay : ''),
+      'SEEDLING: ' + dayOr(p.seedlingDay, 'NOT YET') + (p.bushDay ? ' · BUSH: DAY ' + p.bushDay : ''),
+      'DAYS TENDED: ' + p.tended + ' · TODAY: ' + (p.stage === 0 ? '-' : (p.watered ? 'WATERED' : 'THIRSTY')),
     ];
-    rows.forEach((r, i) => drawText(r, 14, 48 + i * 9, '#20242a', 1));
-    const seen = s.dex.blueberry;
-    wrapText('BERRYDEX: ' + (seen.length ? seen.join(' · ') + ' SEEN' : 'NOTHING SEEN YET'), 34)
-      .slice(0, 2).forEach((l, i) => drawText(l, 14, 96 + i * 8, '#5a6270', 1));
+    if (p.memorial) rows.push('DIED: DAY ' + p.diedDay, 'CAUSE: ' + (p.cause || ''));
+    const hy = Object.keys(p.harvestByYear || {});
+    if (hy.length) rows.push('HARVEST: ' + hy.map(y => 'Y' + y + ' ' + p.harvestByYear[y] + 'LB').join(' · '));
+    (p.history || []).slice(0, 2).forEach(h => rows.push(h));
+    rows.slice(0, 5).forEach((r, i) => drawText(r.slice(0, 36), 14, 54 + i * 9, '#20242a', 1));
     ['RENAME', 'BACK'].forEach((l, i) => {
       const y = 114 + i * 11;
       if (i === regCardSel) drawText('▶', 14, y, '#b03030', 1);
@@ -2757,6 +3707,18 @@ function renderRegister() {
     drawPaw(142, 124, '#b09a72');
   }
 }
+function regPageLines() {
+  const s = G.save;
+  if (regPage === 'GERMINATION' && s.germ) return { title: 'GERMINATION', lines: ['SOWN: ' + s.germ.sown + ' SEEDS, LATE FALL.', 'POTTED UP: ' + s.germ.potted + ', EVERY ONE NAMED.', 'LOST ALONG THE WAY: ' + s.germ.lost + '.', 'THE TRAY IS EMPTY NOW. THE SHELF IS NOT.'] };
+  if (regPage === 'PROMISE') return { title: "OMA'S PROMISE", lines: ['SHE PROMISED TO STAY', 'UNTIL SHE TASTES THE FIRST WINE', 'MADE FROM THIS FIELD\'S FRUIT.', '', s.wine.batches.some(b => b.verdict) ? 'THE JAR IS FILLED. SHE TASTED IT.' : 'THE JAR WAITS, EMPTY, PATIENT AS SHE IS.'] };
+  if (regPage === 'CELLAR') {
+    const lines = s.wine.batches.map(b => 'BATCH ' + b.n + ': ' + b.verdict + ' (HONEY ' + b.index.toFixed(2) + ', CARE ' + b.care + ')');
+    lines.push('POUNDS SHARED DOWN THE ROAD: ' + (s.wine.shared || 0));
+    return { title: 'THE CELLAR', lines: lines.length ? lines : ['NO BATCHES YET.'] };
+  }
+  return { title: 'THE REGISTER', lines: [] };
+}
+function ltGoalsMet() { return false; } // Long Tending goals; replaced at the endgame
 
 /* ============================== MAIN LOOP ============================== */
 let perfNow = 0, lastT = 0;
@@ -2813,16 +3775,27 @@ const _saveGame = saveGame;
 saveGame = function () { if (G && G.save) { G.save.player = { x: player.tx, y: player.ty, dir: player.dir }; } _saveGame(); };
 
 G = { save: newSave() };
+buildSnow();
 requestAnimationFrame(frame);
 
 /* ============================== TEST HOOK ============================== */
 window.__hss = {
   state() {
+    const so = seasonOf(G.save.day);
+    const ser = p => ({ name: p.name, stage: p.stage, wateredDays: p.wateredDays, watered: p.watered, vigor: p.vigor, tended: p.tended, sownDay: p.sownDay, sproutedDay: p.sproutedDay, seedlingDay: p.seedlingDay, location: p.location, dirt: p.dirt, dirtCredit: p.dirtCredit, variety: p.variety, health: p.health, dryDays: p.dryDays, memorial: p.memorial, row: p.row, slot: p.slot, chill: p.chill, wintered: p.wintered, history: p.history.slice(), firstSix: p.firstSix });
     return {
-      mode, day: G.save.day, tutorial: G.save.tutorial, seedsLeft: G.save.seedsLeft, tea: G.save.tea,
+      mode, day: G.save.day, season: SEASON_NAMES[so.idx], year: so.year, tutorial: G.save.tutorial, seedsLeft: G.save.seedsLeft, tea: G.save.tea,
       compost: G.save.compost, goodDirt: G.save.goodDirt, weeds: JSON.parse(JSON.stringify(G.save.weeds || [])),
-      pots: G.save.pots.map(p => ({ name: p.name, stage: p.stage, wateredDays: p.wateredDays, watered: p.watered, vigor: p.vigor, tended: p.tended, sownDay: p.sownDay, sproutedDay: p.sproutedDay, seedlingDay: p.seedlingDay, location: p.location, dirt: p.dirt, dirtCredit: p.dirtCredit })),
-      register: { view: regView, sel: regSel, cardSel: regCardSel },
+      pots: sixPlants().map(ser),
+      plants: G.save.plants.map(ser),
+      tray: JSON.parse(JSON.stringify(G.save.tray)),
+      world: { ch: G.save.world.ch, step: G.save.world.step, area, flags: JSON.parse(JSON.stringify(G.save.world.flags)), proj: G.save.world.proj, rainToday: G.save.world.rainToday },
+      field: JSON.parse(JSON.stringify(G.save.field)),
+      rows: G.save.cropRows.map(r => ({ yieldRating: r.yieldRating, fruitSet: r.fruitSet, wateredDays: r.wateredDays, poundsByYear: r.poundsByYear })),
+      wine: { jar: G.save.wine.jar ? { phase: G.save.wine.jar.phase, days: G.save.wine.jar.days, index: G.save.wine.jar.index, care: G.save.wine.jar.care, batch: G.save.wine.jar.batch } : null, batches: G.save.wine.batches.map(b => ({ n: b.n, verdict: b.verdict, index: b.index, care: b.care })), honey: G.save.wine.honey, pounds: G.save.wine.pounds, poundsByYear: G.save.wine.poundsByYear, shared: G.save.wine.shared },
+      promise: G.save.promise, germ: G.save.germ,
+      npcs: npcList.map(n => ({ id: n.id, x: n.tx, y: n.ty })),
+      register: { view: regView, sel: regSel, cardSel: regCardSel, loc: regLoc, page: regPage },
       dex: JSON.parse(JSON.stringify(G.save.dex)), deerBeaten: G.save.deerBeaten, deerPresent: G.save.deerPresent,
       chapterDone: G.save.chapterDone, player: { x: player.tx, y: player.ty, dir: player.dir },
       alvin: { x: alvin.tx, y: alvin.ty }, trial: trialSnapshot(),
@@ -2837,18 +3810,33 @@ window.__hss = {
     dawn();
     if (mode === 'dialogue') { dlg = null; mode = 'overworld'; }
   },
-  waterAll() { G.save.pots.forEach(p => { if (p.stage >= 1) p.watered = true; }); saveGame(); },
+  waterAll() { sixPlants().forEach(p => { if (p.stage >= 1 && !p.memorial) waterPlant(p); }); saveGame(); },
+  waterEverything() { for (const p of G.save.plants) if (p.stage >= 1 && !p.memorial) waterPlant(p); for (const r of G.save.cropRows) r.watered = true; if (G.save.tray.n > 0) G.save.tray.watered = true; saveGame(); },
   plantAll() {
-    G.save.pots.forEach(p => { if (p.stage === 0 && G.save.seedsLeft > 0) { p.stage = 1; if (p.sownDay == null) p.sownDay = G.save.day; G.save.seedsLeft--; dexAdd('SEED'); } });
+    sixPlants().forEach(p => { if (p.stage === 0 && G.save.seedsLeft > 0) { p.stage = 1; if (p.sownDay == null) p.sownDay = G.save.day; G.save.seedsLeft--; dexAdd('SEED', p.variety); } });
     if (G.save.tutorial === 1) G.save.tutorial = 2;
     saveGame();
   },
   openRegister() { openRegister(); },
   skipIntro() { dlg = null; if (G.save.tutorial === 0) G.save.tutorial = 1; if (mode === 'dialogue') mode = 'overworld'; saveGame(); },
   startTrial() { if (G.save.deerPresent && !G.save.deerBeaten && strongestPot() >= 0) startTrial(); },
-  warp(x, y) { player.tx = x; player.ty = y; syncPixels(player); alvin.tx = x; alvin.ty = y + 1; syncPixels(alvin); },
+  startFoe(cfg) { startTrial(cfg); },
+  fridgeSeeds() { fridgeSeeds(); },
+  storageTrip() { storageTrip(); },
+  potUp() { potUp(); },
+  signSale() { if (G.save.world.step === 8) signSale(); },
+  warp(x, y) { player.tx = x; player.ty = y; syncPixels(player); alvin.tx = x; alvin.ty = Math.min(AH - 1, y + 1); syncPixels(alvin); },
+  gotoArea(a, x, y) { setArea(a, x, y); },
+  setDay(n) { G.save.day = n; saveGame(); },
+  setChapter(ch, step) { G.save.world.ch = ch; G.save.world.step = step || 0; saveGame(); },
+  setHealth(name, h) { const p = G.save.plants.find(q => q.name === name); if (p) { p.health = h; if (h === 3) { p.critSince = G.save.day; p.warnedDay = G.save.day; } saveGame(); } },
+  debugSave() { return JSON.parse(JSON.stringify(G.save)); },
+  setSave(obj) { G.save = ensureV2(obj); area = AREAS[G.save.world.area] ? G.save.world.area : 'yard'; AW = curArea().w; AH = curArea().h; player.tx = G.save.player.x; player.ty = G.save.player.y; syncPixels(player); layoutNPCs(); saveGame(); },
+  trialState() { return trial ? { foe: trial.foe, pressure: trial.pressure, maxPressure: trial.maxPressure, vigor: trial.vigor, phase: trial.phase, wave: trial.wave || 1, over: trial.over, result: trial.result } : null; },
   setWeeds(list) { G.save.weeds = (list || []).map(w => ({ x: w.x, y: w.y, deep: !!w.deep })); saveGame(); },
   giveCompost(n) { G.save.compost += n; saveGame(); },
   giveDirt(n) { G.save.goodDirt += n; saveGame(); },
   themeData() { return { bpm: THEME.bpm, beats: THEME.beats, melody: THEME.melody.map(e => e[0]), bass: THEME.bass.map(e => e[0]), chords: THEME.chords.map(e => e[0]) }; },
+
+
 };

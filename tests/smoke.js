@@ -423,7 +423,9 @@ function findChromium() {
   s = await S();
   check('dry dawn spawns 2 weeds', s.weeds.length === 2, JSON.stringify(s.weeds));
   check('spawned weeds sit on legal tiles', (await weedLegality()).length === 0, JSON.stringify(await weedLegality()));
-  for (let i = 0; i < 4; i++) await page.evaluate(() => window.__hss.advanceDay());
+  // (the gardener waters while the days pass — since Sprouts the ladder
+  // is real, and an untended week would cost plants, as it should)
+  for (let i = 0; i < 4; i++) { await page.evaluate(() => window.__hss.waterAll()); await page.evaluate(() => window.__hss.advanceDay()); }
   s = await S();
   check('weeds never exceed the cap of 6', s.weeds.length === 6, 'count=' + s.weeds.length);
   await page.evaluate(() => window.__hss.setWeeds([]));
@@ -512,7 +514,7 @@ function findChromium() {
   // And when the credit causes the FIRST sprout, the deer trial still
   // dawns as usual.
   await page.evaluate(() => {
-    G.save.deerBeaten = false; G.save.deerPresent = false;
+    G.save.deerBeaten = false; G.save.deerPresent = false; G.save.day = 14; // a spring dawn: winter's half-pace is not what this checks
     const p = G.save.pots[2]; p.stage = 1; p.wateredDays = 0; p.watered = true; p.dirtCredit = 1; saveGame();
   });
   await page.evaluate(() => window.__hss.advanceDay());
@@ -533,7 +535,7 @@ function findChromium() {
     'compost=' + s.compost + '/' + rt.compost + ' dirt=' + s.goodDirt + '/' + rt.goodDirt + ' weeds=' + s.weeds.length + '/' + rt.weeds.length);
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('hss-save-v1')));
   check('save file carries weeds, compost, dirt and per-plant marks',
-    Array.isArray(persisted.weeds) && typeof persisted.compost === 'number' && typeof persisted.goodDirt === 'number' && persisted.pots[0].dirt === true && typeof persisted.pots[1].dirtCredit === 'number',
+    Array.isArray(persisted.weeds) && typeof persisted.compost === 'number' && typeof persisted.goodDirt === 'number' && persisted.plants[0].dirt === true && typeof persisted.plants[1].dirtCredit === 'number',
     JSON.stringify({ compost: persisted.compost, goodDirt: persisted.goodDirt, weeds: (persisted.weeds || []).length }));
 
   // MUSIC SETTING: on the CONTROLS screen, persisted in the settings
@@ -703,6 +705,112 @@ function findChromium() {
   await page.waitForTimeout(250);
   const sitOff = await page.evaluate(() => alvin.sit === false);
   check('sit: moving again clears the sit', sitOff);
+
+  // CHAPTER 2 — SPROUTS: save v2, seasons, the house, the sale, the
+  // potting-up, the frost trial, and the mortality ladder (spec ch. 2).
+  const persisted2 = await page.evaluate(() => JSON.parse(localStorage.getItem('hss-save-v1')));
+  check('save file is v2: plants, world, tray, field, wine',
+    persisted2.v === 2 && Array.isArray(persisted2.plants) && persisted2.plants.length === 6 && !!persisted2.world && !!persisted2.tray && !!persisted2.field && !!persisted2.wine,
+    'v=' + persisted2.v);
+  await page.evaluate(() => {
+    const sv = JSON.parse(localStorage.getItem('hss-save-v1'));
+    sv.plants.forEach(p => { p.stage = 3; p.seedlingDay = 5; p.location = 'BENCH'; });
+    sv.deerBeaten = true; sv.deerPresent = false; sv.chapterDone = true;
+    sv.world.ch = 2; sv.world.step = 0; sv.day = 7; sv.world.area = 'yard';
+    localStorage.setItem('hss-save-v1', JSON.stringify(sv));
+  });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+  await page.waitForTimeout(300);
+  await tap('ArrowDown'); await tap('Enter'); // CONTINUE
+  await page.waitForTimeout(400);
+  s = await S();
+  check('chapter 2 state loads', s.world.ch === 2 && s.world.step === 0 && s.mode === 'overworld', 'ch=' + s.world.ch + ' step=' + s.world.step);
+  // seasons: 14-day seasons on a 56-day year
+  const seasonAt = async d => { await page.evaluate(n => window.__hss.setDay(n), d); return (await S()).season; };
+  check('seasons turn on the 56-day year',
+    (await seasonAt(1)) === 'SPRING' && (await seasonAt(15)) === 'SUMMER' && (await seasonAt(29)) === 'FALL' && (await seasonAt(43)) === 'WINTER' && (await seasonAt(57)) === 'SPRING',
+    'checked 1/15/29/43/57');
+  await page.evaluate(() => window.__hss.setDay(7));
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('the summer passes: fall, day 36, step 1', s.day === 36 && s.season === 'FALL' && s.world.step === 1, 'day=' + s.day + ' step=' + s.world.step);
+  // the house interior exists and holds the fridge and the shelf
+  await page.evaluate(() => window.__hss.gotoArea('house', 10, 11));
+  s = await S();
+  check('the house interior loads', s.world.area === 'house', s.world.area);
+  check('fridge and shelf tiles are in place', await page.evaluate(() => mapChar(12, 1) === 'r' && mapChar(2, 1) === 'a' && mapChar(10, 12) === 'D'), '');
+  await page.evaluate(() => window.__hss.gotoArea('yard', 10, 5));
+  await page.evaluate(() => window.__hss.fridgeSeeds());
+  await page.evaluate(() => { G.save.world.flags.carried = true; saveGame(); });
+  await dismissDialogue(6);
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('fridge + the carry -> step 2', s.world.step === 2, 'step=' + s.world.step);
+  for (let i = 0; i < 3; i++) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(8); }
+  s = await S();
+  check('three houses fail, the verdict lands: step 5', s.world.step === 5, 'step=' + s.world.step);
+  for (let i = 0; i < 3; i++) { await page.evaluate(() => window.__hss.storageTrip()); await dismissDialogue(6); if (i < 2) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(6); } }
+  s = await S();
+  check('the great emptying: step 6', s.world.step === 6, 'step=' + s.world.step);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(8);
+  s = await S();
+  check('the sprout flood: tray ready, 40 strong', s.tray.ready === true && s.tray.n === 40 && s.world.step === 7, JSON.stringify(s.tray));
+  await page.evaluate(() => { window.__hss.potUp(); window.__hss.potUp(); window.__hss.potUp(); });
+  await dismissDialogue(8);
+  s = await S();
+  const sproutNames = s.plants.filter(p => !p.firstSix);
+  check('potting-up names every sprout', s.plants.length === 9 && sproutNames.length === 3 && new Set(s.plants.map(p => p.name)).size === 9, s.plants.map(p => p.name).join(','));
+  check('sprouts live at WINDOW, stage 2, varieties named', sproutNames.every(p => p.location === 'WINDOW' && p.stage === 2) && sproutNames.some(p => p.variety === 'ECHO') && sproutNames.some(p => p.variety === 'CHANDLER'), JSON.stringify(sproutNames.map(p => p.variety)));
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(8);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('the frost trial dawns', s.mode === 'trial' && s.trial && s.trial.foe === 'FROST' && s.trial.maxPressure === 25 && s.trial.maxVigor === 22, JSON.stringify(s.trial && { foe: s.trial.foe, mp: s.trial.maxPressure, mv: s.trial.maxVigor }));
+  check('unblanketed sprouts start the night STRESSED', sproutNames.every(nm => { const p = s.plants.find(q => q.name === nm.name); return p && p.health === 1; }), '');
+  await page.evaluate(() => { trial.pressure = 3; });
+  await page.waitForTimeout(1400);
+  await tap('z'); await page.waitForTimeout(250);
+  await tap('z'); await page.waitForTimeout(1600);
+  await dismissDialogue(6);
+  s = await S();
+  check('frost trial won: the cold is done', s.world.flags.frostDone === true && s.mode === 'overworld', 'frostDone=' + s.world.flags.frostDone + ' mode=' + s.mode);
+  await page.evaluate(() => { while (G.save.tray.n > 0) potUp(); });
+  await dismissDialogue(8);
+  s = await S();
+  check('potting complete: 46 named, germ record, six at the window',
+    s.plants.length === 46 && s.germ && s.germ.sown === 96 && s.germ.potted === 40 && s.pots.every(p => p.location === 'WINDOW') && s.world.step === 8,
+    'plants=' + s.plants.length + ' step=' + s.world.step);
+  await page.evaluate(() => window.__hss.signSale());
+  await dismissDialogue(10);
+  s = await S();
+  check('the sale signs chapter 2 shut', s.mode === 'card' && s.world.ch === 3, 'mode=' + s.mode + ' ch=' + s.world.ch);
+  await tap('z'); await page.waitForTimeout(300);
+  // mortality (spec 2.8): death only at dawn, only from CRITICAL, never unwarned
+  await page.evaluate(() => {
+    const sv = __hss.debugSave(); sv.world.ch = 2;
+    const cap = sv.plants.find(p => p.name === 'CAPTAIN'); cap.health = 3; cap.warnedDay = sv.day; cap.dryDays = 4; cap.watered = false;
+    const hope = sv.plants.find(p => p.name === 'HOPE'); hope.health = 3; hope.warnedDay = sv.day; hope.dryDays = 4; hope.watered = true;
+    __hss.setSave(sv);
+  });
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('an unrescued CRITICAL plant dies at dawn', s.plants.find(p => p.name === 'CAPTAIN').memorial === true, '');
+  check('a watered CRITICAL plant climbs back a step', (() => { const h = s.plants.find(p => p.name === 'HOPE'); return h.memorial === false && h.health === 2; })(), '');
+  const compostBefore = s.compost;
+  await page.evaluate(() => { const p = G.save.plants.find(q => q.name === 'CAPTAIN'); clearHusk(p); });
+  await dismissDialogue(6);
+  s = await S();
+  check('the husk goes to compost (+2) and the register keeps the name',
+    s.compost === compostBefore + 2 && s.plants.find(p => p.name === 'CAPTAIN').location === 'MEMORIAL', 'compost=' + s.compost);
+  await page.evaluate(() => window.__hss.openRegister());
+  s = await S();
+  check('register opens on the list view', s.register.view === 'list', s.register.view);
+  await tap('x'); await page.waitForTimeout(200);
 
   // a save written in the oldest formats still loads: pots as a bare stage
   // int and as {stage, waterDays} objects both migrate to named plants
