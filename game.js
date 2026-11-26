@@ -447,8 +447,8 @@ const FRANK_DOWN2 = makeSprite([
 '.....kkkkkk.....',
 '...kkbbbbbbkk...',
 '...skbpbbpBks...',
-'...skpyppyBks...',
-'....kkppppkk....',
+'...skpyppyBkk...',
+'...skkppppkk....',
 '.....kppkppk....',
 '.....kppkppk....',
 '.....kookook....',
@@ -460,12 +460,12 @@ const FRANK_UP = makeSprite([
 '...kcccccccck...',
 '...kCCCCCCCCk...',
 '....khhhhhhk....',
-'....khhhhhhk....',
+'....khhHHhhk....',
 '....khhhhHHk....',
 '.....kkkkkk.....',
-'...kkbbbbbbkk...',
-'...skbbbbbBks...',
-'...skbbbbbBks...',
+'...kkbBbbbBkk...',
+'...skbBbbbBks...',
+'...skbBbbbBks...',
 '....kkppppkk....',
 '....kppkkppk....',
 '....kppkkppk....',
@@ -478,12 +478,12 @@ const FRANK_UP2 = makeSprite([
 '...kcccccccck...',
 '...kCCCCCCCCk...',
 '....khhhhhhk....',
-'....khhhhhhk....',
+'....khhHHhhk....',
 '....khhhhHHk....',
 '.....kkkkkk.....',
-'...kkbbbbbbkk...',
-'...skbbbbbBks...',
-'...skbbbbbBks...',
+'...kkbBbbbBkk...',
+'...skbBbbbBks...',
+'...skbBbbbBks...',
 '....kkppppkk....',
 '.....kppkppk....',
 '.....kppkppk....',
@@ -495,8 +495,8 @@ const FRANK_SIDE = makeSprite([
 '....kcccCcck....',
 '....kccccccck...',
 '....kHHhhhhk....',
-'....kssssssk....',
-'....kSsssesk....',
+'....ksssssSk....',
+'....kSsssessk...',
 '....kssssosk....',
 '.....kkkkk......',
 '....kkbbbbb.....',
@@ -513,17 +513,17 @@ const FRANK_SIDE2 = makeSprite([
 '....kcccCcck....',
 '....kccccccck...',
 '....kHHhhhhk....',
-'....kssssssk....',
-'....kSsssesk....',
+'....ksssssSk....',
+'....kSsssessk...',
 '....kssssosk....',
 '.....kkkkk......',
 '....kkbbbbb.....',
 '....kbbbbBk.....',
 '....kbbbbBks....',
 '....kkppppk.....',
-'....kppkppk.....',
-'....kppkppk.....',
-'....kookook.....',
+'.....kppk.......',
+'.....kppk.......',
+'.....koook......',
 ], FRANK_PAL);
 /* idle blink frames: the standing front/side views with eyes closed */
 const FRANK_DOWN_BLINK = makeSprite([
@@ -544,14 +544,32 @@ const FRANK_DOWN_BLINK = makeSprite([
 '....kppkkppk....',
 '....koookooo....',
 ], FRANK_PAL);
+const FRANK_DOWN_TALK = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....kcccCCck....',
+'...kcccccccck...',
+'...kCCCCCCCCk...',
+'....kSssssSk....',
+'....ksessesk....',
+'....ksskkSsk....',
+'.....kkkkkk.....',
+'...kkbbbbbbkk...',
+'...skbpbbpBks...',
+'...skpyppyBks...',
+'....kkppppkk....',
+'....kppkkppk....',
+'....kppkkppk....',
+'....koookooo....',
+], FRANK_PAL);
 const FRANK_SIDE_BLINK = makeSprite([
 '................',
 '.....kkkkkk.....',
 '....kcccCcck....',
 '....kccccccck...',
 '....kHHhhhhk....',
-'....kssssssk....',
-'....kssssssk....',
+'....ksssssSk....',
+'....ksssssssk...',
 '....kssssosk....',
 '.....kkkkk......',
 '....kkbbbbb.....',
@@ -562,7 +580,25 @@ const FRANK_SIDE_BLINK = makeSprite([
 '...kppk.kppk....',
 '..koook.koook...',
 ], FRANK_PAL);
-const FRANK_SET = { down: [FRANK_DOWN, FRANK_DOWN2], up: [FRANK_UP, FRANK_UP2], side: [FRANK_SIDE, FRANK_SIDE2], blinkDown: FRANK_DOWN_BLINK, blinkSide: FRANK_SIDE_BLINK };
+const FRANK_SIDE_TALK = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....kcccCcck....',
+'....kccccccck...',
+'....kHHhhhhk....',
+'....ksssssSk....',
+'....kSsssessk...',
+'....kssssksk....',
+'.....kkkkk......',
+'....kkbbbbb.....',
+'....kbbbbBks....',
+'....kbbbbBk.....',
+'....kkppppk.....',
+'...kppk.kppk....',
+'...kppk.kppk....',
+'..koook.koook...',
+], FRANK_PAL);
+const FRANK_SET = { down: [FRANK_DOWN, FRANK_DOWN2], up: [FRANK_UP, FRANK_UP2], side: [FRANK_SIDE, FRANK_SIDE2], blinkDown: FRANK_DOWN_BLINK, blinkSide: FRANK_SIDE_BLINK, talkDown: FRANK_DOWN_TALK, talkSide: FRANK_SIDE_TALK };
 const CONSTANCE_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: '#8a5a2e', H: '#6f4520', e: EYE, d: '#2a9d8f', D: '#1f7a6e', w: '#f8f8f8', o: '#3a2c1c' };
 const CONSTANCE_DOWN = makeSprite([
 '................',
@@ -577,7 +613,7 @@ const CONSTANCE_DOWN = makeSprite([
 '...kkddddddkk...',
 '...skddwwdDks...',
 '...skddwwdDks...',
-'...kddwwwwdDk...',
+'...kddwwDwdDk...',
 '...kddwwwDDDk...',
 '....kdddkddk....',
 '....kookkook....',
@@ -595,17 +631,17 @@ const CONSTANCE_DOWN2 = makeSprite([
 '...kkddddddkk...',
 '...skddwwdDks...',
 '...skddwwdDks...',
-'..kddwwwwdDk....',
+'..kddwwDwdDk....',
 '..kddwwwddDk....',
 '....kdddkddk....',
 '.....ookook.....',
 ], CONSTANCE_PAL);
 const CONSTANCE_SIDE = makeSprite([
 '................',
-'.....kkkkkk.....',
+'....kkkkkk......',
+'...kkhhhhhhhk...',
 '....khhhhhhk....',
-'....khhhhhhk....',
-'....khhhhssk....',
+'....kHhhhssk....',
 '....khhhhsek....',
 '....khhhhssk....',
 '....kHHhhsok....',
@@ -620,10 +656,10 @@ const CONSTANCE_SIDE = makeSprite([
 ], CONSTANCE_PAL);
 const CONSTANCE_SIDE2 = makeSprite([
 '................',
-'.....kkkkkk.....',
+'....kkkkkk......',
+'...kkhhhhhhhk...',
 '....khhhhhhk....',
-'....khhhhhhk....',
-'....khhhhssk....',
+'....kHhhhssk....',
 '....khhhhsek....',
 '....khhhhssk....',
 '....kHHhhsok....',
@@ -631,8 +667,8 @@ const CONSTANCE_SIDE2 = makeSprite([
 '....kkddddd.....',
 '....kddddDk.....',
 '....kddddDks....',
-'...kdddddwdDk...',
-'...kdddddwdDk...',
+'....kddddwdDk...',
+'....kddddwdDk...',
 '....ksskssk.....',
 '....kookook.....',
 ], CONSTANCE_PAL);
@@ -649,7 +685,7 @@ const CONSTANCE_UP = makeSprite([
 '...kkddddddkk...',
 '...skddwwddks...',
 '...skddwwddks...',
-'...kdddddddDk...',
+'...kdddwwddDk...',
 '...kdddddddDk...',
 '....kdddkddk....',
 '....kookkook....',
@@ -667,7 +703,7 @@ const CONSTANCE_UP2 = makeSprite([
 '...kkddddddkk...',
 '...skddwwddks...',
 '...skddwwddks...',
-'...kdddddddDk...',
+'...kdddwwddDk...',
 '...kdddddddDk...',
 '.....kddkddk....',
 '.....ookook.....',
@@ -690,12 +726,30 @@ const CONSTANCE_DOWN_BLINK = makeSprite([
 '....kdddkddk....',
 '....kookkook....',
 ], CONSTANCE_PAL);
-const CONSTANCE_SIDE_BLINK = makeSprite([
+const CONSTANCE_DOWN_TALK = makeSprite([
 '................',
 '.....kkkkkk.....',
+'....khHHhhhk....',
+'....khhhhHhk....',
+'....khsssshk....',
+'....khsesesk....',
+'....khskkShk....',
+'....kssssssk....',
+'.....kkkkkk.....',
+'...kkddddddkk...',
+'...skddwwdDks...',
+'...skddwwdDks...',
+'...kddwwwwdDk...',
+'...kddwwwDDDk...',
+'....kdddkddk....',
+'....kookkook....',
+], CONSTANCE_PAL);
+const CONSTANCE_SIDE_BLINK = makeSprite([
+'................',
+'....kkkkkk......',
+'...kkhhhhhhhk...',
 '....khhhhhhk....',
-'....khhhhhhk....',
-'....khhhhssk....',
+'....kHhhhssk....',
 '....khhhhssk....',
 '....khhhhssk....',
 '....kHHhhsok....',
@@ -708,7 +762,25 @@ const CONSTANCE_SIDE_BLINK = makeSprite([
 '...kssk.kssk....',
 '...kook.kook....',
 ], CONSTANCE_PAL);
-const CONSTANCE_SET = { down: [CONSTANCE_DOWN, CONSTANCE_DOWN2], up: [CONSTANCE_UP, CONSTANCE_UP2], side: [CONSTANCE_SIDE, CONSTANCE_SIDE2], blinkDown: CONSTANCE_DOWN_BLINK, blinkSide: CONSTANCE_SIDE_BLINK };
+const CONSTANCE_SIDE_TALK = makeSprite([
+'................',
+'....kkkkkk......',
+'...kkhhhhhhhk...',
+'....khhhhhhk....',
+'....kHhhhssk....',
+'....khhhhsek....',
+'....khhhhssk....',
+'....kHHhhskk....',
+'.....kkkkk......',
+'....kkddddd.....',
+'....kddddDks....',
+'....kddddDk.....',
+'...kdddddwdDk...',
+'...kdddddwdDk...',
+'...kssk.kssk....',
+'...kook.kook....',
+], CONSTANCE_PAL);
+const CONSTANCE_SET = { down: [CONSTANCE_DOWN, CONSTANCE_DOWN2], up: [CONSTANCE_UP, CONSTANCE_UP2], side: [CONSTANCE_SIDE, CONSTANCE_SIDE2], blinkDown: CONSTANCE_DOWN_BLINK, blinkSide: CONSTANCE_SIDE_BLINK, talkDown: CONSTANCE_DOWN_TALK, talkSide: CONSTANCE_SIDE_TALK };
 /* Alvin: tan short coat, floppy darker ears, green collar with a tag.
    Side sprite faces right (charSprite flips it for left); the two frames
    wag his tail and stride his legs. */
@@ -746,8 +818,8 @@ const ALVIN_DOWN2 = makeSprite([
 '....kggggggk....',
 '....kttgyttk....',
 '...Tkttttttk....',
-'....ktkttktk....',
-'....kkk.kkk.....',
+'...ktkttktk.....',
+'...kkk..kkk.....',
 ], ALVIN_PAL);
 const ALVIN_UP = makeSprite([
 '................',
@@ -760,7 +832,7 @@ const ALVIN_UP = makeSprite([
 '...kkkttttkkk...',
 '....kggggggk....',
 '....kttttttk....',
-'....kttttttk....',
+'....ktTttTtk....',
 '....kttTtttk....',
 '....ktkttktk....',
 '....kkkTTkkk....',
@@ -778,10 +850,10 @@ const ALVIN_UP2 = makeSprite([
 '...kkkttttkkk...',
 '....kggggggk....',
 '....kttttttk....',
-'....kttttttk....',
+'....ktTttTtk....',
 '....kttTtttk....',
-'....ktkttktk....',
-'....kkkTTkkk....',
+'...ktkttktk.....',
+'...kkkTTkkk.....',
 '.....tt.........',
 '................',
 ], ALVIN_PAL);
@@ -816,28 +888,82 @@ const ALVIN_SIDE2 = makeSprite([
 '..kttttttggggk..',
 '..ktttttttggyk..',
 '..kTTTTTTTTTTk..',
-'..ktk....kTk....',
-'..ktk....kTk....',
-'..kkk....kkk....',
+'..ktk.....kTk...',
+'..ktk.....kTk...',
+'..kkk.....kkk...',
 '................',
 ], ALVIN_PAL);
-const ALVIN_SET = { down: [ALVIN_DOWN, ALVIN_DOWN2], up: [ALVIN_UP, ALVIN_UP2], side: [ALVIN_SIDE, ALVIN_SIDE2] };
+const ALVIN_SIT_DOWN = makeSprite([
+'................',
+'................',
+'....kkkkkkkk....',
+'..kkkttttttkkk..',
+'..kddkttttkddk..',
+'..kdTkettekTdk..',
+'..kddkttttkddk..',
+'...kkkttttkkk...',
+'....ktmmmmtk....',
+'....kmmnnmmk....',
+'.....mmmmmm.....',
+'....kggggggk....',
+'...kttttttttk...',
+'..kttttttttttk..',
+'..kTk.kttk.kTk..',
+'..kkk.kkkk.kkk..',
+], ALVIN_PAL);
+const ALVIN_SIT_UP = makeSprite([
+'................',
+'................',
+'....kkkkkkkk....',
+'..kkkttttttkkk..',
+'..kddkttttkddk..',
+'..kddkttttkddk..',
+'..kddkttttkddk..',
+'...kkkttttkkk...',
+'....kggggggk....',
+'....kttttttk....',
+'...kttttttttk...',
+'..kttttttttttk..',
+'..kTTttttttTTk..',
+'..kkk.kttk.kkk..',
+'......tttt......',
+'................',
+], ALVIN_PAL);
+const ALVIN_SIT_SIDE = makeSprite([
+'................',
+'.tt.............',
+'.tTt....kkkk....',
+'..ttT..kddddk...',
+'...tT.kddttttk..',
+'....ktttttttek..',
+'..kktttttttttk..',
+'..ktttttmmmmnk..',
+'..kttttmmmmmmk..',
+'..kttttttggggk..',
+'..ktttttttggyk..',
+'..kTTTTTTTTTTk..',
+'..kTTTk...kTk...',
+'..kTTTTk..kTk...',
+'..kkkkkk..kkk...',
+'................',
+], ALVIN_PAL);
+const ALVIN_SET = { down: [ALVIN_DOWN, ALVIN_DOWN2], up: [ALVIN_UP, ALVIN_UP2], side: [ALVIN_SIDE, ALVIN_SIDE2], sitDown: ALVIN_SIT_DOWN, sitUp: ALVIN_SIT_UP, sitSide: ALVIN_SIT_SIDE };
 /* small deer for the yard */
 const DEER_SMALL = makeSprite([
-'..aa............',
-'..a.a...........',
-'...kak..........',
-'..khhhk.........',
-'.khhhhhk........',
-'.kehhhhk........',
-'.kmmhhkhhhhhhk..',
-'....kbbbbbbbbk..',
-'....kbbbwbbbbkt.',
-'....kbbbbbbbbk..',
-'....kbk....kbk..',
-'....kbk....kbk..',
-'....kkk....kkk..',
-'................',
+'...a..a.........',
+'..a.a.a.a.......',
+'..kkkkkk........',
+'.khhhhhhk.......',
+'.khhehhkhk......',
+'.kmmmhhhk.......',
+'..kmmkbbbbk.....',
+'....kbbbbbbbk...',
+'....kbbbbwbbkt..',
+'....kbbbbbbbk...',
+'....kkkkkkkkk...',
+'.....bb....bb...',
+'.....bb....bb...',
+'.....kk....kk...',
 '................',
 '................',
 ], { a: '#8a5a2e', h: '#caa06a', e: '#20242a', b: '#b07a45', t: '#e8dcc0', k: '#20242a', m: '#e8dcc0', w: '#e8dcc0' });
@@ -909,57 +1035,57 @@ const POT_SPRITES = [POT_EMPTY, POT_SEED, POT_SPROUT, POT_SEEDLING];
    two-segment legs, far side shaded. 32x24. */
 const DEER_BIG = makeSprite([
 '......a....a....................',
-'.......a..a.....................',
-'.......a.aa.....................',
-'........aa......................',
-'......kkkkk.....................',
-'.....khhhhhkhhk.................',
-'....khhehhkhhk..................',
-'....khhhhhk.....................',
-'...kmmhhk.......................',
-'....kmk.hbB.....................',
-'........hbBBbbbkkkk......kkkk...',
-'.........hbBBbbbbbbkkkkkkbbbbbk.',
-'..........hbBBbbbbbwbbbbbbwbbtk.',
-'..........hbBBbbbbbbbbwbbbbbbtk.',
-'...........hbBBbbbbbbbbbbbbbbbk.',
-'............hbbbbbbbbbbbbbbBBBk.',
-'............hhBBBBBBBBBBBBBBB...',
-'............kkkk.......bbbbbk...',
-'............bB.BB......bbbbkB...',
-'............bB.BB......bbbk.B...',
-'............bB.B.......bB.B.....',
-'............bB.B.......bB.B.....',
-'............bB.B.......bB.B.....',
-'...........kkkkkk......kkkkkk...',
+'.....a.a..a..a..................',
+'......a....a....................',
+'....kkkkkkkkk...................',
+'...khhhhhhhhhkhk................',
+'...khhhhhhhhhkk.................',
+'...khhehhhhhhk..................',
+'..kmmmhhhhhkhb..................',
+'..kmmmkhhhkhbB..................',
+'....mmmk..hbBB..................',
+'..........hbBBbkkkkkkkkkkkkkk...',
+'..........hbbbbbbbbbbbbbbbbbbbk.',
+'...........bbbbbbbbbwbbbwbbbbbbt',
+'...........bbbbbbbbbbbwbbbbbbbbt',
+'...........bbbbbbbbbbbbbbbbbbbk.',
+'...........kBBBBBBBBBBBBBBBBk...',
+'............bbbbBBBBBBBBbbbb....',
+'.............bb..BB......bbBB...',
+'.............bb..BB......bbBB...',
+'..............bb.BB.....bb.BB...',
+'..............bB.BB.....bB.BB...',
+'..............bB.BB.....bB.BB...',
+'..............bB.BB.....bB.BB...',
+'.............kkk.kkk...kkk.kkk..',
 ], { a: '#8a5a2e', h: '#caa06a', e: '#20242a', b: '#b07a45', B: '#8a5a2e', w: '#e8dcc0', t: '#e8dcc0', k: '#20242a', m: '#e8dcc0' });
 /* alarmed variant: ear flattened back, white tail flagged high —
    shown once the deer's Pressure runs low (and as an idle ear-flicker) */
 const DEER_BIG2 = makeSprite([
 '......a....a....................',
-'.......a..a.....................',
-'.......a.aa.....................',
-'........aa......................',
-'......kkkkk.....................',
-'.....khhhhhk....................',
-'....khhehkkhhk................tt',
-'....khhhhhk..................tt.',
-'...kmmhhk...................tt..',
-'....kmk.hbB.................tt..',
-'........hbBBbbbkkkk......kkktt..',
-'.........hbBBbbbbbbkkkkkkbbbbbk.',
-'..........hbBBbbbbbwbbbbbbwbbbk.',
-'..........hbBBbbbbbbbbwbbbbbbbk.',
-'...........hbBBbbbbbbbbbbbbbbbk.',
-'............hbbbbbbbbbbbbbbBBBk.',
-'............hhBBBBBBBBBBBBBBB...',
-'............kkkk.......bbbbbk...',
-'............bB.BB......bbbbkB...',
-'............bB.BB......bbbk.B...',
-'............bB.B.......bB.B.....',
-'............bB.B.......bB.B.....',
-'............bB.B.......bB.B.....',
-'...........kkkkkk......kkkkkk...',
+'.....a.a..a..a..................',
+'......a....a....................',
+'....kkkkkkkkk...................',
+'...khhhhhhhhhkhh................',
+'...khhhhhhhhhkhh..............kt',
+'...khhehhhhhhk................kt',
+'..kmmmhhhhhkhb................kt',
+'..kmmmkhhhkhbB................kt',
+'....mmmk..hbBB................kt',
+'..........hbBBbkkkkkkkkkkkkkk.kt',
+'..........hbbbbbbbbbbbbbbbbbbbkt',
+'...........bbbbbbbbbwbbbwbbbbbbk',
+'...........bbbbbbbbbbbwbbbbbbbbk',
+'...........bbbbbbbbbbbbbbbbbbbk.',
+'...........kBBBBBBBBBBBBBBBBk...',
+'............bbbbBBBBBBBBbbbb....',
+'.............bb..BB......bbBB...',
+'.............bb..BB......bbBB...',
+'..............bb.BB.....bb.BB...',
+'..............bB.BB.....bB.BB...',
+'..............bB.BB.....bB.BB...',
+'..............bB.BB.....bB.BB...',
+'.............kkk.kkk...kkk.kkk..',
 ], { a: '#8a5a2e', h: '#caa06a', e: '#20242a', b: '#b07a45', B: '#8a5a2e', w: '#e8dcc0', t: '#e8dcc0', k: '#20242a', m: '#e8dcc0' });
 /* Alvin, big side profile for the trial screen (28x20, drawn at 2x):
    sturdy pit-type build, deep chest, floppy ear, green collar with tag,
@@ -1439,19 +1565,52 @@ function stepEntity(e, dx, dy, dt) {
   }
   return false;
 }
+/* Daniel (Nov 26): "let the user displace Alvin automatically so he doesn't
+   block." When Frank steps into the tile Alvin is standing on, Alvin hops
+   aside in the same instant: to a side tile when one is walkable (never the
+   tile ahead of Frank — he'd only be pushed again), and if he is boxed in,
+   as in a 1-wide column, he and Frank simply swap tiles. He can only land
+   where he could legally walk — the same solidity test as movement — and
+   never on Constance or the deer. No input, no pause: Frank's step proceeds. */
+function displaceAlvin(fdx, fdy) {
+  const ox = alvin.tx, oy = alvin.ty;
+  const sides = [[ox - fdy, oy - fdx], [ox + fdy, oy + fdx]];
+  for (const [x, y] of sides) {
+    if (isSolid(x, y)) continue;
+    if (x === constance.tx && y === constance.ty) continue;
+    if (G.save.deerPresent && !G.save.deerBeaten && x === DEER_POS.x && y === DEER_POS.y) continue;
+    alvin.tx = x; alvin.ty = y; alvin.dir = faceName(x - ox, y - oy);
+    syncPixels(alvin);
+    return;
+  }
+  // boxed in: swap with Frank — he is leaving that tile this very step
+  alvin.tx = player.tx; alvin.ty = player.ty; alvin.dir = faceName(-fdx, -fdy);
+  syncPixels(alvin);
+}
+function stepPlayer(dx, dy, dt) {
+  if (!player.moving && !alvin.moving && (dx || dy) &&
+      player.tx + dx === alvin.tx && player.ty + dy === alvin.ty) {
+    displaceAlvin(dx, dy);
+  }
+  return stepEntity(player, dx, dy, dt);
+}
 let alvinTarget = null;
+let playerIdleT = 0; // how long Frank has stood still (drives Alvin's sit)
 let diagX = true; // diagonal stick input alternates axes per step (staircase)
 function overworldUpdate(dt) {
   if (fade > 0) { fade -= dt * 2; if (fade < 0) fade = 0; }
   // Constance idles between watching the yard and checking on the pots
   constance.dir = (perfNow % 9 < 6.5) ? 'left' : 'down';
   const dx0 = Input.dir.x, dy0 = Input.dir.y;
+  playerIdleT = (!player.moving && !dx0 && !dy0) ? playerIdleT + dt : 0;
+  alvin.sit = playerIdleT > 3.5 && !alvin.moving &&
+    Math.abs(alvin.tx - player.tx) + Math.abs(alvin.ty - player.ty) <= 3;
   let dx = dx0, dy = dy0;
   if (dx && dy) { if (diagX) dy = 0; else dx = 0; } // tile grid is 4-way: one axis per step
   const wasMoving = player.moving;
-  let stepped = stepEntity(player, dx, dy, dt);
+  let stepped = stepPlayer(dx, dy, dt);
   if (!stepped && !player.moving && dx0 && dy0) {
-    stepped = stepEntity(player, dx0 - dx, dy0 - dy, dt); // preferred axis blocked: try the other
+    stepped = stepPlayer(dx0 - dx, dy0 - dy, dt); // preferred axis blocked: try the other
   }
   if (stepped) {
     player.stepAlt = !player.stepAlt;
@@ -1484,8 +1643,14 @@ function overworldUpdate(dt) {
   }
   if (Input.aHit && !player.moving) interact();
   if (Input.startHit) { mode = 'menu'; menuSel = 0; }
-  camX = Math.max(0, Math.min(MAP_W * TILE - VW, player.px + 8 - VW / 2));
-  camY = Math.max(0, Math.min(MAP_H * TILE - VH, player.py + 8 - VH / 2));
+  // DRAWING DISCIPLINE: the camera is INTEGER-SNAPPED, always. A fractional
+  // camera draws every tile at a fractional offset, and GPU rasterisers
+  // blend the tiles' edge columns into the black clear colour — dark seams
+  // across the yard that appear only while moving (Daniel's "weird black
+  // lines", Nov 26). With an integer camera every tile, prop and shadow
+  // lands on whole pixels and no seam can form on any rasteriser.
+  camX = Math.round(Math.max(0, Math.min(MAP_W * TILE - VW, player.px + 8 - VW / 2)));
+  camY = Math.round(Math.max(0, Math.min(MAP_H * TILE - VH, player.py + 8 - VH / 2)));
 }
 let lastStep = { dx: 0, dy: 1 };
 let menuSel = 0;
@@ -1854,18 +2019,30 @@ function charSprite(e, set) {
   const frames = e.dir === 'down' ? set.down : e.dir === 'up' ? set.up : set.side;
   // two-frame walk cycle while moving; Alvin (e.wag) also wags slowly at rest
   const anim = e.moving || e.wag;
-  let img = anim ? frames[Math.floor(perfNow * (e.moving ? 7 : 3)) % frames.length] : frames[0];
+  const rate = set === ALVIN_SET ? (e.moving ? 9 : 3) : (e.moving ? 7 : 3); // Alvin trots
+  let img = anim ? frames[Math.floor(perfNow * rate) % frames.length] : frames[0];
   // idle blink: standing still, front- or side-facing, the eyes close for a
   // beat every few seconds — each character on their own phase (blinkOff)
   if (!e.moving && !e.wag) {
     const blinkImg = e.dir === 'down' ? set.blinkDown : (e.dir === 'left' || e.dir === 'right') ? set.blinkSide : null;
     if (blinkImg && (perfNow + (e.blinkOff || 0)) % 3.7 < 0.13) img = blinkImg;
   }
+  // talking: while this character's dialogue line is still typing out, the
+  // mouth opens and closes — the open-mouth frame swaps in on a ~7 Hz beat
+  if (e.talk && !e.moving) {
+    const talkImg = e.dir === 'down' ? set.talkDown : (e.dir === 'left' || e.dir === 'right') ? set.talkSide : null;
+    if (talkImg && Math.floor(perfNow * 7) % 2 === 0) img = talkImg;
+  }
+  // Alvin sits when Frank has been standing still a while and he has
+  // settled nearby — a dog waiting on his person
+  if (e.sit && !e.moving && set.sitDown) {
+    img = e.dir === 'down' ? set.sitDown : e.dir === 'up' ? set.sitUp : set.sitSide;
+  }
   drawSprite(img, Math.round(e.px - camX), Math.round(e.py - camY), e.dir === 'left');
 }
 function renderOverworld() {
-  camX = Math.max(0, Math.min(MAP_W * TILE - VW, player.px + 8 - VW / 2));
-  camY = Math.max(0, Math.min(MAP_H * TILE - VH, player.py + 8 - VH / 2));
+  camX = Math.round(Math.max(0, Math.min(MAP_W * TILE - VW, player.px + 8 - VW / 2)));
+  camY = Math.round(Math.max(0, Math.min(MAP_H * TILE - VH, player.py + 8 - VH / 2)));
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VW, VH);
   const x0 = Math.floor(camX / TILE), y0 = Math.floor(camY / TILE);
   for (let ty = y0; ty <= y0 + 9; ty++) for (let tx = x0; tx <= x0 + 10; tx++) {
@@ -1942,8 +2119,12 @@ function renderOverworld() {
     ctx.fillRect(Math.round(px - camX) + 5, Math.round(py - camY) + 13, 10, 2);
     ctx.fillRect(Math.round(px - camX) + 4, Math.round(py - camY) + 14, 12, 1);
   };
+  // dialogue: whoever is speaking gets the talking mouth while their line types
+  const spk = (mode === 'dialogue' && dlg) ? dlg.lines[dlg.idx] : null;
+  const spkName = spk && dlg.chars < spk.text.length ? spk.name : null;
+  player.talk = spkName === 'FRANK';
   const ents = [];
-  ents.push({ y: constance.py, draw: () => { contactShadow(constance.tx * TILE, constance.ty * TILE); charSprite({ px: constance.tx * TILE, py: constance.ty * TILE, dir: constance.dir, moving: false, blinkOff: 1.9 }, CONSTANCE_SET); } });
+  ents.push({ y: constance.py, draw: () => { contactShadow(constance.tx * TILE, constance.ty * TILE); charSprite({ px: constance.tx * TILE, py: constance.ty * TILE, dir: constance.dir, moving: false, blinkOff: 1.9, talk: spkName === 'CONSTANCE' }, CONSTANCE_SET); } });
   if (G.save.deerPresent && !G.save.deerBeaten) ents.push({ y: DEER_POS.y * TILE, draw: () => { contactShadow(DEER_POS.x * TILE, DEER_POS.y * TILE); const bob = Math.floor(perfNow * 1.5) % 2; ctx.drawImage(DEER_SMALL, DEER_POS.x * TILE - camX, DEER_POS.y * TILE - camY + bob); } });
   ents.push({ y: alvin.py, draw: () => { contactShadow(alvin.px, alvin.py); charSprite(alvin, ALVIN_SET); } });
   ents.push({ y: player.py, draw: () => { contactShadow(player.px, player.py); charSprite(player, FRANK_SET); } });

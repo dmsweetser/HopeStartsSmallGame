@@ -1,0 +1,467 @@
+/* Smoke test for Hope Starts Small — Seeds slice. Logs to smoke.log; screenshots in shots/. */
+const fs = require('fs');
+const path = require('path');
+/* playwright-core: a local install if one is present, else the Survival
+   Game test rig's install on this machine — see tests/README.md. */
+let chromium;
+try { ({ chromium } = require('playwright-core')); }
+catch (e) { ({ chromium } = require('/home/hatch/workspace/survival-game/tests/node_modules/playwright-core')); }
+
+const DIR = __dirname;
+const LOG = path.join(DIR, 'smoke.log');
+const SHOTS = path.join(DIR, 'shots');
+fs.mkdirSync(SHOTS, { recursive: true });
+fs.writeFileSync(LOG, '');
+function log(m) { fs.appendFileSync(LOG, m + '\n'); console.log(m); }
+function check(name, ok, extra) { log((ok ? 'PASS ' : 'FAIL ') + name + (extra ? ' -> ' + extra : '')); return ok; }
+
+function findChromium() {
+  const base = '/home/hatch/.cache/ms-playwright';
+  for (const d of fs.readdirSync(base)) {
+    if (d.startsWith('chromium_headless_shell')) {
+      const p = path.join(base, d, 'chrome-headless-shell-linux64', 'chrome-headless-shell');
+      if (fs.existsSync(p)) return p;
+    }
+  }
+  for (const d of fs.readdirSync(base)) {
+    if (d.startsWith('chromium')) {
+      const p = path.join(base, d, 'chrome-linux', 'chrome');
+      if (fs.existsSync(p)) return p;
+    }
+  }
+  return null;
+}
+
+(async () => {
+
+  /* Serve the repo root (this script lives in tests/) on :8907. If a dev
+     server already holds the port, it is used instead. */
+  const http = require('http');
+  const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.md': 'text/markdown', '.png': 'image/png' };
+  const server = http.createServer((req, res) => {
+    const f = path.join(__dirname, '..', req.url === '/' ? 'index.html' : decodeURIComponent(req.url.split('?')[0]));
+    fs.readFile(f, (err, data) => {
+      if (err) { res.writeHead(404); res.end('not found'); return; }
+      res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream' });
+      res.end(data);
+    });
+  });
+  let ownServer = false;
+  await new Promise(r => { server.once('error', () => r()); server.listen(8907, '127.0.0.1', () => { ownServer = true; r(); }); });
+  const exe = findChromium();
+  log('chromium: ' + exe);
+  const browser = await chromium.launch({ executablePath: exe, args: ['--no-sandbox'] });
+  const page = await browser.newPage({ viewport: { width: 880, height: 800 } });
+  page.on('pageerror', e => log('PAGEERROR ' + e.message));
+  page.on('console', m => { if (m.type() === 'error') log('CONSOLE-ERROR ' + m.text()); });
+  let dialogAnswer = null; // set before triggering the register's rename prompt
+  page.on('dialog', async d => { if (dialogAnswer != null) { const v = dialogAnswer; dialogAnswer = null; await d.accept(v); } else await d.dismiss(); });
+  const S = () => page.evaluate(() => window.__hss.state());
+  const tap = async (key, ms) => { await page.keyboard.down(key); await page.waitForTimeout(ms || 90); await page.keyboard.up(key); await page.waitForTimeout(70); };
+  const dismissDialogue = async (cap) => {
+    for (let i = 0; i < (cap || 40); i++) {
+      const s = await S();
+      if (s.mode !== 'dialogue') return true;
+      await tap('z');
+    }
+    return (await S()).mode !== 'dialogue';
+  };
+
+  await page.goto('http://127.0.0.1:8907/index.html', { waitUntil: 'load' });
+  await page.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+  await page.waitForTimeout(400);
+  let s = await S();
+  check('boots to title', s.mode === 'title', s.mode);
+  await page.screenshot({ path: path.join(SHOTS, 'title.png') });
+
+  // CONTROLS from the title menu (no save yet: NEW GAME / CHAPTERS / CONTROLS)
+  await tap('ArrowDown'); await tap('ArrowDown');
+  await tap('Enter');
+  await page.waitForTimeout(300);
+  s = await S();
+  check('controls opens from title', s.mode === 'controls', s.mode);
+  await page.screenshot({ path: path.join(SHOTS, 'controls.png') });
+  await tap('ArrowRight'); // SHOW STICK row is selected: AUTO -> ALWAYS
+  await page.waitForTimeout(200);
+  s = await S();
+  check('stick setting set to ALWAYS', s.settings && s.settings.stick === 'always', s.settings && s.settings.stick);
+  const deckVisible = await page.evaluate(() => { const d = document.getElementById('deck'); const sb = document.getElementById('stickBase'); return !!d && !d.hidden && d.offsetHeight > 0 && !!sb; });
+  check('deck (stick + buttons) visible when ALWAYS', deckVisible && s.padVisible === true);
+  await tap('x'); // B back
+  await page.waitForTimeout(200);
+  s = await S();
+  check('controls B returns to title', s.mode === 'title', s.mode);
+  await tap('ArrowUp'); await tap('ArrowUp'); // reselect NEW GAME
+
+  // New Game -> intro
+  await tap('Enter');
+  await page.waitForTimeout(300);
+  s = await S();
+  check('intro dialogue starts', s.mode === 'dialogue', s.mode);
+  check('intro dismissed by A presses', await dismissDialogue(50));
+  s = await S();
+  check('tutorial at plant step', s.tutorial === 1, 'tutorial=' + s.tutorial);
+
+  // The stick (deck set to ALWAYS above): rigorous direction discipline,
+  // driven by real synthetic pointer drags on the stick base.
+  const stickBox = await page.locator('#stickBase').boundingBox();
+  const sc = { x: stickBox.x + stickBox.width / 2, y: stickBox.y + stickBox.height / 2, r: stickBox.width / 2 };
+  const stickPt = (deg, frac) => { const a = deg * Math.PI / 180; return { x: sc.x + Math.cos(a) * sc.r * frac, y: sc.y + Math.sin(a) * sc.r * frac }; };
+  // deadzone: a small push commits nothing and Frank does not move
+  const p0 = (await S()).player;
+  let pt = stickPt(90, 0.2);
+  await page.mouse.move(sc.x, sc.y); await page.mouse.down(); await page.mouse.move(pt.x, pt.y, { steps: 3 });
+  await page.waitForTimeout(600);
+  s = await S();
+  check('stick deadzone commits nothing', s.stick.dir === null, JSON.stringify(s.stick));
+  check('stick deadzone does not move Frank', s.player.x === p0.x && s.player.y === p0.y, JSON.stringify(s.player));
+  await page.mouse.up(); await page.waitForTimeout(150);
+  // pure cardinal: drag straight down and Frank walks south, never diagonally
+  pt = stickPt(90, 0.85);
+  await page.mouse.move(sc.x, sc.y); await page.mouse.down(); await page.mouse.move(pt.x, pt.y, { steps: 4 });
+  await page.waitForTimeout(250);
+  s = await S();
+  check('stick drag down commits DOWN', s.stick.dir === 'down', JSON.stringify(s.stick));
+  await page.waitForTimeout(800);
+  s = await S();
+  check('stick drag down moves Frank south', s.player.y > p0.y && s.player.x === p0.x, JSON.stringify(s.player) + ' from ' + JSON.stringify(p0));
+  // hysteresis: swing to 40 deg (inside RIGHT's sector, 5 deg past the sector
+  // boundary) and jitter around it: the DOWN commitment must never flip
+  let flipped = null;
+  for (const a of [40, 34, 46, 36, 44, 40]) {
+    const q = stickPt(a, 0.85); await page.mouse.move(q.x, q.y, { steps: 2 }); await page.waitForTimeout(120);
+    const d = (await S()).stick.dir; if (d !== 'down') { flipped = a + 'deg->' + d; break; }
+  }
+  check('stick hysteresis: boundary jitter never flips DOWN', flipped === null, flipped || 'held down');
+  // a decisive swing to 15 deg (25 deg past the boundary) does switch
+  pt = stickPt(15, 0.85); await page.mouse.move(pt.x, pt.y, { steps: 3 }); await page.waitForTimeout(250);
+  s = await S();
+  check('stick decisive swing switches to RIGHT', s.stick.dir === 'right', JSON.stringify(s.stick));
+  // release stops movement at once
+  await page.mouse.up(); await page.waitForTimeout(150);
+  const pRel = (await S()).player;
+  await page.waitForTimeout(600);
+  s = await S();
+  check('stick release stops Frank', s.stick.dir === null && s.player.x === pRel.x && s.player.y === pRel.y, JSON.stringify(s.player));
+
+  // pause menu via the on-screen MENU button; CONTROLS from there; SAVE & QUIT
+  await page.locator('#btnMenu').click();
+  await page.waitForTimeout(300);
+  s = await S();
+  check('menu opens via on-screen MENU button', s.mode === 'menu', s.mode);
+  await page.screenshot({ path: path.join(SHOTS, 'menu.png') });
+  await tap('ArrowDown'); // CONTROLS (RESUME / CONTROLS / SAVE & QUIT)
+  await tap('Enter');
+  await page.waitForTimeout(250);
+  s = await S();
+  check('controls opens from pause', s.mode === 'controls', s.mode);
+  await tap('x');
+  await page.waitForTimeout(200);
+  s = await S();
+  check('controls B returns to pause menu', s.mode === 'menu', s.mode);
+  const preQuit = await S();
+  await tap('ArrowDown'); // sel 1 -> 2: SAVE & QUIT
+  s = await S();
+  check('save & quit highlighted', s.menuSel === 2, 'sel=' + s.menuSel);
+  await tap('Enter');
+  await page.waitForTimeout(300);
+  s = await S();
+  check('save & quit returns to title', s.mode === 'title', s.mode);
+  await tap('ArrowDown'); // CONTINUE (a save now exists)
+  await tap('Enter');
+  await page.waitForTimeout(400);
+  s = await S();
+  check('continue after save & quit restores day', s.mode === 'overworld' && s.day === preQuit.day, 'mode=' + s.mode + ' day=' + s.day + ' expected ' + preQuit.day);
+  check('continue after save & quit restores pots', JSON.stringify(s.pots.map(p => p.stage)) === JSON.stringify(preQuit.pots.map(p => p.stage)), JSON.stringify(s.pots.map(p => p.stage)));
+  // keyboard P still opens the pause menu, and B closes it again
+  await tap('p');
+  await page.waitForTimeout(250);
+  s = await S();
+  check('pause menu opens with P', s.mode === 'menu', s.mode);
+  await tap('x');
+  await page.waitForTimeout(200);
+  s = await S();
+  check('pause menu B returns to overworld', s.mode === 'overworld', s.mode);
+
+  // Frank's journal on the porch opens the Plant Register (the Berrydex, by hand)
+  await page.evaluate(() => window.__hss.warp(11, 6));
+  await tap('ArrowUp'); // one step north to (11,5), facing the porch
+  await page.waitForTimeout(250);
+  await tap('z');
+  await page.waitForTimeout(250);
+  s = await S();
+  check('porch journal opens the plant register', s.mode === 'register' && s.register.view === 'list', s.mode + '/' + (s.register && s.register.view));
+  check('register lists the six named plants', s.pots.map(p => p.name).join(',') === 'ADMIRAL,CAPTAIN,GENERAL,HOPE,PATIENCE,PROFESSOR', s.pots.map(p => p.name).join(','));
+  await page.screenshot({ path: path.join(SHOTS, 'register.png') });
+  await tap('z'); // open the first plant's card
+  await page.waitForTimeout(250);
+  s = await S();
+  check('register card opens', s.register.view === 'card', s.register.view);
+  await page.screenshot({ path: path.join(SHOTS, 'register-card.png') });
+  dialogAnswer = 'TESTNAME';
+  await tap('z'); // RENAME (row 0) -> prompt
+  await page.waitForTimeout(300);
+  s = await S();
+  check('rename sticks', s.pots[0].name === 'TESTNAME', s.pots[0].name);
+  await tap('ArrowDown'); // BACK row
+  await tap('z');
+  await page.waitForTimeout(200);
+  s = await S();
+  check('card back returns to list', s.register.view === 'list', s.register.view);
+  await tap('x');
+  await page.waitForTimeout(200);
+  s = await S();
+  check('register B returns to overworld', s.mode === 'overworld', s.mode);
+
+  // plant + water via hooks (tedious walking is covered by design; hooks are the spec'd test seam)
+  await page.evaluate(() => window.__hss.plantAll());
+  s = await S();
+  check('all 6 pots planted', s.pots.every(p => p.stage === 1) && s.seedsLeft === 0, JSON.stringify(s.pots.map(p => p.stage)));
+  check('berrydex has SEED', s.dex.blueberry.includes('SEED'));
+  await page.evaluate(() => window.__hss.waterAll());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('day advanced to 2', s.day === 2, 'day=' + s.day);
+  await page.evaluate(() => window.__hss.waterAll());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('sprout after 2 watered days', s.pots.every(p => p.stage === 2), JSON.stringify(s.pots.map(p => p.stage)));
+  check('berrydex has SPROUT', s.dex.blueberry.includes('SPROUT'));
+  check('deer present after first sprout', s.deerPresent === true);
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(SHOTS, 'yard.png') });
+  // extra viewpoints for the cosmetic pass: up by the house, and the south yard
+  await page.evaluate(() => window.__hss.warp(11, 5));
+  await page.waitForTimeout(350);
+  await page.screenshot({ path: path.join(SHOTS, 'yard-north.png') });
+  await page.evaluate(() => window.__hss.warp(11, 14));
+  await page.waitForTimeout(350);
+  await page.screenshot({ path: path.join(SHOTS, 'yard-south.png') });
+  await page.evaluate(() => window.__hss.warp(11, 9));
+
+  // trial: scripted moves, retry after a loss like a player would
+  let won = false;
+  for (let attempt = 1; attempt <= 4 && !won; attempt++) {
+    await page.evaluate(() => window.__hss.startTrial());
+    await page.waitForTimeout(1400);
+    s = await S();
+    if (!check('trial starts (attempt ' + attempt + ')', s.mode === 'trial' && !!s.trial, s.mode)) break;
+    if (attempt === 1) {
+      await page.screenshot({ path: path.join(SHOTS, 'trial.png') });
+      check('trial actor is ALVIN', s.trial.actor === 'ALVIN', s.trial.actor);
+      check('trial HP is Alvin at the old vigor 22', s.trial.vigor === 22 && s.trial.maxVigor === 22, s.trial.vigor + '/' + s.trial.maxVigor);
+      // PLANTS peek lists the garden by name now, and costs no turn
+      for (let i = 0; i < 20 && (await S()).trial.phase !== 'menu'; i++) await page.waitForTimeout(200);
+      await tap('ArrowRight'); await tap('z');
+      await page.waitForTimeout(250);
+      s = await S();
+      check('trial plants peek is by name', s.trial.phase === 'plants' && s.trial.plants[0] === 'TESTNAME:2' && s.trial.plants[5] === 'PROFESSOR:2', JSON.stringify(s.trial.plants));
+      await page.screenshot({ path: path.join(SHOTS, 'trial-plants.png') });
+      await tap('x');
+      await page.waitForTimeout(200);
+    }
+    let dugIn = false;
+    for (let turn = 0; turn < 60; turn++) {
+      s = await S();
+      if (!s.trial) break;
+      if (s.mode !== 'trial') break;
+      if (s.trial.phase === 'menu') {
+        if (dugIn && s.trial.vigor <= 8 && s.tea > 0) { await tap('ArrowDown'); await tap('ArrowDown'); await tap('z'); } // BAG
+        else await tap('z'); // DEFEND -> moves
+      }
+      else if (s.trial.phase === 'moves') {
+        if (!dugIn) { await tap('ArrowDown'); await tap('z'); dugIn = true; } // DIG IN (sel 2)
+        else { await tap('ArrowDown'); await tap('ArrowRight'); await tap('z'); } // BARK (sel 3)
+      }
+      else if (s.trial.phase === 'bag') { await tap('z'); } // use the tea
+      else if (s.trial.phase === 'plants') { await tap('z'); } // peek, back to menu
+      else await page.waitForTimeout(250);
+    }
+    await page.waitForTimeout(600);
+    await dismissDialogue(40);
+    s = await S();
+    won = s.deerBeaten === true;
+    log('attempt ' + attempt + ' result: deerBeaten=' + won + ' mode=' + s.mode);
+    if (!won) { // regrow the nibbled sprout like a player would
+      await page.evaluate(() => window.__hss.waterAll());
+      await page.evaluate(() => window.__hss.advanceDay());
+      await page.evaluate(() => window.__hss.waterAll());
+      await page.evaluate(() => window.__hss.advanceDay());
+      await dismissDialogue(20);
+    }
+  }
+  check('deer trial won', won);
+
+  // grow to seedling -> chapter card
+  for (let i = 0; i < 4; i++) {
+    s = await S();
+    if (s.chapterDone) break;
+    await page.evaluate(() => window.__hss.waterAll());
+    await page.evaluate(() => window.__hss.advanceDay());
+    await dismissDialogue(20);
+  }
+  s = await S();
+  check('seedling reached', s.pots.some(p => p.stage === 3), JSON.stringify(s.pots.map(p => p.stage)));
+  check('berrydex has SEEDLING', s.dex.blueberry.includes('SEEDLING'));
+  check('chapter complete', s.chapterDone === true);
+  check('chapter card showing', s.mode === 'card', s.mode);
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(SHOTS, 'card.png') });
+  const savedDay = s.day, savedStages = JSON.stringify(s.pots.map(p => p.stage));
+
+  // Continue round-trip
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+  await page.waitForTimeout(300);
+  await tap('ArrowDown'); // CONTINUE
+  await tap('Enter');
+  await page.waitForTimeout(400);
+  s = await S();
+  check('continue restores overworld', s.mode === 'overworld', s.mode);
+  check('continue restores day', s.day === savedDay, 'day=' + s.day + ' expected ' + savedDay);
+  check('continue restores pots', JSON.stringify(s.pots.map(p => p.stage)) === savedStages, JSON.stringify(s.pots.map(p => p.stage)));
+  await page.screenshot({ path: path.join(SHOTS, 'continue.png') });
+
+  // Regression: "weird black lines when I move" (Daniel, Nov 26). Root cause:
+  // a fractional camera drew every tile at a fractional offset, and GPU
+  // rasterisers blend the tiles' edge columns into the black clear colour —
+  // dark seams across the yard, only while moving. The camera is now
+  // integer-snapped. This scan samples raw canvas pixels on every animation
+  // frame during real key-held movement in all four directions (Alvin
+  // trailing) and asserts: (a) it really sampled mid-movement frames,
+  // (b) the camera was integer on every one of them, (c) no frame contains
+  // an anomalous pure-black column/row (the overworld is fully tile-covered;
+  // pure #000 exists only as the clear colour).
+  await page.evaluate(() => {
+    window.__seam = { on: false, frames: 0, moving: 0, fracCam: 0, seamFrames: 0 };
+    const cv = document.getElementById('game');
+    const cx = cv.getContext('2d');
+    (function scan() {
+      const P = window.__seam;
+      if (P.on) {
+        try {
+          const d = cx.getImageData(0, 0, 160, 144).data;
+          let seam = false;
+          for (let x = 0; x < 160 && !seam; x++) { let n = 0; for (let y = 0; y < 144; y++) { const i = (y * 160 + x) * 4; if (d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 0) n++; } if (n >= 110) seam = true; }
+          for (let y = 0; y < 144 && !seam; y++) { let n = 0; for (let x = 0; x < 160; x++) { const i = (y * 160 + x) * 4; if (d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 0) n++; } if (n >= 140) seam = true; }
+          P.frames++;
+          if (player.moving || alvin.moving) P.moving++;
+          if (camX !== Math.round(camX) || camY !== Math.round(camY)) P.fracCam++;
+          if (seam) P.seamFrames++;
+        } catch (e) { /* mid-frame */ }
+      }
+      requestAnimationFrame(scan);
+    })();
+  });
+  const seamHold = async (warp, key) => {
+    await page.evaluate(w => window.__hss.warp(w[0], w[1]), warp);
+    await page.waitForTimeout(250);
+    await page.evaluate(() => { const P = window.__seam; P.frames = 0; P.moving = 0; P.fracCam = 0; P.seamFrames = 0; P.on = true; });
+    await page.keyboard.down(key);
+    await page.waitForTimeout(1500);
+    await page.keyboard.up(key);
+    await page.waitForTimeout(120);
+    return page.evaluate(() => { const P = window.__seam; P.on = false; return { frames: P.frames, moving: P.moving, fracCam: P.fracCam, seamFrames: P.seamFrames }; });
+  };
+  const seamRuns = [];
+  seamRuns.push(await seamHold([4, 15], 'ArrowRight'));
+  seamRuns.push(await seamHold([19, 15], 'ArrowLeft'));
+  seamRuns.push(await seamHold([11, 14], 'ArrowUp'));
+  seamRuns.push(await seamHold([11, 5], 'ArrowDown'));
+  const seamTot = seamRuns.reduce((a, r) => ({ frames: a.frames + r.frames, moving: a.moving + r.moving, fracCam: a.fracCam + r.fracCam, seamFrames: a.seamFrames + r.seamFrames }), { frames: 0, moving: 0, fracCam: 0, seamFrames: 0 });
+  log('seam scan: ' + JSON.stringify(seamTot) + ' per-run ' + JSON.stringify(seamRuns));
+  check('seam scan sampled mid-movement frames', seamTot.moving >= 100, seamTot.moving + ' moving of ' + seamTot.frames);
+  check('camera stays integer-snapped while moving', seamTot.fracCam === 0, seamTot.fracCam + ' fractional-cam frames');
+  check('no anomalous black rows/columns mid-movement', seamTot.seamFrames === 0, seamTot.seamFrames + ' seam frames');
+
+  // Alvin auto-displace (Daniel, Nov 26): Frank must never be walled by his
+  // own dog. Stepping into Alvin's tile makes Alvin hop aside in the same
+  // step (a side tile if one is walkable); boxed in, they swap tiles.
+  const stagePair = (px, py, ax, ay, cx, cy) => page.evaluate(([px, py, ax, ay, cx, cy]) => {
+    player.tx = px; player.ty = py; syncPixels(player);
+    alvin.tx = ax; alvin.ty = ay; syncPixels(alvin);
+    if (cx !== null) { constance.tx = cx; constance.ty = cy; }
+    alvinTarget = null;
+  }, [px, py, ax, ay, cx, cy]);
+  const stepOnce = async (key) => { await page.keyboard.down(key); await page.waitForTimeout(70); await page.keyboard.up(key); await page.waitForTimeout(320); return S(); };
+  const alvinState = () => page.evaluate(() => ({ x: alvin.tx, y: alvin.ty, solid: isSolid(alvin.tx, alvin.ty) }));
+  // (a) head-on push in the open: Alvin sidesteps, Frank takes his tile
+  await stagePair(11, 13, 11, 12, null, null);
+  s = await stepOnce('ArrowUp');
+  let av = await alvinState();
+  check('push: Frank steps into Alvin\'s tile', s.player.y === 12, JSON.stringify(s.player));
+  check('push: Alvin sidestepped to a walkable side tile', !av.solid && av.y >= 12 && av.y <= 13 && (av.x === 10 || av.x === 12 || (av.x === 11 && av.y === 13)) && !(av.x === s.player.x && av.y === s.player.y), JSON.stringify(av));
+  s = await stepOnce('ArrowUp');
+  check('push: Frank passes through, unblocked', s.player.y === 11, JSON.stringify(s.player));
+  // (b) boxed in beside the fence with Constance closing the other side:
+  // no side tile is free, so Frank and Alvin swap — and swap back.
+  await stagePair(2, 14, 2, 15, 3, 15);
+  s = await stepOnce('ArrowDown');
+  av = await alvinState();
+  check('swap: boxed-in push swaps Frank and Alvin', s.player.y === 15 && av.x === 2 && av.y === 14, 'player=' + JSON.stringify(s.player) + ' alvin=' + JSON.stringify(av));
+  await page.evaluate(() => { constance.tx = 3; constance.ty = 14; });
+  s = await stepOnce('ArrowUp');
+  av = await alvinState();
+  check('swap: push back swaps again', s.player.y === 14 && av.x === 2 && av.y === 15, 'player=' + JSON.stringify(s.player) + ' alvin=' + JSON.stringify(av));
+  await page.evaluate(() => { constance.tx = 12; constance.ty = 6; });
+  s = await stepOnce('ArrowRight');
+  check('swap: no soft-lock afterwards', s.player.x === 3, JSON.stringify(s.player));
+  // (c) pushed against the fence line: Alvin sidesteps ALONG it, never onto
+  // or through the fence row (y=17)
+  await stagePair(11, 15, 11, 16, null, null);
+  s = await stepOnce('ArrowDown');
+  av = await alvinState();
+  check('fence: Frank reaches the fence row', s.player.y === 16, JSON.stringify(s.player));
+  check('fence: Alvin stayed in the yard, walkable', !av.solid && av.y >= 15 && av.y <= 16 && !(av.x === s.player.x && av.y === s.player.y), JSON.stringify(av));
+
+  // talking frames: the speaker's talk flag follows the typewriter — set
+  // while their line is still typing, clear the moment it completes
+  await page.evaluate(() => { say(['FRANK: TESTING THE TALKING FRAMES, ONE TWO THREE FOUR FIVE SIX.']); });
+  await page.waitForTimeout(180);
+  const talkOn = await page.evaluate(() => player.talk === true);
+  check('talk: speaker flagged while the line types', talkOn);
+  const pressA = async () => { await page.keyboard.down('KeyZ'); await page.waitForTimeout(90); await page.keyboard.up('KeyZ'); };
+  await pressA(); // A button: complete the line (held — a tap can fall between input polls)
+  await page.waitForTimeout(150);
+  const talkOff = await page.evaluate(() => player.talk === false);
+  check('talk: flag clears when the line finishes', talkOff);
+  await pressA(); // A button: close the box
+  await page.waitForTimeout(200);
+  s = await S();
+  check('talk: dialogue closed cleanly', s.mode === 'overworld', s.mode);
+
+  // Alvin sits when Frank has been still a while and he has settled nearby
+  await stagePair(11, 13, 11, 12, null, null);
+  await page.evaluate(() => { playerIdleT = 99; });
+  await page.waitForTimeout(250);
+  const sitOn = await page.evaluate(() => alvin.sit === true);
+  check('sit: Alvin sits after Frank stands still', sitOn);
+  await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(120); await page.keyboard.up('ArrowLeft');
+  await page.waitForTimeout(250);
+  const sitOff = await page.evaluate(() => alvin.sit === false);
+  check('sit: moving again clears the sit', sitOff);
+
+  // a save written in the oldest formats still loads: pots as a bare stage
+  // int and as {stage, waterDays} objects both migrate to named plants
+  await page.evaluate(() => {
+    const old = { v: 1, day: 3, seedsLeft: 0, tea: 2, teaBrewedDay: 0,
+      pots: [2, ...[0, 1, 2, 3, 4].map(() => ({ stage: 2, waterDays: 1, watered: false, vigor: 22 }))],
+      dex: { blueberry: ['SEED', 'SPROUT'] }, deerBeaten: false, deerPresent: true,
+      chapterDone: false, tutorial: 3, player: { x: 11, y: 8, dir: 'down' }, constanceLine: 1 };
+    localStorage.setItem('hss-save-v1', JSON.stringify(old));
+  });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+  await page.waitForTimeout(300);
+  await tap('ArrowDown'); // CONTINUE
+  await tap('Enter');
+  await page.waitForTimeout(400);
+  s = await S();
+  check('old-format save continues', s.mode === 'overworld' && s.day === 3 && s.pots.every(p => p.stage === 2), 'mode=' + s.mode + ' day=' + s.day);
+  check('bare-int pot migrated to a named plant', s.pots[0].name === 'ADMIRAL' && s.pots[0].location === 'BENCH', JSON.stringify(s.pots[0]));
+  check('waterDays-era pot migrated with name + days', s.pots[1].name === 'CAPTAIN' && s.pots[1].wateredDays === 1, JSON.stringify(s.pots[1]));
+
+  await browser.close();
+  if (ownServer) server.close();
+  log('SMOKE DONE');
+})().catch(e => { log('SMOKE CRASH ' + e.message); process.exit(1); });

@@ -23,3 +23,7 @@ python3 -m http.server 8000
 ```
 
 then open <http://localhost:8000>.
+
+## Development
+
+The Playwright smoke suite and the character screenshot rig live in [`tests/`](tests/) — see `tests/README.md` for how to run them.
