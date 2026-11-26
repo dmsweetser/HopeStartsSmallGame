@@ -904,101 +904,134 @@ const POT_SEEDLING = makeSprite([
 const POT_SPRITES = [POT_EMPTY, POT_SEED, POT_SPROUT, POT_SEEDLING];
 
 /* ============================== BATTLE SPRITES ============================== */
-/* wild deer, side profile facing left, drawn at 2x on the trial screen */
+/* wild deer, side profile facing left, drawn at 2x on the trial screen:
+   wedge neck in body colour with a light throat stripe, arched back,
+   two-segment legs, far side shaded. 32x24. */
 const DEER_BIG = makeSprite([
-'.a....a.................',
-'.a....a.................',
-'..a..a..................',
-'..aaaa...kk.............',
-'..khhhhhkkhk............',
-'..khehhhk...............',
-'.kmmhhhhk...............',
-'..kmmhhhk...............',
-'.....khhhhk.............',
-'.......khhhbbbbbbbbbbbbk',
-'.......kbbbbbbbbbbbbbbbt',
-'.......kbbbbwbbbbwbbbbbt',
-'.......kBBBBBBBBBBBBBBBk',
-'.......kBBBBBBBBBBBBBBBk',
-'........kbk.kBk...kbkkBk',
-'........kbk.kBk...kbkkBk',
-'........kbk.kBk...kbkkBk',
-'........kbk.kBk...kbkkBk',
-'........kbk.kBk...kbkkBk',
-'........kbk.kBk...kbkkBk',
-'........kkk.kkk...kkkkkk',
+'......a....a....................',
+'.......a..a.....................',
+'.......a.aa.....................',
+'........aa......................',
+'......kkkkk.....................',
+'.....khhhhhkhhk.................',
+'....khhehhkhhk..................',
+'....khhhhhk.....................',
+'...kmmhhk.......................',
+'....kmk.hbB.....................',
+'........hbBBbbbkkkk......kkkk...',
+'.........hbBBbbbbbbkkkkkkbbbbbk.',
+'..........hbBBbbbbbwbbbbbbwbbtk.',
+'..........hbBBbbbbbbbbwbbbbbbtk.',
+'...........hbBBbbbbbbbbbbbbbbbk.',
+'............hbbbbbbbbbbbbbbBBBk.',
+'............hhBBBBBBBBBBBBBBB...',
+'............kkkk.......bbbbbk...',
+'............bB.BB......bbbbkB...',
+'............bB.BB......bbbk.B...',
+'............bB.B.......bB.B.....',
+'............bB.B.......bB.B.....',
+'............bB.B.......bB.B.....',
+'...........kkkkkk......kkkkkk...',
 ], { a: '#8a5a2e', h: '#caa06a', e: '#20242a', b: '#b07a45', B: '#8a5a2e', w: '#e8dcc0', t: '#e8dcc0', k: '#20242a', m: '#e8dcc0' });
-/* idle variant: ear twitched down, white tail flagged up — also the
-   "alarmed" frame once the deer's Pressure runs low */
+/* alarmed variant: ear flattened back, white tail flagged high —
+   shown once the deer's Pressure runs low (and as an idle ear-flicker) */
 const DEER_BIG2 = makeSprite([
-'.a....a.................',
-'.a....a.................',
-'..a..a..................',
-'..aaaa...kk.............',
-'..khhhhhk...............',
-'..khehhhk...............',
-'.kmmhhhhk...............',
-'..kmmhhhk...............',
-'.....khhhhk.............',
-'.......khhhbbbbbbbbbbbbt',
-'.......kbbbbbbbbbbbbbbbk',
-'.......kbbbbwbbbbwbbbbbk',
-'.......kBBBBBBBBBBBBBBBk',
-'.......kBBBBBBBBBBBBBBBk',
-'........kbk.kBk...kbkkBk',
-'........kbk.kBk...kbkkBk',
-'........kbk.kBk...kbkkBk',
-'........kbk.kBk...kbkkBk',
-'........kbk.kBk...kbkkBk',
-'........kbk.kBk...kbkkBk',
-'........kkk.kkk...kkkkkk',
+'......a....a....................',
+'.......a..a.....................',
+'.......a.aa.....................',
+'........aa......................',
+'......kkkkk.....................',
+'.....khhhhhk....................',
+'....khhehkkhhk................tt',
+'....khhhhhk..................tt.',
+'...kmmhhk...................tt..',
+'....kmk.hbB.................tt..',
+'........hbBBbbbkkkk......kkktt..',
+'.........hbBBbbbbbbkkkkkkbbbbbk.',
+'..........hbBBbbbbbwbbbbbbwbbbk.',
+'..........hbBBbbbbbbbbwbbbbbbbk.',
+'...........hbBBbbbbbbbbbbbbbbbk.',
+'............hbbbbbbbbbbbbbbBBBk.',
+'............hhBBBBBBBBBBBBBBB...',
+'............kkkk.......bbbbbk...',
+'............bB.BB......bbbbkB...',
+'............bB.BB......bbbk.B...',
+'............bB.B.......bB.B.....',
+'............bB.B.......bB.B.....',
+'............bB.B.......bB.B.....',
+'...........kkkkkk......kkkkkk...',
 ], { a: '#8a5a2e', h: '#caa06a', e: '#20242a', b: '#b07a45', B: '#8a5a2e', w: '#e8dcc0', t: '#e8dcc0', k: '#20242a', m: '#e8dcc0' });
-/* Alvin, big front view for the trial screen (24x20, drawn at 2x): floppy
-   ears, green collar with its tag, tail curled up on his right. */
+/* Alvin, big side profile for the trial screen (28x20, drawn at 2x):
+   sturdy pit-type build, deep chest, floppy ear, green collar with tag,
+   tail up and curved. He faces right, toward the deer. */
 const ALVIN_BIG = makeSprite([
-'........................',
-'.....kkkkkkkkkkkk.......',
-'...kkttttttttttttkk.....',
-'..kdddkttttttttkdddk....',
-'..kdddkttetttetkdddk....',
-'..kdddkttttttttkdddk....',
-'..kdddkkttttttkkdddk....',
-'...kkkkmmmmmmmmkkkk.....',
-'.....kmmmmnnmmmmk.......',
-'.....kmmmmrrmmmmk....t..',
-'......kkkkkkkkkk....tt..',
-'...kkggggggggggk...tTt..',
-'..kttktttggytttkttktt...',
-'..ktTtkttmmmmttkTtk.....',
-'..ktTtkttmmmmttkTtk.....',
-'..ktTkktttmmtttkkTtk....',
-'..kttk.kttttttk.ktk.....',
-'..kttk.kttttttk.ktk.....',
-'..kkkk.kkkkkkkk.kkkk....',
-'........................',
+'............................',
+'......................kkkk..',
+'..kt................dktttttk',
+'..kttt.............kddttettt',
+'...kttt............kddtttttk',
+'....ktttkkkkkkkkkkkkddtmmmmn',
+'.....ktttttttttttttddtmmmk..',
+'....ktttttttttttttttdkt.....',
+'....kttttttttttttgggktk.....',
+'....kttttttttttttggymmk.....',
+'....kttttttttttttttttmmk....',
+'.....kttttTTTTTTTTttmmk.....',
+'.....kTTTTTTTTTTTTTTmk......',
+'......kttkTTkkkkkkkkttTT....',
+'.......tt.TT........ttTT....',
+'.......tT.TT........tTTT....',
+'.......tt.TT........ttTT....',
+'.......tt.TT........ttTT....',
+'.......tt.TT........ttTT....',
+'.......tttTTT.......tttTTT..',
 ], ALVIN_PAL);
-/* bark frame: same dog, mouth wide open mid-bark */
+/* bark frame: head raised, mouth wide open, tongue out */
 const ALVIN_BIG_BARK = makeSprite([
-'........................',
-'.....kkkkkkkkkkkk.......',
-'...kkttttttttttttkk.....',
-'..kdddkttttttttkdddk....',
-'..kdddkttetttetkdddk....',
-'..kdddkttttttttkdddk....',
-'..kdddkkttttttkkdddk....',
-'...kkkkmmmmmmmmkkkk.....',
-'.....kmmmmnnmmmmk.......',
-'.....kmmmnnnnmmmk....t..',
-'......kkkkkkkkkk....tt..',
-'...kkggggggggggk...tTt..',
-'..kttktttggytttkttktt...',
-'..ktTtkttmmmmttkTtk.....',
-'..ktTtkttmmmmttkTtk.....',
-'..ktTkktttmmtttkkTtk....',
-'..kttk.kttttttk.ktk.....',
-'..kttk.kttttttk.ktk.....',
-'..kkkk.kkkkkkkk.kkkk....',
-'........................',
+'......................kkkk..',
+'....................dktttttk',
+'..kt...............kddttettk',
+'..kttt.............kddtmmmmn',
+'...kttt............kddtnnnk.',
+'....ktttkkkkkkkkkkkkddtnrnk.',
+'.....kttttttttttttttddkttk..',
+'....ktttttttttttttttdkt.....',
+'....kttttttttttttgggktk.....',
+'....kttttttttttttggymmk.....',
+'....kttttttttttttttttmmk....',
+'.....kttttTTTTTTTTttmmk.....',
+'.....kTTTTTTTTTTTTTTmk......',
+'......kttkTTkkkkkkkkttTT....',
+'.......tt.TT........ttTT....',
+'.......tT.TT........tTTT....',
+'.......tt.TT........ttTT....',
+'.......tt.TT........ttTT....',
+'.......tt.TT........ttTT....',
+'.......tttTTT.......tttTTT..',
+], ALVIN_PAL);
+/* lunge frame: body stretched low and forward, front legs reaching,
+   hind legs driving, tail streaming behind */
+const ALVIN_BIG_LUNGE = makeSprite([
+'............................',
+'............................',
+'............................',
+'.......................kkkk.',
+'ttttt...............kddttetk',
+'.ttttt..............ttttmmmn',
+'..ktttkkkkkkkkkkkkkkttttmmk.',
+'....kttttttttttttttddtt.....',
+'....ktttttttttttttgggtk.....',
+'....ktttttttttttttgymmk.....',
+'....kttttttttttttttttmmk....',
+'.....kttttTTTTTTTTttmmk.....',
+'.....kTTTTTTTTTTTTTTmk......',
+'......kttkTTkkkkkkkkttTT....',
+'.....tt.TT...........ttTT...',
+'....tt.TT.............ttTT..',
+'...tt.TT...............ttTT.',
+'...t..T.................tttT',
+'...t..T..................TTT',
+'..tttTTT....................',
 ], ALVIN_PAL);
 /* butterflies that wander the yard (ambient, never saved) */
 const BUTTERFLY_A = makeSprite([
@@ -1968,15 +2001,15 @@ function renderTrial() {
   drawPatch(118, 52, 64);
   // ground shadows: under the deer, and under Alvin in front of the bench
   ctx.fillStyle = '#357a2a';
-  ctx.fillRect(102, 55, 40, 3); ctx.fillRect(106, 54, 32, 1);
-  ctx.fillRect(45, 97, 38, 3); ctx.fillRect(49, 96, 30, 1);
+  ctx.fillRect(100, 55, 46, 3); ctx.fillRect(104, 54, 38, 1);
+  ctx.fillRect(26, 97, 44, 3); ctx.fillRect(30, 96, 36, 1);
   // the deer idles with a slow bob, ear twitching between two frames;
   // once its Pressure runs low the white tail stays flagged (alarmed)
   const dbob = Math.floor(perfNow * 1.5) % 2;
   const deerImg = (t.pressure <= 10 || dbob) ? DEER_BIG2 : DEER_BIG;
   // a fresh hit from Alvin makes the deer flinch for a beat
   const flinch = (t.phase === 'wait' && t.timer < 0.25 && (t.anim === 'lunge' || t.anim === 'bark')) ? (Math.floor(perfNow * 20) % 2 ? 1 : -1) : 0;
-  ctx.drawImage(deerImg, 94 + flinch, 11 + dbob, 48, 42);
+  ctx.drawImage(deerImg, 86 + flinch, 5 + dbob, 64, 48);
   // what Alvin defends: the garden bench with all six pots, as scenery —
   // the yard's picket fence peeks over the bench, and the bench casts a shadow
   ctx.fillStyle = '#f4f4f0';
@@ -1986,21 +2019,23 @@ function renderTrial() {
   for (let i = 0; i < 3; i++) ctx.drawImage(TILES.bench, 2 + i * 16, 92);
   G.save.pots.forEach((p, i) => ctx.drawImage(POT_SPRITES[p.stage], 4 + i * 10, 84, 10, 10));
   // Alvin, the only actor on this side — he hops forward on LUNGE, pops up on BARK
-  let ax = 40, ay = 56;
+  let ax = 20, ay = 56;
   if (t.anim && t.phase === 'wait') {
     const s = Math.sin(Math.min(1, t.timer / 0.45) * Math.PI);
-    if (t.anim === 'lunge') ax += Math.round(7 * s);
+    if (t.anim === 'lunge') ax += Math.round(5 * s);
     else if (t.anim === 'bark') ay -= Math.round(3 * s);
   }
-  const alvinImg = (t.anim === 'bark' && t.phase === 'wait') ? ALVIN_BIG_BARK : ALVIN_BIG;
-  ctx.drawImage(alvinImg, ax, ay, 48, 40);
-  if (t.anim === 'lunge' && t.phase === 'wait' && t.timer < 0.3) { // dust kicked up at his paws
+  const alvinImg = (t.phase === 'wait' && t.anim === 'bark') ? ALVIN_BIG_BARK
+    : (t.phase === 'wait' && t.anim === 'lunge') ? ALVIN_BIG_LUNGE : ALVIN_BIG;
+  ctx.drawImage(alvinImg, ax, ay, 56, 40);
+  if (t.anim === 'lunge' && t.phase === 'wait' && t.timer < 0.3) { // dust kicked up at his hind paws
     ctx.fillStyle = '#c9b18a';
-    ctx.fillRect(ax + 40, ay + 37, 2, 1); ctx.fillRect(ax + 45, ay + 35, 1, 1); ctx.fillRect(ax + 37, ay + 34, 1, 1);
+    ctx.fillRect(ax + 1, ay + 37, 2, 1); ctx.fillRect(ax + 5, ay + 35, 1, 1); ctx.fillRect(ax - 1, ay + 34, 1, 1);
   }
-  if (alvinImg === ALVIN_BIG_BARK) { // little bark arcs off his muzzle, toward the deer
+  if (alvinImg === ALVIN_BIG_BARK) { // two bark arcs off his muzzle, toward the deer
     ctx.fillStyle = '#20242a';
-    ctx.fillRect(ax + 50, ay + 12, 2, 1); ctx.fillRect(ax + 54, ay + 9, 2, 1); ctx.fillRect(ax + 54, ay + 15, 2, 1);
+    ctx.fillRect(ax + 56, ay + 4, 2, 1); ctx.fillRect(ax + 57, ay + 6, 2, 1); ctx.fillRect(ax + 56, ay + 8, 2, 1);
+    ctx.fillRect(ax + 60, ay + 2, 2, 1); ctx.fillRect(ax + 62, ay + 6, 2, 1); ctx.fillRect(ax + 60, ay + 9, 2, 1);
   }
   // status boxes: DEER pressure above, ALVIN's HP below — one box per side
   ctx.fillStyle = '#20242a'; ctx.fillRect(3, 5, 76, 25); ctx.fillStyle = '#f8f8f8'; ctx.fillRect(5, 7, 72, 21);
