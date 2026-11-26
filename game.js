@@ -5900,7 +5900,13 @@ function toast(m) { toastMsg = m; toastT = 2.2; }
 const player = { tx: 10, ty: 6, px: 160, py: 96, dir: 'down', moving: false, mx: 0, my: 0, mt: 0, stepAlt: false };
 const alvin = { tx: 9, ty: 7, px: 144, py: 112, dir: 'down', moving: false, mx: 0, my: 0, mt: 0, wag: true };
 const constance = { tx: 12, ty: 6, dir: 'left' };
-const STEP_T = 0.13;
+/* Seconds per tile step, shared by Frank, Alvin and every NPC amble —
+   one constant, so the whole world walks in step. Daniel (Nov 26,
+   2026): "Make walking slower" — 0.13 (≈7.7 tiles/s) → 0.17
+   (≈5.9 tiles/s), one deliberate step he can call up or down after
+   playing it. Walking only: dialogue, trials and day length keep
+   their own timing. */
+const STEP_T = 0.17;
 let camX = 0, camY = 0;
 function syncPixels(e) { e.px = e.tx * TILE; e.py = e.ty * TILE; }
 function faceName(dx, dy) { return dx < 0 ? 'left' : dx > 0 ? 'right' : dy < 0 ? 'up' : 'down'; }
