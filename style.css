@@ -28,12 +28,15 @@ canvas#game {
   display: flex; gap: 8px; z-index: 5;
 }
 #audibleBtn, #bookBtn {
-  background: #f8f8f8; color: #20242a; border: 2px solid #20242a; border-radius: 3px;
+  /* dressed as little title plaques — the same dark green and gold as the
+     HOPE STARTS SMALL plaque above them, so the pair reads native to the
+     screen instead of bolted on */
+  background: #14251a; color: #ffe9a8; border: 2px solid #ffd94a; border-radius: 3px;
   padding: 4px 10px; font-family: monospace; font-size: clamp(10px, 2.6vw, 15px);
   font-weight: bold; text-decoration: none; letter-spacing: 1px; white-space: nowrap;
-  box-shadow: 0 2px 0 #20242a;
+  box-shadow: 0 2px 0 #0a140d;
 }
-#audibleBtn:hover, #bookBtn:hover { background: #ffe9a8; }
+#audibleBtn:hover, #bookBtn:hover { background: #274e13; color: #ffffff; }
 /* control deck: lives in the page frame below the screen, so the on-screen
    controls never cover the game's dialogue box */
 #deck {

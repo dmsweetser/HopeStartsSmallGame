@@ -826,7 +826,7 @@ const CONSTANCE_SET = { down: [CONSTANCE_DOWN, CONSTANCE_DOWN2], up: [CONSTANCE_
 /* Alvin: tan short coat, floppy darker ears, green collar with a tag.
    Side sprite faces right (charSprite flips it for left); the two frames
    wag his tail and stride his legs. */
-const ALVIN_PAL = { k: '#20242a', t: '#d9a05a', T: '#b57f3d', d: '#8a5a2e', m: '#ecd3a0', n: '#20242a', g: '#37b24d', y: '#ffd94a', e: '#20242a', r: '#e88ca0' };
+const ALVIN_PAL = { k: '#20242a', t: '#d9a05a', T: '#b57f3d', d: '#8a5a2e', m: '#ecd3a0', n: '#20242a', g: '#37b24d', G: '#2b8a3e', y: '#ffd94a', e: '#20242a', r: '#e88ca0' };
 const ALVIN_DOWN = makeSprite([
 '................',
 '................',
@@ -1077,7 +1077,7 @@ const POT_SPRITES = [POT_EMPTY, POT_SEED, POT_SPROUT, POT_SEEDLING];
    two-segment legs, far side shaded. 32x24. */
 const DEER_BIG = makeSprite([
 '......a....a....................',
-'.....a.a..a..a..................',
+'.....aaa..aa.a..................',
 '......a....a....................',
 '....kkkkkkkkk...................',
 '...khhhhhhhhhkhk................',
@@ -1085,8 +1085,8 @@ const DEER_BIG = makeSprite([
 '...khhehhhhhhk..................',
 '..kmmmhhhhhkhb..................',
 '..kmmmkhhhkhbB..................',
-'....mmmk..hbBB..................',
-'..........hbBBbkkkkkkkkkkkkkk...',
+'....mmmkhhhbBB..................',
+'.........hhbBBbkkkkkkkkkkkkkk...',
 '..........hbbbbbbbbbbbbbbbbbbbk.',
 '...........bbbbbbbbbwbbbwbbbbbbt',
 '...........bbbbbbbbbbbwbbbbbbbbt',
@@ -1105,7 +1105,7 @@ const DEER_BIG = makeSprite([
    shown once the deer's Pressure runs low (and as an idle ear-flicker) */
 const DEER_BIG2 = makeSprite([
 '......a....a....................',
-'.....a.a..a..a..................',
+'.....aaa..aa.a..................',
 '......a....a....................',
 '....kkkkkkkkk...................',
 '...khhhhhhhhhkhh................',
@@ -1113,8 +1113,8 @@ const DEER_BIG2 = makeSprite([
 '...khhehhhhhhk................kt',
 '..kmmmhhhhhkhb................kt',
 '..kmmmkhhhkhbB................kt',
-'....mmmk..hbBB................kt',
-'..........hbBBbkkkkkkkkkkkkkk.kt',
+'....mmmkhhhbBB................kt',
+'.........hhbBBbkkkkkkkkkkkkkk.kt',
 '..........hbbbbbbbbbbbbbbbbbbbkt',
 '...........bbbbbbbbbwbbbwbbbbbbk',
 '...........bbbbbbbbbbbwbbbbbbbbk',
@@ -1142,8 +1142,8 @@ const ALVIN_BIG = makeSprite([
 '.....ktttttttttttttddtmmmk..',
 '....ktttttttttttttttdkt.....',
 '....kttttttttttttgggktk.....',
-'....kttttttttttttggymmk.....',
-'....kttttttttttttttttmmk....',
+'....kttttttttttttGGymmk.....',
+'....kttttttttttttttytmmk....',
 '.....kttttTTTTTTTTttmmk.....',
 '.....kTTTTTTTTTTTTTTmk......',
 '......kttkTTkkkkkkkkttTT....',
@@ -1165,8 +1165,8 @@ const ALVIN_BIG_BARK = makeSprite([
 '.....kttttttttttttttddkttk..',
 '....ktttttttttttttttdkt.....',
 '....kttttttttttttgggktk.....',
-'....kttttttttttttggymmk.....',
-'....kttttttttttttttttmmk....',
+'....kttttttttttttGGymmk.....',
+'....kttttttttttttttytmmk....',
 '.....kttttTTTTTTTTttmmk.....',
 '.....kTTTTTTTTTTTTTTmk......',
 '......kttkTTkkkkkkkkttTT....',
@@ -1189,8 +1189,8 @@ const ALVIN_BIG_LUNGE = makeSprite([
 '..ktttkkkkkkkkkkkkkkttttmmk.',
 '....kttttttttttttttddtt.....',
 '....ktttttttttttttgggtk.....',
-'....ktttttttttttttgymmk.....',
-'....kttttttttttttttttmmk....',
+'....ktttttttttttttGymmk.....',
+'....kttttttttttttttytmmk....',
 '.....kttttTTTTTTTTttmmk.....',
 '.....kTTTTTTTTTTTTTTmk......',
 '......kttkTTkkkkkkkkttTT....',
@@ -2165,7 +2165,8 @@ function drawSceneBanner(y0, seedling) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(52, y0 + 5, 20, 4); ctx.fillRect(56, y0 + 3, 11, 2); ctx.fillRect(104, y0 + 10, 15, 3);
   ctx.fillStyle = '#dfe9f5'; ctx.fillRect(52, y0 + 9, 20, 1); ctx.fillRect(104, y0 + 13, 15, 1);
-  // sun (top-centre, clear of the tree)
+  // sun (top-centre, clear of the tree), with a pale haze behind it
+  ctx.fillStyle = '#a8dcff'; ctx.fillRect(73, y0, 18, 18);
   ctx.fillStyle = '#ffd94a'; ctx.fillRect(76, y0 + 2, 12, 12);
   ctx.fillStyle = '#ffec9e'; ctx.fillRect(79, y0 + 5, 6, 6);
   ctx.fillStyle = '#ffd94a'; ctx.fillRect(81, y0, 2, 2); ctx.fillRect(81, y0 + 14, 2, 2); ctx.fillRect(72, y0 + 7, 2, 2); ctx.fillRect(90, y0 + 7, 2, 2);
@@ -2173,6 +2174,7 @@ function drawSceneBanner(y0, seedling) {
   ctx.fillStyle = '#b0552f'; ctx.fillRect(36, y0 + 2, 5, 7);
   ctx.fillStyle = '#e8edf2'; ctx.fillRect(42, y0 + 1, 3, 2); ctx.fillRect(46, y0 + 2, 2, 2);
   ctx.fillStyle = '#2f56b8'; ctx.fillRect(4, y0 + 12, 40, 4); ctx.fillRect(8, y0 + 8, 32, 4); ctx.fillRect(14, y0 + 4, 20, 4);
+  ctx.fillStyle = '#7fb2e8'; ctx.fillRect(14, y0 + 4, 20, 1); // a lit ridge along the roof's top step
   ctx.fillStyle = '#7fb2e8'; ctx.fillRect(7, y0 + 16, 34, 22);
   ctx.fillStyle = '#5b93d6'; ctx.fillRect(7, y0 + 21, 34, 1); ctx.fillRect(7, y0 + 27, 34, 1); ctx.fillRect(7, y0 + 33, 34, 1);
   ctx.fillStyle = '#f4f4f0'; ctx.fillRect(11, y0 + 20, 7, 7); ctx.fillRect(30, y0 + 20, 7, 7);
@@ -2186,6 +2188,7 @@ function drawSceneBanner(y0, seedling) {
   ctx.fillStyle = '#7ed957'; ctx.fillRect(126, y0 + 10, 3, 2); ctx.fillRect(136, y0 + 15, 3, 2);
   // ground + picket fence line
   ctx.fillStyle = '#58b93e'; ctx.fillRect(0, y0 + 38, VW, 26);
+  ctx.fillStyle = '#6fce52'; ctx.fillRect(0, y0 + 38, VW, 2); // the lit edge where the fence line sits
   ctx.fillStyle = '#3f9433'; ctx.fillRect(0, y0 + 56, VW, 8);
   // the house and tree throw soft shadows onto the grass, like everything else
   ctx.fillStyle = '#2f7a24';
@@ -2211,15 +2214,28 @@ function drawSceneBanner(y0, seedling) {
 function renderTitle() {
   ctx.fillStyle = '#274e13'; ctx.fillRect(0, 0, VW, VH);
   drawSceneBanner(0, false);
+  // the dark lower field carries a whisper of the banner's grass dressing
+  // so the plaque and menu don't float on a void
+  ctx.fillStyle = '#2c5236';
+  for (const tx of [8, 26, 128, 146]) { ctx.fillRect(tx, 112, 1, 2); ctx.fillRect(tx + 2, 113, 1, 2); }
+  for (const tx of [16, 138]) { ctx.fillRect(tx, 88, 1, 2); ctx.fillRect(tx + 2, 89, 1, 2); }
+  ctx.fillStyle = '#3f6a45'; ctx.fillRect(10, 126, 2, 2); ctx.fillRect(148, 104, 2, 2);
+  // the plaque casts a soft shadow, and wears a fine inner frame line
+  ctx.fillStyle = 'rgba(10,20,13,0.5)'; ctx.fillRect(17, 67, 132, 34);
   ctx.fillStyle = '#14251a'; ctx.fillRect(14, 64, 132, 34);
   ctx.fillStyle = '#ffd94a'; ctx.fillRect(14, 64, 132, 1); ctx.fillRect(14, 97, 132, 1); ctx.fillRect(14, 64, 1, 34); ctx.fillRect(145, 64, 1, 34);
+  ctx.fillStyle = '#2c5236'; ctx.fillRect(17, 67, 126, 1); ctx.fillRect(17, 94, 126, 1); ctx.fillRect(17, 67, 1, 28); ctx.fillRect(142, 67, 1, 28);
   drawText('HOPE STARTS', 80 - textW('HOPE STARTS', 2) / 2 + 1, 69, '#14251a', 2);
   drawText('HOPE STARTS', 80 - textW('HOPE STARTS', 2) / 2, 68, '#ffffff', 2);
   drawText('SMALL', 80 - textW('SMALL', 2) / 2 + 1, 83, '#7a4a21', 2);
   drawText('SMALL', 80 - textW('SMALL', 2) / 2, 82, '#ffd94a', 2);
-  drawText('CHAPTER 1 · SEEDS', 80 - textW('CHAPTER 1 · SEEDS', 1) / 2, 101, '#cfe8cf', 1);
+  const chW = textW('CHAPTER 1 · SEEDS', 1);
+  drawText('CHAPTER 1 · SEEDS', 80 - chW / 2, 101, '#cfe8cf', 1);
+  ctx.fillStyle = '#ffd94a'; // two short gold rules flank the chapter line
+  ctx.fillRect(80 - chW / 2 - 11, 103, 6, 1); ctx.fillRect(80 + chW / 2 + 5, 103, 6, 1);
   titleLabels().forEach((l, i) => {
     const y = 107 + i * 8;
+    if (i === titleSel) { ctx.fillStyle = 'rgba(10,20,13,0.45)'; ctx.fillRect(38, y - 1, 80, 7); } // the chosen row sits on a soft plate
     if (i === titleSel) drawText('▶', 42, y, '#ffd94a', 1);
     drawText(l, 50, y, i === titleSel ? '#ffffff' : '#9fc79f', 1);
   });
@@ -2284,7 +2300,13 @@ function charSprite(e, set) {
   if (e.sit && !e.moving && set.sitDown) {
     img = e.dir === 'down' ? set.sitDown : e.dir === 'up' ? set.sitUp : set.sitSide;
   }
-  drawSprite(img, Math.round(e.px - camX), Math.round(e.py - camY), e.dir === 'left');
+  // a soft ground shadow under every character, the same grounding the
+  // banner folk and the trial cast already get (translucent, so it reads
+  // as shade on path and garden tiles too, not just grass)
+  const shx = Math.round(e.px - camX), shy = Math.round(e.py - camY);
+  ctx.fillStyle = 'rgba(20,26,20,0.25)';
+  ctx.fillRect(shx + 2, shy + 13, 12, 2); ctx.fillRect(shx + 3, shy + 15, 10, 1);
+  drawSprite(img, shx, shy, e.dir === 'left');
 }
 function renderOverworld() {
   camX = Math.round(Math.max(0, Math.min(MAP_W * TILE - VW, player.px + 8 - VW / 2)));
@@ -2619,7 +2641,11 @@ function controlsUpdate() {
 function renderControls() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
   drawPanel(4, 4, 152, 136);
-  ctx.drawImage(FRANK_DOWN, 10, 7); ctx.drawImage(ALVIN_DOWN, 134, 7); // the cast presents the controls
+  // the cast presents the controls, each standing on a soft ground shade
+  // in the panel's own paper tones (as on the register card)
+  ctx.fillStyle = '#c9ced4'; ctx.fillRect(12, 20, 12, 1); ctx.fillRect(136, 20, 12, 1);
+  ctx.fillStyle = '#dfe9f5'; ctx.fillRect(13, 21, 10, 1); ctx.fillRect(137, 21, 10, 1);
+  ctx.drawImage(FRANK_DOWN, 10, 7); ctx.drawImage(ALVIN_DOWN, 134, 7);
   drawText('CONTROLS', 80 - textW('CONTROLS', 2) / 2, 10, '#20242a', 2);
   const head = (t, y) => drawText(t, 12, y, '#2e8b3a', 1);
   const row = (t, y) => drawText(t, 12, y, '#20242a', 1);
@@ -2701,6 +2727,9 @@ function renderRegister() {
     drawText(p.name, 14, 11, '#20242a', 2);
     ctx.fillStyle = '#dfe9f5'; ctx.fillRect(14, 22, 100, 1); // ruled line under the name, as in the list
     ctx.drawImage(POT_SPRITES[p.stage], 122, 8, 30, 30);
+    // a soft ground shade under the portrait, so the pot sits on the page
+    ctx.fillStyle = '#c9ced4'; ctx.fillRect(126, 38, 22, 1);
+    ctx.fillStyle = '#dfe9f5'; ctx.fillRect(129, 39, 16, 1);
     if (p.dirt) { // the good-dirt mark: a little mound of dark soil under the portrait, noted in the journal
       ctx.fillStyle = '#3d2412'; ctx.fillRect(133, 40, 8, 2); ctx.fillRect(135, 39, 4, 1);
       ctx.fillStyle = '#5a3a1e'; ctx.fillRect(136, 40, 2, 1);
