@@ -5366,10 +5366,12 @@ function update(dt) {
     case 'register': registerUpdate(); break;
     case 'controls': controlsUpdate(); break;
   }
-  // Daniel's ruling: the book links live on the title menu and nowhere
-  // else — the chapter card and every other screen stay link-free.
-  audibleBtn.hidden = mode !== 'title';
-  bookBtn.hidden = mode !== 'title';
+  // Daniel's ruling (updated Nov 26, 2026): the book links live on the
+  // title menu AND the pause menu, as plaques beside the menu — the
+  // chapter card and every other screen stay link-free.
+  const linksShown = mode === 'title' || mode === 'menu';
+  audibleBtn.hidden = !linksShown;
+  bookBtn.hidden = !linksShown;
 }
 function render() {
   switch (mode) {

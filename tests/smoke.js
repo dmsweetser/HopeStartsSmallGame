@@ -74,10 +74,10 @@ function findChromium() {
   check('boots to title', s.mode === 'title', s.mode);
   await page.screenshot({ path: path.join(SHOTS, 'title.png') });
 
-  // TITLE FUNNEL LINKS: the Audible listen link and the Amazon buy link
-  // sit as a tidy pair on the title menu — the ONLY place book links may
-  // appear (Daniel's ruling). The chapter card (checked later) is
-  // link-free: text + KEEP TENDING only.
+  // FUNNEL LINKS: the Audible listen link and the Amazon buy link sit as
+  // a tidy pair on the title menu AND the pause menu (Daniel's ruling,
+  // updated Nov 26, 2026) — the only two places book links may appear.
+  // The chapter card (checked later) is link-free: text + KEEP TENDING.
   const urls = await page.evaluate(() => ({ audible: AUDIBLE_URL, book: BOOK_URL }));
   check('AUDIBLE_URL constant unchanged', urls.audible === 'https://www.audible.com/pd/Hope-Starts-Small-Audiobook/B0DZPCHT4M', urls.audible);
   check('BOOK_URL constant is the clean Amazon link', urls.book === 'https://www.amazon.com/dp/B0DXVKQHZ2', urls.book);
@@ -94,6 +94,7 @@ function findChromium() {
   check('title shows the audible link', !titleLinks.aHidden && titleLinks.aHref === urls.audible && titleLinks.aTarget === '_blank', JSON.stringify(titleLinks));
   check('title shows the book buy link beside it', !titleLinks.bHidden && titleLinks.bHref === urls.book && titleLinks.bTarget === '_blank', JSON.stringify(titleLinks));
   check('title link pair does not overlap', titleLinks.overlap === false, JSON.stringify([titleLinks.aBox, titleLinks.bBox]));
+  check('exactly two anchors exist in the whole page', (await page.evaluate(() => document.querySelectorAll('a').length)) === 2, '');
 
   // THEME SONG (pass 8): browsers block audio before a user gesture, so
   // the title sits silent until the player's first interaction — then
@@ -224,12 +225,16 @@ function findChromium() {
   await page.waitForTimeout(300);
   s = await S();
   check('menu opens via on-screen MENU button', s.mode === 'menu', s.mode);
+  const pauseLinks = await page.evaluate(() => ({ a: document.getElementById('audibleBtn').hidden, b: document.getElementById('bookBtn').hidden }));
+  check('pause menu shows the book links beside it', pauseLinks.a === false && pauseLinks.b === false, JSON.stringify(pauseLinks));
   await page.screenshot({ path: path.join(SHOTS, 'menu.png') });
   await tap('ArrowDown'); // CONTROLS (RESUME / CONTROLS / SAVE & QUIT)
   await tap('Enter');
   await page.waitForTimeout(250);
   s = await S();
   check('controls opens from pause', s.mode === 'controls', s.mode);
+  const ctlLinks = await page.evaluate(() => ({ a: document.getElementById('audibleBtn').hidden, b: document.getElementById('bookBtn').hidden }));
+  check('controls screen keeps the book links hidden', ctlLinks.a === true && ctlLinks.b === true, JSON.stringify(ctlLinks));
   await tap('x');
   await page.waitForTimeout(200);
   s = await S();
@@ -257,6 +262,8 @@ function findChromium() {
   await page.waitForTimeout(200);
   s = await S();
   check('pause menu B returns to overworld', s.mode === 'overworld', s.mode);
+  const owLinks = await page.evaluate(() => ({ a: document.getElementById('audibleBtn').hidden, b: document.getElementById('bookBtn').hidden }));
+  check('overworld keeps the book links hidden', owLinks.a === true && owLinks.b === true, JSON.stringify(owLinks));
 
   // Frank's journal on the porch opens the Plant Register (the Berrydex, by hand)
   await page.evaluate(() => window.__hss.warp(11, 6));
