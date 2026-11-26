@@ -1203,6 +1203,64 @@ function findChromium() {
   await tap('z'); await page.waitForTimeout(300);
   await dismissDialogue(8);
 
+  // CHAPTER 10 — WINE: the rehearsal, the harvest, the ratio, the tasting.
+  const ferment = async () => {
+    for (let i = 0; i < 45; i++) {
+      const st = await S();
+      if (!st.wine.jar || st.wine.jar.phase === 'done') break;
+      if (st.wine.jar.phase === 'open') await page.evaluate(() => window.__hss.swishJar());
+      else await page.evaluate(() => window.__hss.sealCheck());
+      await dismissDialogue(3);
+      await page.evaluate(() => window.__hss.waterEverything());
+      await page.evaluate(() => window.__hss.advanceDay());
+      await dismissDialogue(4);
+    }
+  };
+  await page.evaluate(() => window.__hss.startBatchOne());
+  await dismissDialogue(8);
+  s = await S();
+  check('batch one: the rehearsal, a dash of honey (0.10)', s.world.step === 1 && s.wine.jar && s.wine.jar.batch === 1 && Math.abs(s.wine.jar.index - 0.1) < 0.001, 'step=' + s.world.step);
+  await ferment();
+  s = await S();
+  check('the jar finishes its long patience', s.wine.jar && s.wine.jar.phase === 'done', 'jar=' + JSON.stringify(s.wine.jar));
+  await page.evaluate(() => window.__hss.bottleJar());
+  await dismissDialogue(10);
+  s = await S();
+  check('batch one is bottled, and it is tart — as scripted, as learned', s.wine.batches.length === 1 && s.wine.batches[0].verdict === 'TART' && s.world.step === 2, 'verdict=' + (s.wine.batches[0] || {}).verdict);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(6);
+  s = await S();
+  check('the field turns berry-dark', s.plants.some(p => p.row && p.stage === 6), '');
+  for (const rn of [1, 2, 3, 4, 5, 6, 7]) {
+    await page.evaluate(() => { const sv = __hss.debugSave(); sv.world.proj = 0; __hss.setSave(sv); });
+    await page.evaluate(r => window.__hss.harvestRow(r), rn);
+    await dismissDialogue(10);
+  }
+  s = await S();
+  const yr = s.year;
+  check('the harvest: Row 1 picked by name, first-harvest stamps written', s.plants.filter(p => p.row === 1).every(p => p.firstHarvestDay != null) && (s.wine.poundsByYear[yr] || 0) > 30, 'lbs=' + (s.wine.poundsByYear[yr] || 0));
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(6);
+  s = await S();
+  check('the harvest is in: batch two waits at the kitchen', s.world.step === 3, 'step=' + s.world.step);
+  await page.evaluate(() => window.__hss.startBatchTwo(0.65));
+  await dismissDialogue(8);
+  s = await S();
+  check("batch two: the player's ratio, from the field's own fruit", s.wine.jar && s.wine.jar.batch === 2 && Math.abs(s.wine.jar.index - 0.65) < 0.001 && s.world.step === 4, 'step=' + s.world.step);
+  await ferment();
+  await page.evaluate(() => window.__hss.bottleJar());
+  await dismissDialogue(8);
+  s = await S();
+  check('batch two, at the lesson ratio and full care: LOVELY', s.wine.batches.length === 2 && s.wine.batches[1].verdict === 'LOVELY' && s.world.step === 5, 'verdict=' + (s.wine.batches[1] || {}).verdict);
+  await page.evaluate(() => window.__hss.tasting());
+  await dismissDialogue(16);
+  s = await S();
+  check('the tasting: Oma at the table, the promise kept, the finale lands', s.mode === 'card' && s.world.ch === 11 && s.promise === true, 'mode=' + s.mode + ' ch=' + s.world.ch);
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(8);
+
   // a save written in the oldest formats still loads: pots as a bare stage
   // int and as {stage, waterDays} objects both migrate to named plants
   await page.evaluate(() => {

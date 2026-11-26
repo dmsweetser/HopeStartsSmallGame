@@ -1690,9 +1690,26 @@ function barnInInteract(f) {
     }
     return say('THE STAIRS. UP AND DOWN, LIKE A FAMILY.');
   }
+  if (ch === 'k' && w.ch === 10 && w.step === 0 && !s.wine.jar) {
+    return say('THE BARN KITCHEN. A CLEAN JAR, BOUGHT FRUIT, AND A REHEARSAL TO RUN.', which => { if (which === 0) startBatchOne(); }, ['START BATCH ONE', 'NOT YET']);
+  }
+  if (ch === 'k' && w.ch === 10 && w.step === 3 && !s.wine.jar) {
+    const pts = Math.max(10, Math.round((s.wine.poundsByYear[seasonOf(s.day).year] || 0) * 2));
+    return say('BATCH TWO. THE FIELD\'S OWN FRUIT: ' + pts + ' PINTS OF IT. THE JOURNAL HOLDS THE LESSON: A DASH (0.10) WAS TART. THE OLD BOOKS SAY HALF TO FOUR-FIFTHS. SET THE HONEY, FRANK.', which => {
+      const ratios = [0.1, 0.3, 0.55, 0.65, 0.8, 1.0, 1.35];
+      startBatchTwo(ratios[which]);
+    }, ['A DASH — 0.10', 'A SPOON — 0.30', 'A MEASURE — 0.55', 'THE LESSON — 0.65', 'A FULL MEASURE — 0.80', 'A GENEROUS CUP — 1.00', 'A FLOOD — 1.35']);
+  }
+  if (ch === 'k' && s.wine.jar) {
+    const j = s.wine.jar;
+    if (j.phase === 'done') return say('BATCH ' + j.batch + ', DONE AND WAITING: THE REGISTER\'S FORMULA CALLS IT ' + j.verdict + '.', which => { if (which === 0) bottleJar(); }, ['BOTTLE IT', 'NOT YET']);
+    if (j.phase === 'open') return say('THE JAR, OPEN AND BREATHING. DAY ' + (j.days + 1) + ' OF 3. SWISHED TODAY: ' + (j.swishDay === s.day ? j.swishes : 0) + ' OF 3.', which => { if (which === 0) swishJar(); }, ['SWISH IT', 'LEAVE IT']);
+    return say('THE JAR, SEALED. DAY ' + (j.days + 1) + ' OF ' + (j.batch === 1 ? 14 : 28) + '. THE SEAL-WATER WAS LAST TOPPED ' + (j.sealCheckDay ? (s.day - j.sealCheckDay) + ' DAY(S) AGO' : 'NEVER') + '.', which => { if (which === 0) sealCheck(); }, ['TOP UP THE SEAL', 'LEAVE IT']);
+  }
   if (ch === 'k' && w.ch === 6 && w.flags.pipeFound && !s.field.pipe) {
     return say('AMONG THE BARN\'S PLUMBING: A VALVE, GREEN WITH AGE, THAT FRANK TURNS WITH BOTH HANDS AND A PRAYER.', which => { if (which === 0) turnValve(); }, ['TURN IT', 'NOT YET']);
   }
+  if (ch === 'e' && w.ch === 10 && w.step === 5) return tasting();
   if (ch === 'e') return say('THE TABLE. IT MADE THE TRIP. EVERYTHING IMPORTANT IN THIS FAMILY HAS BEEN DECIDED AT THIS TABLE, INCLUDING BREAKFAST.');
   if (ch === 'k') return say('THE COUNTER. THE KETTLE HAS FOUND ITS NEW HOME AND APPROVES OF THE VIEW.');
   if (ch === 'm') return say('THE BED. MOVING HOUSE IS A CONTACT SPORT AND EVERYONE IS BRUISED IN PLACES THEY DID NOT KNOW THEY HAD.');
@@ -1946,6 +1963,7 @@ function fieldInteract(f) {
   const sec = Math.floor((rn - 1) / 2), lv = s.field.weedLv[sec] || 0;
   if (inRow.length) {
     const opts = [];
+    if ((w.ch === 10 && w.step === 2) || (w.ch === 11 && seasonOf(s.day).idx === 1)) opts.push('HARVEST THE ROW');
     if (lv > 0) opts.push('PULL THE WEEDS (LEVEL ' + lv + ')');
     opts.push('WATER THE ROW');
     if (!row.mulched) opts.push('MULCH IT (3 CARTS)');
@@ -1953,7 +1971,8 @@ function fieldInteract(f) {
     opts.push('LEAVE IT');
     return say('ROW ' + rn + ': ' + inRow.length + ' BUSHES. ' + (row.mulched ? 'MULCHED. ' : 'UNMULCHED. ') + (lv > 0 ? 'WEEDS AT LEVEL ' + lv + ' IN THIS SECTION. ' : 'THE SECTION IS CLEAN. ') + inRow.map(p => p.name).slice(0, 4).join(', ') + (inRow.length > 4 ? '…' : ''), which => {
       const pick = opts[which];
-      if (pick && pick.startsWith('PULL')) pullWeeds(sec);
+      if (pick === 'HARVEST THE ROW') harvestRow(rn);
+      else if (pick && pick.startsWith('PULL')) pullWeeds(sec);
       else if (pick === 'WATER THE ROW') { inRow.forEach(waterPlant); row.watered = true; if (w.ch === 9 && w.step <= 2) { (w.flags.blossomWatered = w.flags.blossomWatered || {})[rn] = true; } saveGame(); say('ROW ' + rn + ' WATERED, BUSH BY BUSH, NAME BY NAME.'); }
       else if (pick === 'MULCH IT (3 CARTS)') mulchRow(rn);
       else if (pick === 'FEED THE ROW (9 COMPOST)') feedRow(rn);
@@ -2790,7 +2809,13 @@ function drawHouseTile(ch, sx, sy, tx, ty) {
   }
 }
 function drawAreaProps() {
-  if (area === 'barnIn') { // the office shelf holds the plants for now
+  if (area === 'barnIn' && G.save.wine.jar) { // the jar, breathing on the kitchen counter
+    const jx = 9 * TILE - camX, jy = 2 * TILE - camY;
+    ctx.fillStyle = '#b8c8ce'; ctx.fillRect(jx + 3, jy + 4, 10, 12);
+    ctx.fillStyle = G.save.wine.jar.phase === 'done' ? '#7a2f4a' : '#a03a54'; ctx.fillRect(jx + 4, jy + 8, 8, 7);
+    ctx.fillStyle = '#e8e2d2'; ctx.fillRect(jx + 5, jy + 2, 6, 3);
+  }
+  if (area === 'barnIn') { // Frank's office: the six on the shelf, the company as small pots
     const s2 = G.save;
     for (const p of s2.plants) {
       if (p.location !== 'OFFICE' || p.memorial) continue;
@@ -2910,7 +2935,7 @@ function freshPlant(name, o) {
     dirt: false, dirtCredit: 0, // good dirt: a permanent mark + banked growth credit
     health: 0, dryDays: 0, critSince: null, warnedDay: null, lastRescue: null,
     wintered: false, chill: 0, history: [], harvestByYear: {},
-    memorial: false, diedDay: null, cause: null, husk: false,
+    memorial: false, diedDay: null, cause: null, husk: false, firstHarvestDay: null, firstHarvestLbs: null,
     firstSix: false, gardenState: null, giftName: false, fruitSetOk: false,
   }, o);
 }
@@ -3382,6 +3407,7 @@ function objective() {
   if (w.ch === 7) return 'SOMETHING IS CUTTING THE SMALLEST. SET THE WATCH AT REST.';
   if (w.ch === 8) return ['THE LONG WAR: PULL, FEED, MULCH.', 'A VISIT, AND A SORTING LESSON.', 'THE PROUD WEED STANDS BY THE FENCE.', 'STRAWBERRIES FOR THE FAMILY GARDEN.', 'A BUSH FOR OMA\'S PATIO.', 'HOLD EVERY SECTION AT ZERO, A FULL WEEK.'][w.step] || 'THE LONG WAR.';
   if (w.ch === 9) return ['A FORSYTHIA FOR OMA\'S WINDOW.', 'BLOSSOM WEEK. WATER THE ROWS.', 'THE LATE FROST: THREE NIGHTS. SET THE WATCH AT THE GATE.', 'THE RECKONING OF THE BLOSSOM.'][w.step] || 'TEND THE BLOSSOM.';
+  if (w.ch === 10) return ['BATCH ONE: A REHEARSAL, AT THE BARN KITCHEN.', 'MIND THE JAR: SWISH IT, WATCH THE SEAL.', 'THE HARVEST. ROW 1 FIRST, BY NAME.', 'BATCH TWO: YOUR RATIO, FROM THE FIELD\'S OWN FRUIT.', 'MIND THE JAR: SWISH IT, WATCH THE SEAL.', 'THE TASTING, AT THE TABLE.'][w.step] || 'MAKE THE WINE.';
   if (s.tutorial === 1) return 'THE GRAND PLAN: SIX POTS, SIX PROMISES (A)';
   if (s.tutorial === 2) return 'A DRINK FOR EACH POT: A AT A POT';
   if (s.chapterDone) return 'FREE TENDING. BERRYHILL COMES LATER.';
@@ -3767,7 +3793,157 @@ const BERRY_MORNING = [
   'A GOOD DAY TO TEND SOMETHING SMALL.',
   'THE MOUNTAINS ARE DOING THEIR LONG BLUE STAND AT THE EDGE OF EVERYTHING.',
 ];
-function wineDawn() {} // spliced full by the Wine chapter
+function wineVerdict(j) {
+  const careless = (j.careSteps || 0) >= 2;
+  if (j.index < 0.5) return 'TART';
+  if (j.index > 1.2) return 'SWEET AS CANDY';
+  if (j.index <= 0.8) return careless ? 'HONEST' : 'LOVELY';
+  return careless ? 'HONEST' : 'SWEET';
+}
+function wineDawn() {
+  const s = G.save, w = s.world, j = s.wine.jar;
+  if (!j || j.phase === 'done') return;
+  if (j.phase === 'open') {
+    if (j.swishDay !== s.day - 1 || (j.swishes || 0) < 1) {
+      j.neglect = (j.neglect || 0) + 1;
+      if (j.neglect === 3) { j.careSteps = Math.min(2, (j.careSteps || 0) + 1); w.flags.wineNote = 'A MOLD SCARE ON THE JAR — SKIMMED OFF, PRAYED OVER, AND NOT SPOKEN OF AT BREAKFAST. THE CARE SLIPS A GRADE.'; }
+    }
+    j.swishes = 0;
+    j.days++;
+    if (j.days >= 3) { j.phase = 'sealed'; j.days = 0; j.sealCheckDay = s.day; w.flags.wineNote = 'THE JAR IS SEALED ON THE THIRD DAY. NOW: PATIENCE, AND THE SEAL-WATER KEPT TOPPED, WEEK BY WEEK.'; }
+  } else if (j.phase === 'sealed') {
+    j.days++;
+    if (s.day - (j.sealCheckDay != null ? j.sealCheckDay : s.day) >= 7) {
+      j.sealMiss = (j.sealMiss || 0) + 1; j.sealCheckDay = s.day;
+      if (j.sealMiss >= 2) { j.careSteps = Math.min(2, (j.careSteps || 0) + 1); j.sealMiss = 0; w.flags.wineNote = 'THE SEAL RAN DRY TWICE RUNNING. THE JAR FORGIVES, MOSTLY. THE CARE SLIPS A GRADE.'; }
+      else w.flags.wineNote = 'THE SEAL-WATER SITS LOW ON THE JAR. IT ASKS, POLITELY, TO BE TOPPED UP AT THE KITCHEN.';
+    }
+    const need = j.batch === 1 ? 14 : 28;
+    if (j.days >= need) { j.phase = 'done'; j.verdict = wineVerdict(j); w.flags.wineNote = 'THE JAR IS DONE. BATCH ' + j.batch + ' WAITS AT THE BARN KITCHEN, FULL OF OPINIONS. BOTTLE IT THERE.'; }
+  }
+  j.care = 'ABC'[j.careSteps || 0];
+  saveGame();
+}
+function freshJar(batch, index) {
+  return { batch, phase: 'open', days: 0, index, careSteps: 0, care: 'A', swishes: 0, swishDay: null, neglect: 0, sealCheckDay: null, sealMiss: 0, verdict: null };
+}
+function startBatchOne() {
+  const s = G.save, w = s.world;
+  s.wine.jar = freshJar(1, 0.1); w.flags.batch1 = 'fermenting'; w.step = 1; saveGame();
+  say(['BATCH ONE: THE REHEARSAL. BOUGHT FRUIT — GOOD FRUIT, SOMEBODY ELSE\'S FIELD — CRUSHED AT THE BARN KITCHEN, WITH A DASH OF HONEY. A DASH. FRANK MEASURED THE DASH WITH HIS HEART.', 'CONSTANCE: A DASH IS NOT A MEASUREMENT, FRANK. FRANK: IT IS A MEASUREMENT OF ENTHUSIASM. (THE REGISTER RECORDS THE RATIO ANYWAY: 0.1. THE REGISTER HAS NO HEART.)', 'THREE DAYS OPEN — SWISH IT DAILY AT THE KITCHEN — THEN IT SEALS ITSELF, AND THE LONG PATIENCE BEGINS.']);
+}
+function startBatchTwo(index) {
+  const s = G.save, w = s.world;
+  const n = s.wine.batches.length + 1;
+  s.wine.jar = freshJar(n, index); w.flags.batch2 = 'fermenting'; if (w.ch === 10) w.step = 4; saveGame();
+  say(['BATCH ' + n + ': THE FIELD\'S OWN FRUIT, AND FRANK\'S OWN RATIO — ' + index.toFixed(2) + ', HONEY TO FRUIT, SET BY HAND AND WRITTEN IN THE REGISTER BEFORE THE JAR IS SEALED, SO NO ONE CAN LIE ABOUT IT LATER.', 'TWENTY-EIGHT DAYS SEALED, WHEN THE THREE OPEN DAYS ARE DONE. LATE SUMMER INTO FALL. THE JAR WILL KEEP. THE QUESTION IS WHETHER FRANK WILL.']);
+}
+function swishJar() {
+  const s = G.save, j = s.wine.jar;
+  if (!j || j.phase !== 'open') return say('THE JAR IS SEALED. SWISHING NOW WOULD BE THEATRE, AND NOT THE KIND THAT HELPS.');
+  if (j.swishDay !== s.day) { j.swishDay = s.day; j.swishes = 0; }
+  if (j.swishes >= 3) return say('THRICE SWISHED TODAY. THE JAR IS AWAKE, AERATED, AND SLIGHTLY DIZZY. ENOUGH.');
+  j.swishes++; saveGame();
+  say('SWISH ' + j.swishes + ' OF 3. THE MUST TURNS OVER LIKE A SLEEPER FINDING THE COOL SIDE OF THE PILLOW.');
+}
+function sealCheck() {
+  const s = G.save, j = s.wine.jar;
+  if (!j || j.phase !== 'sealed') return say('NO SEAL TO CHECK — THE JAR IS ' + (j ? 'STILL OPEN.' : 'NOT BREWING.'));
+  j.sealCheckDay = s.day; j.sealMiss = 0; saveGame();
+  say('SEAL-WATER TOPPED, MENISCUS PERFECT, CONSCIENCE CLEAR. THE JAR SETTLES BACK INTO ITS LONG THOUGHT.');
+}
+function bottleJar() {
+  const s = G.save, w = s.world, j = s.wine.jar;
+  if (!j || j.phase !== 'done') return say('NOT YET. THE JAR IS STILL THINKING.');
+  const entry = { n: j.batch, verdict: j.verdict, index: j.index, care: j.care, year: seasonOf(s.day).year };
+  s.wine.batches.push(entry);
+  s.wine.jar = null;
+  if (w.ch === 10 && j.batch === 1) {
+    w.flags.batch1 = 'bottled'; w.step = 2; saveGame();
+    return say(['BATCH ONE, BOTTLED AND TASTED IN THE KITCHEN DOORWAY, STANDING UP, LIKE A VERDICT DELIVERED IN A HALLWAY.', 'IT IS — THERE IS NO KINDER WORD, AND CONSTANCE TRIES THREE — TART. TART AS A GREEN APPLE\'S OPINION OF YOU.', 'CONSTANCE, KINDLY, WITH THE GLASS STILL IN HER HAND: IT IS THE HONEY, FRANK. A DASH IS A SEASONING. WINE WANTS A MEASURE — HALF TO FOUR-FIFTHS, HONEY AGAINST FRUIT, THE WAY THE OLD BOOKS SAY. BATCH TWO IS YOURS TO SET. THE FIELD WILL PROVIDE.', 'THE LESSON GOES IN THE JOURNAL, IN INK: A DASH IS NOT A MEASUREMENT. AND NOW — THE HARVEST IS RIPE. ROW 1 FIRST, BY NAME, INTO ITS OWN BOWL.']);
+  }
+  if (w.ch === 10 && j.batch === 2) {
+    w.flags.batch2 = 'bottled'; w.step = 5; saveGame();
+    return say(['BATCH TWO, BOTTLED. THE VERDICT, BY THE FORMULA THE REGISTER KEEPS: ' + entry.verdict + '.', 'THE TASTING IS SET FOR A LATE-OCTOBER EVENING: THE PASTOR, HIS WIFE, AND OMA AT THE TABLE, WITH A SMALL GLASS, IN THE PRESENT TENSE. THE TABLE IN THE BARN WILL HOST IT.']);
+  }
+  saveGame();
+  say('BATCH ' + entry.n + ', BOTTLED: ' + entry.verdict + '. THE CELLAR PAGE TAKES ANOTHER LINE, AND KEEPS IT FOREVER.');
+}
+function perBushLbs() {
+  const yr = seasonOf(G.save.day).year;
+  const years = Object.keys(G.save.wine.poundsByYear).filter(y => +y !== yr).length; // fruiting years before this one
+  return Math.min(8, 2 + 1.5 * years);
+}
+function harvestRow(rn) {
+  const s = G.save, w = s.world, year = seasonOf(s.day).year;
+  const row = s.cropRows[rn - 1];
+  if (row.harvestedYear === year) return say('ROW ' + rn + ' IS PICKED CLEAN FOR THIS YEAR. THE BUSHES REST, SMUG AND EMPTY.');
+  if (row.fruitFell === year) return say('ROW ' + rn + '\'S FRUIT FELL AND WAS GATHERED BY THE GROUND. IT IS NOTED WITHOUT GUILT. THE BIRDS FILED A THANK-YOU.');
+  const ripe = s.plants.filter(p => !p.memorial && p.row === rn && p.stage >= 6);
+  if (!ripe.length) return say('ROW ' + rn + ' IS NOT RIPE. THE BERRIES ARE STILL ARGUING ABOUT COLOUR.');
+  if (!projUse()) return;
+  const base = perBushLbs();
+  let total = 0;
+  const lines = [];
+  for (const p of ripe) {
+    const lbs = Math.round(base * (0.6 + 0.2 * (row.yieldRating || 1)) * ((row.fruitSet || 60) / 100) * (0.85 + (hashDay(s.day * 7 + p.name.length * 13) % 30) / 100) * 10) / 10;
+    total += lbs;
+    p.harvestByYear[year] = Math.round(((p.harvestByYear[year] || 0) + lbs) * 10) / 10;
+    if (!p.firstHarvestDay) { p.firstHarvestDay = s.day; p.firstHarvestLbs = lbs; }
+    if (rn === 1) lines.push(p.name + ': ' + lbs.toFixed(1) + ' LBS, INTO THE ROW 1 BOWL.');
+  }
+  total = Math.round(total * 10) / 10;
+  s.wine.pounds += total; s.wine.poundsByYear[year] = Math.round(((s.wine.poundsByYear[year] || 0) + total) * 10) / 10;
+  row.harvestedYear = year; saveGame();
+  if (rn === 1) {
+    const gone = s.plants.filter(p => p.memorial && p.firstSix && p.row === 1);
+    for (const g of gone) lines.push('THE EMPTY PLACE WHERE ' + g.name + ' STOOD: A QUIET LINE, A MARKER BRUSHED CLEAN, A BOWL WITH ROOM IN IT.');
+    lines.push('LILY FERIES THE SMALL BOWL TO THE BARN WITH BOTH HANDS AND TOTAL SERIOUSNESS. NOT ONE BERRY IS LOST. THIS IS CHECKED. THIS IS PRAISED.');
+  }
+  lines.push('ROW ' + rn + ' HARVESTED: ' + total.toFixed(1) + ' LBS. THE BASKET COUNTER BY THE BARN DOOR READS ' + s.wine.poundsByYear[year].toFixed(1) + ' LBS FOR THE YEAR.');
+  if (w.ch === 10 && !w.flags.q900) {
+    w.flags.q900 = true; saveGame();
+    lines.push('FRANK, AT THE FENCE, DOING ARITHMETIC THE WAY OTHER MEN DO PRAYER: NINE HUNDRED POUNDS. THE BOOK SAYS A WINEMAKER WANTS NINE HUNDRED POUNDS.', 'AT THIS MANY BUSHES, AT THIS WEIGHT APIECE — NOT THIS YEAR. NOT YET. THE FIELD IS YOUNG, THE ROWS ARE NOT ALL PLANTED, AND THE BUSHES ARE STILL BECOMING. BUT THE NUMBER IS WRITTEN DOWN NOW, WHERE NUMBERS BECOME PLANS.');
+  }
+  say(lines);
+}
+function tasting() {
+  const s = G.save, w = s.world;
+  const b = s.wine.batches[s.wine.batches.length - 1];
+  const lines = ['A LATE-OCTOBER EVENING. THE TABLE IS SET IN THE BARN: THE PASTOR, HIS WIFE, AND OMA — IN HER CHAIR, WITH A SMALL GLASS, IN THE PRESENT TENSE, EXACTLY AS PROMISED.'];
+  if (b && b.verdict === 'LOVELY') lines.push('THE WINE IS POURED. THE PASTOR HOLDS IT TO THE LIGHT LIKE A MAN WHO HAS BEEN HANDED A LETTER FROM A FRIEND.', 'THE PASTOR: LOVELY. (ONE WORD. IT IS ENOUGH. IT IS, IN FACT, THE WHOLE REVIEW.)', 'HIS WIFE: YOU CAN TASTE THE FIELD IN IT. ALL THAT WORK, AND IT COMES UP THROUGH THE GLASS LIKE A REPORT.');
+  else if (b && b.verdict === 'SWEET AS CANDY') lines.push('THE WINE IS POURED. IT IS — THERE IS NO OTHER WORD — SWEET AS CANDY. THE PASTOR\'S WIFE LAUGHS INTO HER GLASS, DELIGHTED AND BETRAYED IN EQUAL MEASURE.', 'THE PASTOR: THE CHILDREN AT THE HARVEST SUPPER WILL FIGHT OVER THIS, FRANK. THE ADULTS WILL PRETEND NOT TO.');
+  else if (b && b.verdict === 'TART') lines.push('THE WINE IS POURED. IT IS TART — HONESTLY, STRUCTURALLY TART. THE TABLE SURVIVES IT WITH GOOD HUMOUR AND WATER.', 'THE PASTOR: IT WOULD WAKE A MAN FOR MORNING PRAYER, FRANK. THERE ARE WORSE MINISTRIES.');
+  else lines.push('THE WINE IS POURED. IT IS AN HONEST WINE — NOT THE ONE FRANK DREAMED, AND NOT A LIE EITHER. THE TABLE DRINKS IT WITH RESPECT.', 'HIS WIFE: IT TASTES LIKE THE YEAR IT WAS. THAT IS ALL ANY WINE CAN TRULY SAY.');
+  lines.push('OMA RAISES HER SMALL GLASS, LAST AND SLOWEST: I STAYED FOR THIS. IT WAS WORTH STAYING FOR. (THE PROMISE, IN THE REGISTER, STAMPS ITSELF: THE JAR IS FILLED. SHE TASTED IT.)');
+  lines.push('AND AT THE END OF THE TABLE, WITH THE GLASSES LOW AND THE LIGHT GOING, FRANK SAYS THE THING THE WHOLE FIELD HAS BEEN WAITING TO HEAR HIM SAY PLAINLY:', 'FRANK: NEXT YEAR, AND EVERY YEAR: WINE. I AM A WINEMAKER. THE FIELD IS A VINEYARD THAT HAPPENS TO BE BLUEBERRIES. WE ARE GOING TO NEED MORE BUSHES. (CONSTANCE: WE ARE GOING TO NEED MORE EVERYTHING, FRANK. SHE IS SMILING WHEN SHE SAYS IT.)');
+  say(lines, () => completeChapter(10));
+}
+function ch10Opening() {
+  say(['SUMMER, AND THE FIELD IS HEAVY WITH ITS FIRST REAL FRUITING — EVERY BUSH A SMALL ARGUMENT THAT THE WHOLE STORY WAS WORTH IT.', 'FIRST, A REHEARSAL: A BATCH FROM BOUGHT FRUIT, AT THE BARN KITCHEN, TO LEARN ON BEFORE THE FIELD\'S OWN BERRIES ARE ASKED TO PERFORM.']);
+}
+function ch10Dawn(ev) {
+  const s = G.save, w = s.world;
+  if (w.flags.wineNote) { const note = w.flags.wineNote; w.flags.wineNote = null; saveGame(); return [note]; }
+  if (w.step === 2 && !w.flags.ripened) {
+    w.flags.ripened = true;
+    for (const p of s.plants) if (!p.memorial && p.row && p.stage === 5) { p.stage = 6; if (!p.fruitDay) p.fruitDay = s.day; }
+    for (let rn = 1; rn <= 12; rn++) if (s.plants.some(p => !p.memorial && p.row === rn)) s.cropRows[rn - 1].ripeDay = s.day;
+    saveGame();
+    return ['THE FIELD TURNS BERRY-DARK, ROW BY ROW, LIKE A PAGE BEING READ ALOUD. THE HARVEST IS ON. ROW 1 FIRST — BY NAME, INTO ITS OWN BOWL.'];
+  }
+  if (w.step === 2) {
+    const year = seasonOf(s.day).year, lines = [];
+    for (let rn = 1; rn <= 12; rn++) {
+      const row = s.cropRows[rn - 1];
+      if (row.ripeDay && row.harvestedYear !== year && row.fruitFell !== year && s.day - row.ripeDay > 5) { row.fruitFell = year; lines.push('ROW ' + rn + '\'S FRUIT, UNHARVESTED, LET GO IN THE NIGHT AND FELL. IT IS NOTED WITHOUT GUILT. THE GROUND KEEPS WHAT THE GROUND IS GIVEN.'); }
+    }
+    const open = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter(rn => s.plants.some(p => !p.memorial && p.row === rn) && s.cropRows[rn - 1].harvestedYear !== year && s.cropRows[rn - 1].fruitFell !== year);
+    if (!open.length) { w.step = 3; saveGame(); lines.push('THE HARVEST IS IN: ' + (s.wine.poundsByYear[year] || 0).toFixed(1) + ' LBS FOR THE YEAR. NOW — BATCH TWO, FROM THE FIELD\'S OWN FRUIT, AT YOUR OWN RATIO. THE KITCHEN WAITS, AND THE JOURNAL HOLDS THE LESSON.'); }
+    if (lines.length) return lines;
+  }
+  return null;
+}
 function chapterDawnPrep(ev) { const w = G.save.world; if (w.ch === 2) ch2DawnPrep(ev); if (w.ch >= 3) { G.save.world.flags.heaterLit = false; } if (w.ch >= 6) ch6DawnPrep(); }
 function seasonKey() { const so = seasonOf(G.save.day); return so.year * 4 + so.idx; }
 function ch6DawnPrep() {
@@ -3854,7 +4030,7 @@ TRIAL_OUTCOMES.frostTray = {
   },
 };
 
-function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); if (w.ch === 3) return ch3Dawn(ev); if (w.ch === 4) return ch4Dawn(ev); if (w.ch === 5) return ch5Dawn(ev); if (w.ch === 6) return ch6Dawn(ev); if (w.ch === 7) return ch7Dawn(ev); if (w.ch === 8) return ch8Dawn(ev); if (w.ch === 9) return ch9Dawn(ev); return null; }
+function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); if (w.ch === 3) return ch3Dawn(ev); if (w.ch === 4) return ch4Dawn(ev); if (w.ch === 5) return ch5Dawn(ev); if (w.ch === 6) return ch6Dawn(ev); if (w.ch === 7) return ch7Dawn(ev); if (w.ch === 8) return ch8Dawn(ev); if (w.ch === 9) return ch9Dawn(ev); if (w.ch === 10) return ch10Dawn(ev); return null; }
 
 const CHAPTER_INFO = [
   null,
@@ -4644,7 +4820,7 @@ function renderTrial() {
 function cardUpdate() {
   if (Input.aHit || Input.bHit) { mode = 'overworld'; chapterCardDone(cardChapter); } // KEEP TENDING
 }
-function chapterCardDone(n) { if (n === 1) ch2Opening(); if (n === 2) ch3Opening(); if (n === 3) ch4Opening(); if (n === 4) ch5Opening(); if (n === 5) ch6Opening(); if (n === 6) ch7Opening(); if (n === 7) ch8Opening(); if (n === 8) ch9Opening(); }
+function chapterCardDone(n) { if (n === 1) ch2Opening(); if (n === 2) ch3Opening(); if (n === 3) ch4Opening(); if (n === 4) ch5Opening(); if (n === 5) ch6Opening(); if (n === 6) ch7Opening(); if (n === 7) ch8Opening(); if (n === 8) ch9Opening(); if (n === 9) ch10Opening(); }
 function renderCard() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
   drawSceneBanner(2, true);
@@ -5063,7 +5239,7 @@ requestAnimationFrame(frame);
 window.__hss = {
   state() {
     const so = seasonOf(G.save.day);
-    const ser = p => ({ name: p.name, stage: p.stage, wateredDays: p.wateredDays, watered: p.watered, vigor: p.vigor, tended: p.tended, sownDay: p.sownDay, sproutedDay: p.sproutedDay, seedlingDay: p.seedlingDay, location: p.location, dirt: p.dirt, dirtCredit: p.dirtCredit, variety: p.variety, health: p.health, dryDays: p.dryDays, memorial: p.memorial, row: p.row, slot: p.slot, chill: p.chill, wintered: p.wintered, history: p.history.slice(), firstSix: p.firstSix, giftName: p.giftName, gardenState: p.gardenState });
+    const ser = p => ({ name: p.name, stage: p.stage, wateredDays: p.wateredDays, watered: p.watered, vigor: p.vigor, tended: p.tended, sownDay: p.sownDay, sproutedDay: p.sproutedDay, seedlingDay: p.seedlingDay, location: p.location, dirt: p.dirt, dirtCredit: p.dirtCredit, variety: p.variety, health: p.health, dryDays: p.dryDays, memorial: p.memorial, row: p.row, slot: p.slot, chill: p.chill, wintered: p.wintered, history: p.history.slice(), firstSix: p.firstSix, giftName: p.giftName, gardenState: p.gardenState, firstHarvestDay: p.firstHarvestDay, harvestByYear: p.harvestByYear });
     return {
       mode, day: G.save.day, season: SEASON_NAMES[so.idx], year: so.year, tutorial: G.save.tutorial, seedsLeft: G.save.seedsLeft, tea: G.save.tea,
       compost: G.save.compost, goodDirt: G.save.goodDirt, weeds: JSON.parse(JSON.stringify(G.save.weeds || [])),
@@ -5132,6 +5308,13 @@ window.__hss = {
   butterfly() { butterflyPlant(); },
   forsythia() { forsythiaPlant(); },
   setFrostWatch(rn) { G.save.world.flags.watchTonight = rn; saveGame(); },
+  startBatchOne() { startBatchOne(); },
+  startBatchTwo(i) { startBatchTwo(i); },
+  swishJar() { swishJar(); },
+  sealCheck() { sealCheck(); },
+  bottleJar() { bottleJar(); },
+  harvestRow(rn) { harvestRow(rn); },
+  tasting() { tasting(); },
   carryPlants() { carryPlants(); },
   warp(x, y) { player.tx = x; player.ty = y; syncPixels(player); alvin.tx = x; alvin.ty = Math.min(AH - 1, y + 1); syncPixels(alvin); },
   gotoArea(a, x, y) { setArea(a, x, y); },
