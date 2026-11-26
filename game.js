@@ -1366,6 +1366,7 @@ function mapChar(x, y) { const a = curArea(); if (x < 0 || y < 0 || x >= a.w || 
 function isSolid(x, y) { const a = curArea(); return (a.solid || SOLID).has(mapChar(x, y)); }
 function setArea(name, tx, ty) {
   area = name; const a = curArea(); AW = a.w; AH = a.h;
+  if (name === 'oma' && G.save && G.save.world.flags.alvinDown) { alvin.tx = 3; alvin.ty = 5; syncPixels(alvin); }
   if (name === 'barnOut') { constance.tx = 11; constance.ty = 6; }
   if (name === 'yard') { constance.tx = 13; constance.ty = 5; }
   G.save.world.area = name;
@@ -1392,8 +1393,12 @@ const EXITS = { // area -> () => [{x,y,to,tx,ty}] (state-dependent)
     if (G.save.world.ch >= 3 && (G.save.world.flags.buildStep || 0) >= 3) ex.push({ x: 20, y: 11, to: 'green', tx: 6, ty: 7 });
     return ex;
   },
-  barnIn: () => [{ x: 14, y: 5, to: 'barnOut', tx: 13, ty: 5 }],
-  oma: () => [{ x: 6, y: 7, to: 'barnOut', tx: 18, ty: 5 }],
+  barnIn: () => [G.save.world.flags.stairsBuilt ? { x: 14, y: 5, to: 'oma', tx: 10, ty: 5 } : { x: 14, y: 5, to: 'barnOut', tx: 13, ty: 5 }],
+  oma: () => {
+    const ex = [{ x: 6, y: 7, to: 'barnOut', tx: 18, ty: 5 }];
+    if (G.save.world.flags.stairsBuilt) ex.push({ x: 10, y: 6, to: 'barnIn', tx: 14, ty: 6 });
+    return ex;
+  },
   green: () => [{ x: 6, y: 8, to: 'barnOut', tx: 20, ty: 11 }],
 };
 /* NPCs: simple folk, placed by chapter and step. Sets are palettes for the
@@ -1416,6 +1421,11 @@ function npcsFor(a) {
       list.push({ id: 'zoey', tx: 6, ty: 13, dir: 'down', set: 'zoey', name: 'ZOEY' });
       list.push({ id: 'lily', tx: 12, ty: 6, dir: 'down', set: 'lily', name: 'LILY' });
     }
+  }
+  if (w.ch >= 5) {
+    if (a === 'oma') list.push({ id: 'oma', tx: 5, ty: 4, dir: 'down', set: 'oma', name: 'OMA' });
+    if (a === 'barnOut' && hashDay(s.day) % 3 === 0) list.push({ id: 'oma', tx: 16, ty: 6, dir: 'down', set: 'oma', name: 'OMA' });
+    if (a === 'barnIn' && w.ch === 5) list.push({ id: 'constance', tx: 4, ty: 3, dir: 'down', set: 'constance', name: 'CONSTANCE' });
   }
   if (w.ch === 3) {
     if (a === 'barnOut') {
@@ -1501,7 +1511,34 @@ function npcTalk(npc) {
     return say(lines[s.day % lines.length]);
   }
   if (npc.id === 'oma') {
-    return say(['OMA: I BROUGHT MY OWN TEA. YOURS IS FINE. MINE IS BETTER. THIS IS NOT A COMPETITION, BUT IF IT WERE —', 'OMA: SHOW ME THE SPROUTS AGAIN. SLOWLY. I AM MEMORIZING THEM.']);
+    if (w.ch === 2) return say(['OMA: I BROUGHT MY OWN TEA. YOURS IS FINE. MINE IS BETTER. THIS IS NOT A COMPETITION, BUT IF IT WERE —', 'OMA: SHOW ME THE SPROUTS AGAIN. SLOWLY. I AM MEMORIZING THEM.']);
+    if (w.ch === 5 && w.step === 4 && !s.promise) {
+      return say(['OMA: FRANK. SIT. NO — STAND THERE, THE LIGHT IS BETTER AND I WANT TO SEE YOUR FACE FOR THIS.', 'OMA: I AM AN OLD WOMAN, AND I HAVE DECIDED SOMETHING, AND DECIDING IS A YOUNG PERSON\'S GAME SO I AM DOING IT QUICKLY.', 'OMA: I WILL STAY. HERE, IN MY ROOM WITH ITS OWN DOOR, UNTIL I TASTE THE FIRST WINE MADE FROM THIS FIELD\'S FRUIT. THAT IS MY PROMISE. WRITE IT IN YOUR BOOK.', 'FRANK WRITES IT IN THE REGISTER, IN HIS BEST HAND: OMA\'S PROMISE. THE JAR, FOR NOW, IS EMPTY.', 'OMA: NOW GO AND GROW ME A FIELD. I WILL BE HERE. I HAVE DECIDED.'], () => { s.promise = true; saveGame(); completeChapter(5); });
+    }
+    // a small request, once a day: water a named plant she has been watching
+    if (w.omaReqDay !== s.day) {
+      const target = s.plants.find(p => !p.memorial && p.stage >= 1 && !p.watered && p.name === (w.flags.omaReq || ''));
+      if (target && target.watered) { /* unreachable guard */ }
+      if (w.flags.omaReq) {
+        const p = s.plants.find(q => q.name === w.flags.omaReq);
+        if (p && p.watered) {
+          w.omaReqDay = s.day; w.flags.omaReq = null; s.goodDirt++; saveGame();
+          return say(['OMA: YOU WATERED ' + p.name + '. I SAW. AN OLD WOMAN NOTICES WHO TENDS AND WHO TALKS.', 'OMA: HERE — FROM YOUR OPA\'S STASH. GOOD DIRT. HE ALWAYS SAID A GARDEN RUNS ON IT AND ON BEING LOOKED AT. (+1 GOOD DIRT)']);
+        }
+      }
+      const dry = s.plants.filter(p => !p.memorial && p.stage >= 1 && !p.watered);
+      if (dry.length && !w.flags.omaReq) {
+        const pick = dry[s.day % dry.length];
+        w.flags.omaReq = pick.name; saveGame();
+        return say(['OMA: ' + pick.name + ' IS THIRSTY, FRANK. I CAN TELL FROM HERE. I CAN ALWAYS TELL FROM HERE.', 'OMA: WATER IT, AND COME BACK AND TELL ME. AN OLD WOMAN LIKES TO BE OBEYED IN SMALL THINGS. IT KEEPS THE WORLD LEVEL.']);
+      }
+    }
+    const stories = [
+      ['OMA: YOUR OPA KEPT A GARDEN THE SIZE OF A RUG AND FED A STREET FROM IT. DO NOT ASK ME HOW. HE WOULD NOT SAY, AND NOW IT IS A FAMILY SECRET I AM KEEPING FROM MYSELF.', 'OMA: HE TALKED TO HIS TOMATOES. I TALKED TO HIM. THE HOUSE WAS FULL OF CONVERSATION AND MOST OF IT WAS ONE-WAY.'],
+      ['OMA: WHEN THE ADMIRAL SPROUTED, I DREAMED OF YOUR OPA. HE WAS YOUNG AND ANNOYED AT A FENCE. SOME THINGS ABOUT A MAN NEVER CHANGE, EVEN IN DREAMS. ESPECIALLY IN DREAMS.', 'OMA: HE WOULD HAVE LIKED YOUR FIELD, FRANK. HE WOULD HAVE SAID SO ONCE, AND THEN FIXED THINGS ON IT FOR A DECADE TO PROVE IT.'],
+      ['OMA: ASK ME ABOUT THE SIX. GO ON. — THE ADMIRAL, THE CAPTAIN, THE GENERAL. HOPE. PATIENCE. THE PROFESSOR.', 'OMA: I KNOW ALL THEIR NAMES. AN OLD WOMAN MEMORIZES WHAT THE HOUSE LOVES. IT IS THE WHOLE JOB, AND I AM GOOD AT IT.'],
+    ];
+    return say(stories[s.day % stories.length]);
   }
   say('...');
 }
@@ -1533,8 +1570,26 @@ function barnInteract(f) {
   if (f.x === 18 && f.y === 4) { // the downstairs door
     return say('THE DOWNSTAIRS DOOR. IT OPENS TO THE YARD, ON ITS OWN — AN APARTMENT WITH ITS OWN FRONT DOOR.', which => { if (which === 0) setArea('oma', 6, 6); }, ['GO IN', 'NOT YET']);
   }
-  if (f.x === 22 && f.y === 4) return say('THE GOOD SHED. SOUND ROOF, TRUE WALLS. INSIDE: TWINE, STAKES, A TAPE MEASURE, AND A SPADE THAT HAS SEEN THINGS.');
-  if (f.x === 13 && f.y === 12) return say('THE FIELD GATE. FIRST, A HOUSE TO LIVE IN AND A GLASS HOUSE FOR THE PLANTS. THEN — EVERYTHING.');
+  if (f.x === 22 && f.y === 4) {
+    if (w.ch === 4 && w.step === 3 && !w.flags.fenceNotes) {
+      w.flags.fenceNotes = true; saveGame();
+      return say(['THE FENCE PROBLEM, AS FRANK WRITES IT IN THE REGISTER:', 'EIGHT HUNDRED FEET OF BOUNDARY. POSTS, WIRE, A PARALLEL RUN FOUR FEET INSIDE — DEER JUMP ONE FENCE. THEY DO NOT JUMP A PUZZLE.', 'PRICE: EVERYTHING. EFFORT: ALSO EVERYTHING. TIME: BEFORE THE PLANTS GO IN, OR THE DEER WILL DO THE HARVESTING.', 'CONSTANCE: ONE SEGMENT AT A TIME, FRANK. LIKE EVERYTHING ELSE YOU HAVE EVER FINISHED.']);
+    }
+    if (w.ch === 4 && w.step === 2) {
+      w.step = 3; saveGame();
+      return say(['A LETTER FROM THE TOWN, IN A HAND THAT HAS NEVER HELD A SPADE:', 'THE LOT IS FOUR ACRES SHORT FOR GOATS, AND CHICKENS ARE A HARD NO IN INK THAT MEANS IT.', 'FRANK: FOUR ACRES. FOUR. THE FIELD IS RIGHT THERE —', 'CONSTANCE: THE FIELD IS FOR BLUEBERRIES, FRANK. THE CLERK HAS DONE YOU A FAVOUR AND YOU WILL THANK HIM IN ABOUT A YEAR.', '(THE GOATS GO IN THE REGISTER UNDER "SOMEDAY". SOMEDAY IS A REAL PAGE. FRANK CHECKS IT OFTEN.)']);
+    }
+    return say('THE GOOD SHED. SOUND ROOF, TRUE WALLS. INSIDE: TWINE, STAKES, A TAPE MEASURE, AND A SPADE THAT HAS SEEN THINGS.');
+  }
+  if (f.x === 13 && f.y === 12) { // the field gate
+    if (w.ch >= 4) {
+      if (player.ty >= 13) return say('BACK TO THE YARD?', which => { if (which === 0) { player.tx = 13; player.ty = 11; syncPixels(player); alvin.tx = 13; alvin.ty = 12; syncPixels(alvin); } }, ['CLIMB BACK', 'STAY']);
+      return say('THE FIELD GATE. IT SWINGS BOTH WAYS NOW, LIKE A DECISION THAT HAS BEEN MADE.', which => { if (which === 0) { player.tx = 13; player.ty = 13; syncPixels(player); alvin.tx = 13; alvin.ty = 12; syncPixels(alvin); if (w.ch === 4 && w.step === 0) stakeField(); } }, ['ENTER THE FIELD', 'NOT YET']);
+    }
+    return say('THE FIELD GATE. FIRST, A HOUSE TO LIVE IN AND A GLASS HOUSE FOR THE PLANTS. THEN — EVERYTHING.');
+  }
+  if (w.ch === 5 && w.step >= 2 && !w.flags.patchCleared && f.x >= 23 && f.x <= 24 && f.y >= 6 && f.y <= 7) return patchInteract();
+  if (w.ch >= 4 && (f.x === 6 || f.x === 7) && f.y === 5) return irisInteract();
   if (f.x >= 18 && f.x <= 22 && f.y >= 8 && f.y <= 11) { // the greenhouse site
     if (w.ch === 3 && w.step === 6 && (w.flags.buildStep || 0) < 3) {
       if (w.flags.buildDay === s.day) return say('ENOUGH BUILDING FOR ONE DAY. GLASS KEEPS. SO DOES FRANK, BARELY.');
@@ -1576,6 +1631,14 @@ function barnInInteract(f) {
       return say('AN EMPTY SPOT ON THE OFFICE SHELF. IT WILL NOT STAY EMPTY. IT NEVER DOES.');
     }
   }
+  if (ch === 'x') { // the stairs: down to the yard door, or — once built — to Oma's
+    if (w.ch === 5 && w.step === 0 && !w.flags.stairsBuilt) {
+      if (w.flags.stairsDay != null && w.flags.stairsDay < s.day) { w.flags.stairsBuilt = true; saveGame(); return say('THE STAIRS ARE DONE — AND HOLD. FRANK TESTS THEM WITH A JUMP THAT CONSTANCE PRETENDS NOT TO SEE.'); }
+      if (w.flags.stairsDay === s.day) return say('THE STAIRS ARE HALF-BUILT AND WHOLLY IN THE WAY. TOMORROW THEY ARE STAIRS.');
+      return say('THE STAIR PROJECT: A DAY OF WORK TO JOIN THE HOUSE TO ITSELF.', which => { if (which === 0) { w.flags.stairsDay = s.day; saveGame(); say('WORK BEGINS. SAWDUST, LEVELS, AND A PENCIL BEHIND EVERY EAR IN THE HOUSE.'); } }, ['BUILD THE STAIRS', 'NOT YET']);
+    }
+    return say('THE STAIRS. UP AND DOWN, LIKE A FAMILY.');
+  }
   if (ch === 'e') return say('THE TABLE. IT MADE THE TRIP. EVERYTHING IMPORTANT IN THIS FAMILY HAS BEEN DECIDED AT THIS TABLE, INCLUDING BREAKFAST.');
   if (ch === 'k') return say('THE COUNTER. THE KETTLE HAS FOUND ITS NEW HOME AND APPROVES OF THE VIEW.');
   if (ch === 'm') return say('THE BED. MOVING HOUSE IS A CONTACT SPORT AND EVERYONE IS BRUISED IN PLACES THEY DID NOT KNOW THEY HAD.');
@@ -1610,7 +1673,10 @@ function greenInteract(f) {
   return say('THE GREENHOUSE. IT SMELLS OF WARM EARTH AND POSSIBILITY.');
 }
 function omaInteract(f) {
-  const ch = mapChar(f.x, f.y);
+  const s = G.save, w = s.world, ch = mapChar(f.x, f.y);
+  if (w.flags.alvinDown && f.x === alvin.tx && f.y === alvin.ty) {
+    return say(['ALVIN, DOWNSTAIRS, OCCUPYING THE WARM SPOT BY OMA\'S BED LIKE A SMALL FURNACE WITH OPINIONS.', 'HE RISES, STRETCHES, AND FALLS IN BEHIND FRANK. THE DEFECTION WAS NEVER PERSONAL. THE FEET WERE WARM.'], () => { w.flags.alvinDown = false; saveGame(); });
+  }
   if (ch === 'a' && f.x === 2) return say(['THE PHOTOGRAPH ON OMA\'S SHELF: A YOUNGER OMA, AND OPA, SQUINTING INTO A SUN THAT HAS LONG SINCE SET.', 'HE IS NOT HERE. HE IS NOT NOWHERE, EITHER. THE ROOM KEEPS HIM THE WAY THE REGISTER KEEPS A NAME.']);
   if (ch === 'a') return say('OMA\'S SHELF. EVERYTHING ON IT IS EXACTLY WHERE IT BELONGS, INCLUDING THE THINGS THAT LOOK RANDOM.');
   if (ch === 'm') return say('THE BED, MADE WITH HOSPITAL CORNERS AND OPINIONS.');
@@ -1629,6 +1695,113 @@ function chooseLoadOrder(order) {
     say(['THE FURNITURE RIDES FIRST. THE PLANTS WILL SPEND ONE NIGHT IN THE EMPTY HOUSE.', 'FRANK: ONE NIGHT. THEY WILL BE FINE. (HE WILL THINK ABOUT IT ALL NIGHT. HE IS THINKING ABOUT IT NOW.)']);
   }
 }
+function stakeField() {
+  const s = G.save, w = s.world;
+  w.flags.staked = true; w.step = 1; saveGame();
+  say(['STAKING DAY. TWELVE ROWS, SIX FEET APART, IN A SQUARE SEVENTY-FIVE FEET BY — JEREMIAH, HOW MANY PACES?', 'JEREMIAH: FORTY-ONE. OR NINETY. THE PACES WERE ALL DIFFERENT SIZES. SOME OF THEM WERE SKIPS.', 'ZOEY: IT IS EXACTLY ONE HUNDRED OF MY FEET. I COUNTED TWICE AND GOT TWO NUMBERS, BUT THEY WERE BOTH CONFIDENT.', 'THE STAKES GO IN ANYWAY. THE SQUARE HOLDS. SOME DREAMS HAVE CORNERS, AND THE CORNERS ARE NOW MARKED WITH STRING.']);
+}
+function irisInteract() {
+  const s = G.save, w = s.world;
+  const irises = s.plants.filter(p => p.location === 'GARDEN' && p.variety === 'IRIS');
+  if (!irises.length) {
+    const made = [];
+    for (let i = 0; i < 3; i++) {
+      const p = freshPlant(allocName(s.plants), { variety: 'IRIS', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: 1, history: ['INHERITED WITH THE PLACE'] });
+      s.plants.push(p); made.push(p.name);
+      if (!s.dex.garden.includes('IRIS')) s.dex.garden.push('IRIS');
+    }
+    if (w.ch === 4 && w.step === 1) w.step = 2;
+    saveGame();
+    return say(['IRISES, INHERITED WITH THE PLACE — PURPLE, WHITE, AND A YELLOW LIKE A SMALL SUN.', 'FRANK NAMES THEM ON SIGHT, ONE PER COLOUR, THE WAY YOU GREET NEIGHBOURS YOU INTEND TO KEEP: ' + made.join(', ') + '.', 'THEY GO IN THE REGISTER UNDER GARDEN. THEY WERE HERE FIRST. IT IS THEIR NAME ON THE LAND, REALLY. HIS IS THE NEW ONE.']);
+  }
+  const dry = irises.filter(p => !p.watered);
+  if (dry.length) return say('THE IRISES. A DRINK WOULD NOT GO AMISS.', which => { if (which === 0) { dry.forEach(waterPlant); say('WATERED. THE IRISES STAND A LITTLE STRAIGHTER, LIKE SOMEONE SAID THEIR NAMES.'); } }, ['WATER THEM', 'NOT NOW']);
+  return say('THE IRISES, WATERED AND HOLDING COURT BY THE BARN WALL.');
+}
+function patchInteract() {
+  const s = G.save, w = s.world;
+  if (!w.flags.patchWeeds) {
+    w.flags.patchWeeds = true; w.flags.patchPulls = 0; saveGame();
+    return say(['BEHIND THE GOOD SHED: A BLACKBERRY PATCH GONE ENTIRELY TO THORN. SOMEWHERE IN THERE ARE BERRIES WORTH RESCUING.', 'THEN WE PULL. EIGHT BIG WEEDS STAND BETWEEN THE WORLD AND THE BERRIES. GLOVES ON.']);
+  }
+  if ((w.flags.patchPulls || 0) < 8) {
+    w.flags.patchPulls++; saveGame();
+    if (w.flags.patchPulls >= 8) return say(['THE LAST WEED COMES UP WITH A SOUND LIKE A CORK. UNDERNEATH: CANES. OLD, THORNLESS, PLANTED BY SOMEONE WHO KNEW — AND WORTH SAVING.', 'NOW A LITTLE NETTING, TO TELL THE BIRDS THE NEWS.']);
+    return say('WEED ' + w.flags.patchPulls + ' OF 8. THE PATCH CONCEDES GROUND THE WAY WINTER DOES: SLOWLY, THEN ALL AT ONCE.');
+  }
+  if (!s.field.protoNet) {
+    s.field.protoNet = true; saveGame();
+    return say(['THE NETTING PROTOTYPE: A FRAME, A NET, AND FRANK\'S FULL CONFIDENCE.', 'NETTED. THE CANES STAND IN THEIR LITTLE FORTRESS, BLINKING IN THE SUN.', 'AND NOW THEY ARE PLANTED IN EARNEST — IN REAL GROUND, WITH NAMES.']);
+  }
+  const planted = s.plants.filter(p => p.location === 'GARDEN' && p.variety === 'BLACKBERRY');
+  if (planted.length < 2) {
+    const p = freshPlant(allocName(s.plants), { variety: 'BLACKBERRY', stage: 3, location: 'GARDEN', gardenState: 'NEW', sownDay: s.day, history: ['RESCUED FROM THE PATCH BEHIND THE GOOD SHED'] });
+    s.plants.push(p);
+    if (!s.dex.garden.includes('BLACKBERRY')) s.dex.garden.push('BLACKBERRY');
+    if (planted.length === 1) { w.step = 3; }
+    saveGame();
+    return say('PLANTED, IN REAL GROUND: ' + p.name + ', THORNLESS BLACKBERRY. THE FIRST THING IN THIS FIELD WITH ROOTS AND A NAME.' + (planted.length === 1 ? '' : ' ONE MORE CANE WAITS.'));
+  }
+  return say('THE BLACKBERRIES. NETTED, NAMED, AND HOLDING THEIR CORNER BEHIND THE SHED.');
+}
+function ch5Dawn(ev) {
+  const s = G.save, w = s.world;
+  // some mornings, Alvin is simply downstairs
+  if (w.ch === 5 && w.step >= 1 && hashDay(s.day) % 3 === 1 && !w.flags.alvinDown) w.flags.alvinDown = true;
+  if (w.step === 0 && w.flags.stairsDay != null && w.flags.stairsDay < s.day && !w.flags.stairsBuilt) { w.flags.stairsBuilt = true; saveGame(); }
+  if (w.step === 0 && w.flags.stairsBuilt) { w.step = 1; return ['THE STAIRS ARE DONE. THE HOUSE IS ONE HOUSE NOW, TOP TO BOTTOM.', 'OMA COMES THIS WEEK. HER ROOM HAS ITS OWN DOOR AND, AS OF TODAY, STAIRS. SHE WILL PRETEND NOT TO BE PLEASED. SHE WILL FAIL.']; }
+  if (w.step === 3 && !w.flags.patchTrialDone) {
+    w.flags.patchTrialDone = true;
+    const bb = s.plants.filter(p => !p.memorial && p.location === 'GARDEN' && p.variety === 'BLACKBERRY');
+    startTrial({ foe: 'WEEDS', kind: 'weedsPatch', pressure: 35, vigor: 26, plantsList: bb.length ? bb : sixPlants(), msg: 'THE PATCH FIGHTS BACK! ROOTS AND RUNNERS, UP IN THE NIGHT, AFTER THE BRAMBLE! ALVIN DIGS IN!' });
+    return null;
+  }
+  if (w.step === 3 && w.flags.patchTrialDone && w.flags.patchWeedsBack) {
+    w.flags.patchWeedsBack = false;
+    const bb = s.plants.filter(p => !p.memorial && p.location === 'GARDEN' && p.variety === 'BLACKBERRY');
+    startTrial({ foe: 'WEEDS', kind: 'weedsPatch', pressure: 35, vigor: 26, plantsList: bb.length ? bb : sixPlants(), msg: 'THE WEEDS RETURN, AS PROMISED BY EVERY WEED SINCE EDEN. ALVIN IS READY.' });
+    return null;
+  }
+  return null;
+}
+TRIAL_OUTCOMES.weedsPatch = {
+  win(t) {
+    const w = G.save.world; w.step = 4; saveGame();
+    say(['THE PATCH SETTLES. THE CANES STAND IN CLEARED GROUND, NETTED AND NAMED, LIKE THEY WERE ALWAYS THE POINT.', 'OMA HAS HEARD ABOUT THE BLACKBERRIES. SHE HAS QUESTIONS, AND A BOWL. VISIT HER.']);
+  },
+  lose(t, fled) {
+    const s = G.save, w = s.world;
+    if (fled) { say('ALVIN BACKS OFF. THE PATCH KEEPS ITS NERVE FOR ANOTHER NIGHT.'); return; }
+    for (const p of t.plantsList || []) if (!p.memorial) { p.stage = Math.max(2, p.stage - 1); if (p.health < 3) p.health++; }
+    w.flags.patchWeedsBack = true; w.flags.patchTrialDone = false;
+    saveGame();
+    say(['THE PATCH WINS THE NIGHT. THE CANES ARE SET BACK, SORE AND SMALLER — BUT ROOTED, AND ROOTS ARE A PROMISE.', 'THE WEEDS WILL TRY AGAIN IN TWO DAYS. SO WILL ALVIN. IT IS THAT KIND OF WAR.']);
+  },
+};
+function ch4Opening() {
+  say(['THE GLASS HOUSE IS SETTLED. THE FAMILY IS SETTLED. WHAT REMAINS IS THE FIELD ITSELF, AND A WINTER TO PLAN IN.', 'STAKES. STRING. A TAPE MEASURE. AND A TOWN CLERK WITH A RULEBOOK — BUT FIRST, THE FIELD. THE GATE SWINGS BOTH WAYS NOW.']);
+}
+function ch4Dawn(ev) {
+  const s = G.save, w = s.world;
+  if (w.step === 2 && !w.flags.scoutsDone) {
+    w.flags.scoutsDone = true;
+    startTrial({ foe: 'DEER', kind: 'deerScouts', pressure: 30, vigor: 22, graze: true, plantsList: sixPlants(), msg: 'SCOUTS! TWO DEER AT THE FIELD GATE, READING THE STAKES LIKE A MENU! ALVIN IS ALREADY THERE!' });
+    return null;
+  }
+  if (w.step === 3) {
+    if (w.flags.fenceNotes) { completeChapter(4); return null; }
+    return ['THE FENCE WILL NOT PRICE ITSELF. THE GOOD SHED HAS THE NOTES, AND FRANK HAS A PENCIL.'];
+  }
+  return null;
+}
+TRIAL_OUTCOMES.deerScouts = {
+  win(t) { say(['THE SCOUTS RETREAT TO TELL THE HERD: THIS FIELD HAS A DOG, AND THE DOG HAS OPINIONS.', 'WORD WILL SPREAD. SO WILL THE DEER. BOTH ARE CERTAIN; ONLY THE TIMING IS NEGOTIABLE.']); },
+  lose(t, fled) { say(['THE SCOUTS GRAZE A WHILE, UNHURRIED, AND LEAVE BY THE NORTH CORNER LIKE THEY PAY RENT.', 'NOTHING IS LOST BUT A MORNING AND SOME DIGNITY. THE FENCE QUESTION JUST GOT LOUDER.']); },
+};
+function ch5Opening() {
+  say(['WINTER PLANS BECOME SPRING WORK. THE DOWNSTAIRS IS FINISHED EXCEPT THE STAIRS — AN APARTMENT SHOULD BE REACHABLE FROM INSIDE ITS OWN HOUSE.', 'THE STAIRS ARE UPSTAIRS, WHICH IS TO SAY: AT THE TOP OF THE STAIRS. FRANK WILL EXPLAIN THIS UNTIL IT IS TRUE.']);
+}
+
 function ch3Opening() {
   say(['THE RENTAL IS SMALL AND THE PLANTS HAVE THE WINDOW AND MOST OF THE TABLE.', 'THE AGENT CALLS: HER FRIEND HAS HEARD OF A PLACE. A BARN, OUTSIDE A TOWN CALLED BERRYHILL. LAND WITH IT. A FIELD, EVEN.', 'CONSTANCE: WE GO AND LOOK. QUIETLY. NO FALLING IN LOVE BEFORE THE ROOF IS INSPECTED.', 'FRANK: AGREED. COMPLETELY. (HE IS ALREADY IN LOVE. THE GATE BY THE ROAD WILL TAKE YOU THERE.)']);
 }
@@ -1822,6 +1995,23 @@ function renderBerry() {
       ctx.fillStyle = 'rgba(90,58,30,0.35)'; ctx.fillRect(sx, sy + 3, TILE, 1); ctx.fillRect(sx, sy + 10, TILE, 1);
     }
   }
+  if (G.save.world.flags.staked) { // corner stakes and string over the field
+    ctx.fillStyle = '#e8e2d2';
+    for (const [sx2, sy2] of [[1, 13], [24, 13], [1, 16], [24, 16]]) ctx.fillRect(sx2 * TILE - camX + 6, sy2 * TILE - camY + 2, 3, 8);
+    ctx.fillStyle = 'rgba(232,226,210,0.5)';
+    for (let r2 = 0; r2 < 4; r2++) ctx.fillRect(1 * TILE - camX + 8, (13 + r2) * TILE - camY + 5, 23 * TILE - 8, 1);
+  }
+  if (G.save.world.ch >= 4) { // the inherited irises by the barn wall
+    const ix = 6 * TILE - camX, iy = 5 * TILE - camY;
+    ctx.fillStyle = '#3f7a2e'; ctx.fillRect(ix + 2, iy + 8, 12, 6); ctx.fillRect(ix + 18, iy + 8, 12, 6);
+    ctx.fillStyle = '#7a5aa0'; ctx.fillRect(ix + 4, iy + 3, 3, 5); ctx.fillStyle = '#e8e2d2'; ctx.fillRect(ix + 20, iy + 3, 3, 5); ctx.fillStyle = '#ffd94a'; ctx.fillRect(ix + 12, iy + 4, 3, 4);
+  }
+  if (G.save.world.ch === 5 && (G.save.world.step || 0) >= 2 && !G.save.world.flags.patchCleared) { // the bramble patch
+    const bx = 23 * TILE - camX, by = 6 * TILE - camY;
+    ctx.fillStyle = '#2e4a26'; ctx.fillRect(bx + 1, by + 4, 30, 26);
+    ctx.fillStyle = '#3f7a2e'; for (let i = 0; i < 6; i++) ctx.fillRect(bx + 3 + i * 5, by + 2 + (i % 3) * 3, 3, 8);
+    ctx.fillStyle = '#20242a'; for (let i = 0; i < 4; i++) ctx.fillRect(bx + 6 + i * 7, by + 20 + (i % 2) * 4, 2, 2); // old berries, watching
+  }
   // the greenhouse, in its three acts: site, frame and shell, glass house
   const bs = G.save.world.flags.buildStep || 0;
   if (G.save.world.ch >= 3) {
@@ -1971,6 +2161,11 @@ function drawAreaProps() {
       if (p.health >= 2) { ctx.fillStyle = '#e0483e'; ctx.fillRect(sx + 12, sy + 6, 3, 3); }
     });
     return;
+  }
+  if (area === 'oma' && G.save.world.flags.stairsBuilt) { // the new stairs, in the corner
+    const sx = 10 * TILE - camX, sy = 6 * TILE - camY;
+    ctx.fillStyle = '#6b5136'; ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx, sy + 10, TILE, 3); ctx.fillRect(sx, sy + 5, TILE, 3); ctx.fillRect(sx, sy, TILE, 3);
   }
   if (area === 'oma') { // the photograph on the shelf, facing the room
     const sx = 2 * TILE - camX, sy = 1 * TILE - camY;
@@ -2516,7 +2711,12 @@ const CONSTANCE_LINES = [
   'CONSTANCE: A GARDEN IS A GLORIOUS THING, AND IT IS WORK. I KEEP TELLING HIM. HE KEEPS SMILING.',
 ];
 function objective() {
-  const s = G.save;
+  const s = G.save, w = s.world;
+  if (w.flags.alvinDown) return 'ALVIN IS DOWNSTAIRS, KEEPING OMA\'S FEET WARM.';
+  if (w.ch === 2) return ['TEND THE SIX. THE STORY IS IN THE HOUSE.', 'SEEDS IN THE FRIDGE. JEREMIAH CARRIES. HOUSES FAIL.', 'SELL FIRST. PACK LIKE YOU MEAN IT.', 'SELL FIRST. PACK LIKE YOU MEAN IT.', 'SELL FIRST. PACK LIKE YOU MEAN IT.', 'THE GREAT EMPTYING: ONE VAN LOAD A DAY.', 'THE WINTER DEEPENS. THE FRIDGE KEEPS ITS SECRET.', 'POT THEM UP. EVERY ONE GETS A NAME.', 'SIGN THE PAPERS AT THE TABLE.'][w.step] || 'TEND THE SHELF.';
+  if (w.ch === 3) return ['GO AND LOOK. QUIETLY.', 'THE GATE BY THE ROAD LEADS TO BERRYHILL.', 'THINK IT OVER. THEN DECIDE LIKE YOU MEAN IT.', 'THE BARN. THE FIELD. THE SET.', 'MOVING WEEKEND: THE TRUCK, AT THE OLD DOOR.', 'ONE MORE LOAD, ONE WAY OR ANOTHER.', 'BUILD THE GREENHOUSE: FRAME, SHELL, HEATER.', 'CARRY THE PLANTS TO THE GLASS HOUSE.', 'THE FIRST NIGHT IN THE GLASS HOUSE.', 'SETTLE IN.'][w.step] || 'SETTLE IN.';
+  if (w.ch === 4) return ['STAKE THE FIELD.', 'MEET THE IRISES.', 'THE TOWN HAS OPINIONS.', 'PRICE THE FENCE AT THE GOOD SHED.'][w.step] || 'WALK THE FIELD.';
+  if (w.ch === 5) return ['BUILD THE STAIRS DOWN.', 'OMA IS COMING. MAKE READY.', 'CLEAR THE PATCH BEHIND THE GOOD SHED.', 'THE PATCH FIGHTS BACK.', 'VISIT OMA.'][w.step] || 'TEND EVERYONE.';
   if (s.tutorial === 1) return 'THE GRAND PLAN: SIX POTS, SIX PROMISES (A)';
   if (s.tutorial === 2) return 'A DRINK FOR EACH POT: A AT A POT';
   if (s.chapterDone) return 'FREE TENDING. BERRYHILL COMES LATER.';
@@ -2965,7 +3165,7 @@ TRIAL_OUTCOMES.frostTray = {
   },
 };
 
-function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); if (w.ch === 3) return ch3Dawn(ev); return null; }
+function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); if (w.ch === 3) return ch3Dawn(ev); if (w.ch === 4) return ch4Dawn(ev); if (w.ch === 5) return ch5Dawn(ev); return null; }
 
 const CHAPTER_INFO = [
   null,
@@ -3750,7 +3950,7 @@ function renderTrial() {
 function cardUpdate() {
   if (Input.aHit || Input.bHit) { mode = 'overworld'; chapterCardDone(cardChapter); } // KEEP TENDING
 }
-function chapterCardDone(n) { if (n === 1) ch2Opening(); if (n === 2) ch3Opening(); }
+function chapterCardDone(n) { if (n === 1) ch2Opening(); if (n === 2) ch3Opening(); if (n === 3) ch4Opening(); if (n === 4) ch5Opening(); }
 function renderCard() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
   drawSceneBanner(2, true);
@@ -4208,6 +4408,9 @@ window.__hss = {
   signSale() { if (G.save.world.step === 8) signSale(); },
   buildGreenhouse() { buildGreenhouse(); },
   chooseLoadOrder(o) { chooseLoadOrder(o); },
+  stakeField() { stakeField(); },
+  irisInteract() { irisInteract(); },
+  patchInteract() { patchInteract(); },
   carryPlants() { carryPlants(); },
   warp(x, y) { player.tx = x; player.ty = y; syncPixels(player); alvin.tx = x; alvin.ty = Math.min(AH - 1, y + 1); syncPixels(alvin); },
   gotoArea(a, x, y) { setArea(a, x, y); },

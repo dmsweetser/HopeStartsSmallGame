@@ -869,6 +869,81 @@ function findChromium() {
   check('landing complete: chapter 3 card', s.mode === 'card' && s.world.ch === 4, 'mode=' + s.mode + ' ch=' + s.world.ch);
   await tap('z'); await page.waitForTimeout(300);
 
+  // CHAPTER 4 — PLANS: stakes, irises, scouts, the ordinance, the fence.
+  await page.evaluate(() => window.__hss.stakeField());
+  await dismissDialogue(8);
+  s = await S();
+  check('staking day: the square has corners', s.world.flags.staked === true && s.world.step === 1, 'step=' + s.world.step);
+  await page.evaluate(() => window.__hss.irisInteract());
+  await dismissDialogue(8);
+  s = await S();
+  check('the irises: three gifts, named on sight, in the garden register', s.plants.filter(p => p.location === 'GARDEN' && p.variety === 'IRIS').length === 3 && s.world.step === 2, 'iris=' + s.plants.filter(p => p.variety === 'IRIS').length);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('first scouts: DEER at the stakes, pressure 30, nothing at risk', s.mode === 'trial' && s.trial && s.trial.foe === 'DEER' && s.trial.maxPressure === 30, JSON.stringify(s.trial && s.trial.maxPressure));
+  await page.evaluate(() => { trial.pressure = 3; });
+  await page.waitForTimeout(1400);
+  await tap('z'); await page.waitForTimeout(250);
+  await tap('z'); await page.waitForTimeout(1600);
+  await dismissDialogue(8);
+  s = await S();
+  check('scouts turned back; the herd will hear of it', s.mode === 'overworld' && s.world.flags.scoutsDone === true, 'mode=' + s.mode);
+  await page.evaluate(() => window.__hss.gotoArea('barnOut', 22, 5));
+  await page.evaluate(() => { player.dir = 'up'; });
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(10);
+  s = await S();
+  check('the ordinance: four acres short, goats someday', s.world.step === 3, 'step=' + s.world.step);
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(10);
+  s = await S();
+  check('the fence problem, priced in pencil', s.world.flags.fenceNotes === true, '');
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('plans complete: chapter 4 card', s.mode === 'card' && s.world.ch === 5, 'mode=' + s.mode + ' ch=' + s.world.ch);
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(8);
+
+  // CHAPTER 5 — DOWNSTAIRS: stairs, Oma, the patch, the Promise.
+  await page.evaluate(() => window.__hss.gotoArea('barnIn', 14, 6));
+  await page.evaluate(() => { player.dir = 'up'; });
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(10);
+  s = await S();
+  check('the stair project begins', s.world.flags.stairsDay != null, 'stairsDay=' + s.world.flags.stairsDay);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(8);
+  s = await S();
+  check('the stairs are done at dawn; Oma is coming', s.world.flags.stairsBuilt === true && s.world.step === 1, 'built=' + s.world.flags.stairsBuilt + ' step=' + s.world.step);
+  await page.evaluate(() => { const sv = __hss.debugSave(); sv.world.step = 2; __hss.setSave(sv); });
+  await page.evaluate(() => { for (let i = 0; i < 12; i++) patchInteract(); });
+  await dismissDialogue(12);
+  s = await S();
+  check('the patch: netting up, two blackberries in real ground', s.field.protoNet === true && s.plants.filter(p => p.variety === 'BLACKBERRY' && p.location === 'GARDEN').length === 2 && s.world.step === 3, 'bb=' + s.plants.filter(p => p.variety === 'BLACKBERRY').length + ' step=' + s.world.step);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('the patch fights back: WEEDS 35/26', s.mode === 'trial' && s.trial && s.trial.foe === 'WEEDS' && s.trial.maxPressure === 35 && s.trial.maxVigor === 26, JSON.stringify(s.trial && { f: s.trial.foe, mp: s.trial.maxPressure, mv: s.trial.maxVigor }));
+  await page.evaluate(() => { trial.pressure = 3; });
+  await page.waitForTimeout(1400);
+  await tap('z'); await page.waitForTimeout(250); // DEFEND
+  await page.keyboard.down('ArrowDown'); await page.waitForTimeout(90); await page.keyboard.up('ArrowDown');
+  await tap('z'); await page.waitForTimeout(1600); // DIG IN breaks the root armour
+  await dismissDialogue(8);
+  s = await S();
+  check('the patch settles: step 4, visit Oma', s.world.step === 4 && s.mode === 'overworld', 'step=' + s.world.step + ' mode=' + s.mode);
+  await page.evaluate(() => window.__hss.gotoArea('oma', 5, 5));
+  await page.evaluate(() => { player.dir = 'up'; });
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(12);
+  s = await S();
+  check("oma's promise is written in the register", s.promise === true && s.mode === 'card' && s.world.ch === 6, 'promise=' + s.promise + ' mode=' + s.mode + ' ch=' + s.world.ch);
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(8);
+
   // a save written in the oldest formats still loads: pots as a bare stage
   // int and as {stage, waterDays} objects both migrate to named plants
   await page.evaluate(() => {
