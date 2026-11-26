@@ -50,6 +50,7 @@ ctx.imageSmoothingEnabled = false;
 function textW(s, sc) { return s.length ? s.length * 4 * sc - sc : 0; }
 function drawText(s, x, y, color, sc) {
   sc = sc || 1; s = String(s).toUpperCase();
+  x = Math.round(x); y = Math.round(y); // fractional coords smear the 1px font into half-cut glyphs
   ctx.fillStyle = color;
   for (let i = 0; i < s.length; i++) {
     const g = FONT[s[i]]; if (!g) continue;
@@ -161,9 +162,14 @@ TILES.door = tileCanvas(c => {
   c.fillStyle = '#ffd94a'; c.fillRect(11, 9, 2, 2);
 });
 TILES.bench = tileCanvas(c => {
-  c.fillStyle = '#a5713d'; c.fillRect(0, 5, 16, 4);
-  c.fillStyle = '#8a5a30'; c.fillRect(0, 8, 16, 1); c.fillRect(2, 9, 2, 7); c.fillRect(12, 9, 2, 7);
-  c.fillStyle = '#c08b4d'; c.fillRect(0, 5, 16, 1);
+  // garden bench: two slats, short legs, and a mulched planting bed at its base
+  c.fillStyle = '#c08b4d'; c.fillRect(0, 3, 16, 1);
+  c.fillStyle = '#a5713d'; c.fillRect(0, 4, 16, 2); c.fillRect(0, 7, 16, 2);
+  c.fillStyle = '#8a5a30'; c.fillRect(0, 6, 16, 1); c.fillRect(0, 9, 16, 1);
+  c.fillStyle = '#6f4520'; c.fillRect(2, 10, 2, 2); c.fillRect(12, 10, 2, 2);
+  c.fillStyle = '#6f4520'; c.fillRect(0, 12, 16, 4);
+  c.fillStyle = '#8a5a30'; c.fillRect(2, 13, 2, 1); c.fillRect(8, 14, 2, 1); c.fillRect(13, 13, 2, 1);
+  c.fillStyle = '#54c95e'; c.fillRect(5, 12, 1, 1); c.fillRect(11, 14, 1, 1);
 });
 TILES.compost = tileCanvas(c => {
   c.fillStyle = '#6f4520'; c.fillRect(1, 4, 14, 12);
@@ -438,19 +444,19 @@ const MAP = [
 'nfRRRRRRRRRRRRRRRRRRRRfn',
 'nfWWiWWWWWWWWWWiWWWWWWfn',
 'nfWWWWWWWWWDWWWWWWWWWWfn',
-'nfgggggggggpggggggggggfn',
-'nfgggggggggpggggggggggfn',
-'nfggTggggggpggggggggggfn',
-'nfgggggggoopggggggggTgfn',
-'nfgggggggggpggggggggggfn',
-'nfgggggggggpggggggggggfn',
-'nfgggggggBBBBBBgggggggfn',
-'nfgggggggggggggggggCggfn',
-'nfggTgggggggggggggggggfn',
-'nfggggggggggggggggTgggfn',
-'nfggggooggggggggggggggfn',
-'nfggggggggggggggggggggfn',
-'nfggggggggggggggggggggfn',
+'nfoouogoouopouoogouooufn',
+'nfugoguggggpgugogugggofn',
+'nfggTggugggpggguggggggfn',
+'nfgugggggoopggggugggTgfn',
+'nfoogugggggpggggguggogfn',
+'nfoggggugggpgugggggggufn',
+'nfgogggggBBBBBBggggoggfn',
+'nfgguggggggggggggggCggfn',
+'nfggTggoogggggugggggggfn',
+'nfguggggggggggggggTgggfn',
+'nfggggooggggggggggooggfn',
+'nfuggugggggggggggugggufn',
+'nfggggoggggggoggggggggfn',
 'nfHHHHHHHHHGGHHHHHHHHHfn',
 ];
 const MAP_W = 24, MAP_H = 18;
@@ -1046,14 +1052,11 @@ function renderOverworld() {
   ents.push({ y: alvin.py, draw: () => charSprite(alvin, ALVIN_DOWN, ALVIN_DOWN, ALVIN_SIDE) });
   ents.push({ y: player.py, draw: () => charSprite(player, FRANK_DOWN, FRANK_UP, FRANK_SIDE) });
   ents.sort((a, b) => a.y - b.y).forEach(e => e.draw());
-  // HUD
+  // HUD (no persistent objective banner: it overlapped the bench/pots at the
+  // bottom of the frame. The objective lives in the pause menu, and the
+  // tutorial steps are taught through dialogue.)
   ctx.fillStyle = 'rgba(20,26,20,0.8)'; ctx.fillRect(2, 2, 34, 9);
   drawText('DAY ' + G.save.day, 4, 4, '#ffffff', 1);
-  if (G.save.tutorial === 1 || G.save.tutorial === 2) {
-    const o = objective();
-    ctx.fillStyle = 'rgba(20,26,20,0.85)'; ctx.fillRect(0, VH - 10, VW, 10);
-    drawText(o, 80 - textW(o, 1) / 2, VH - 8, '#ffd94a', 1);
-  }
 }
 
 /* ============================== RENDER: TRIAL ============================== */
@@ -1129,11 +1132,11 @@ function renderCard() {
   drawText('CHAPTER COMPLETE', 80 - textW('CHAPTER COMPLETE', 1) / 2, 78, '#cfe8cf', 1);
   drawText('SEEDS', 80 - textW('SEEDS', 2) / 2, 87, '#ffd94a', 2);
   const teaser = wrapText('SIX POTS. NO LAND. ONE VERY PATIENT BEGINNING.', 34);
-  teaser.forEach((l, i) => drawText(l, 80 - textW(l, 1) / 2, 101 + i * 7, '#ffffff', 1));
+  teaser.forEach((l, i) => drawText(l, 80 - textW(l, 1) / 2, 99 + i * 8, '#ffffff', 1));
   const l = 'KEEP TENDING (A)';
-  ctx.fillStyle = '#ffd94a'; ctx.fillRect(80 - textW(l, 1) / 2 - 4, 112, textW(l, 1) + 8, 9);
-  drawText(l, 80 - textW(l, 1) / 2, 114, '#20242a', 1);
-  drawText('HEAR CHAPTER 1:', 80 - textW('HEAR CHAPTER 1:', 1) / 2, 125, '#cfe8cf', 1);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(Math.round(80 - textW(l, 1) / 2 - 4), 114, textW(l, 1) + 8, 9);
+  drawText(l, 80 - textW(l, 1) / 2, 116, '#20242a', 1);
+  drawText('HEAR CHAPTER 1:', 80 - textW('HEAR CHAPTER 1:', 1) / 2, 127, '#cfe8cf', 1);
 }
 function menuUpdate() {
   if (Input.bHit || Input.startHit) { mode = 'overworld'; return; }
@@ -1205,7 +1208,7 @@ function render() {
   if (fade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, fade)})`; ctx.fillRect(0, 0, VW, VH); }
   if (toastT > 0) {
     ctx.fillStyle = 'rgba(20,26,20,0.9)'; const w = textW(toastMsg, 1) + 10;
-    ctx.fillRect(80 - w / 2, 4, w, 11);
+    ctx.fillRect(Math.round(80 - w / 2), 4, w, 11);
     drawText(toastMsg, 80 - textW(toastMsg, 1) / 2, 7, '#ffffff', 1);
   }
 }
