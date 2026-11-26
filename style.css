@@ -1,0 +1,53 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: #14251a;
+  background-image: radial-gradient(circle at 50% 35%, #1d3a26 0%, #14251a 70%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: monospace; color: #cfe8cf; min-height: 100vh; padding: 12px;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+#frame {
+  position: relative;
+  width: min(96vw, calc(96vh * 160 / 144), 720px);
+  aspect-ratio: 160 / 144;
+  border: 4px solid #0a140d;
+  border-radius: 6px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.55), inset 0 0 0 2px #2c5236;
+  overflow: hidden;
+  background: #000;
+  touch-action: none;
+}
+canvas#game {
+  width: 100%; height: 100%; display: block;
+  image-rendering: pixelated; image-rendering: crisp-edges;
+}
+#audibleBtn {
+  position: absolute; left: 50%; bottom: 3.5%; transform: translateX(-50%);
+  background: #f8f8f8; color: #20242a; border: 2px solid #20242a; border-radius: 3px;
+  padding: 4px 10px; font-family: monospace; font-size: clamp(10px, 2.6vw, 15px);
+  font-weight: bold; text-decoration: none; letter-spacing: 1px; z-index: 5;
+  box-shadow: 0 2px 0 #20242a;
+}
+#audibleBtn:hover { background: #ffe9a8; }
+#stickZone { position: absolute; left: 0; bottom: 0; width: 45%; height: 55%; z-index: 4; }
+#stickBase {
+  position: absolute; width: 84px; height: 84px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.5); background: rgba(255,255,255,.12);
+  transform: translate(-50%, -50%); pointer-events: none;
+}
+#stickKnob {
+  position: absolute; left: 50%; top: 50%; width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(255,255,255,.55); border: 2px solid rgba(255,255,255,.8);
+  transform: translate(-50%, -50%); pointer-events: none;
+}
+#touchBtns { position: absolute; right: 3%; bottom: 5%; z-index: 4; display: flex; gap: 12px; align-items: flex-end; }
+#touchBtns[hidden] { display: none; }
+#touchBtns button {
+  width: 54px; height: 54px; border-radius: 50%; border: 2px solid rgba(255,255,255,.7);
+  background: rgba(216, 49, 84, .55); color: #fff; font-family: monospace; font-weight: bold;
+  font-size: 18px; pointer-events: auto;
+}
+#touchBtns #btnB { background: rgba(70, 90, 200, .55); margin-bottom: -8px; }
+#touchBtns button:active { filter: brightness(1.4); }
+#hint { margin-top: 10px; font-size: 12px; opacity: .75; text-align: center; }
