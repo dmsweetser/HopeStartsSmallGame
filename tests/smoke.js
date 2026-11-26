@@ -612,10 +612,11 @@ function findChromium() {
       const P = window.__seam;
       if (P.on) {
         try {
-          const d = cx.getImageData(0, 0, 160, 144).data;
+          const W = cv.width, H = cv.height; // the canvas bitmap (320x288 since the hi-res pass)
+          const d = cx.getImageData(0, 0, W, H).data;
           let seam = false;
-          for (let x = 0; x < 160 && !seam; x++) { let n = 0; for (let y = 0; y < 144; y++) { const i = (y * 160 + x) * 4; if (d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 0) n++; } if (n >= 110) seam = true; }
-          for (let y = 0; y < 144 && !seam; y++) { let n = 0; for (let x = 0; x < 160; x++) { const i = (y * 160 + x) * 4; if (d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 0) n++; } if (n >= 140) seam = true; }
+          for (let x = 0; x < W && !seam; x++) { let n = 0; for (let y = 0; y < H; y++) { const i = (y * W + x) * 4; if (d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 0) n++; } if (n >= Math.floor(H * 0.76)) seam = true; }
+          for (let y = 0; y < H && !seam; y++) { let n = 0; for (let x = 0; x < W; x++) { const i = (y * W + x) * 4; if (d[i] === 0 && d[i + 1] === 0 && d[i + 2] === 0) n++; } if (n >= Math.floor(W * 0.875)) seam = true; }
           P.frames++;
           if (player.moving || alvin.moving) P.moving++;
           if (camX !== Math.round(camX) || camY !== Math.round(camY)) P.fracCam++;
