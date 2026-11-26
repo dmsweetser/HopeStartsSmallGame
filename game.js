@@ -1354,24 +1354,25 @@ function drawDlg() {
 const DEER_POS = { x: 18, y: 8 };
 const MORNING_LINES = [
   'A NEW DAY. THE POTS ARE RIGHT WHERE YOU LEFT THEM. THAT IS THE DEAL.',
-  'MORNING. WATER FIRST, THEN EVERYTHING ELSE.',
+  'FRANK WAS UP BEFORE THE SUN. THE POTS HAVE ALREADY HEARD THE SPEECH.',
   'THE YARD IS QUIET. SOMEWHERE, A SEED IS MAKING UP ITS MIND.',
   'ALVIN DID HIS ROUNDS BEFORE YOU WERE EVEN AWAKE.',
 ];
 const MORNING_FORE = [
   'ALVIN STARED AT THE FENCE A LONG TIME THIS MORNING.',
-  'FRESH TRACKS BY THE FENCE. SMALL, POINTED, UNINVITED.',
+  'TRACKS BY THE FENCE AGAIN. THE NEIGHBORHOOD DEER FEAR NOTHING AND NO ONE.',
   'ALVIN STARED AT THE FENCE A LONG TIME THIS MORNING.',
 ];
 const CONSTANCE_LINES = [
   'CONSTANCE: SIX POTS AND NO FIELD. WE HAVE DONE MORE WITH LESS, LOVE.',
   'CONSTANCE: THE FRIDGE SEEDS ARE NAPPING. FRANK TUCKED THEM IN. TUCKED. THEM. IN.',
   'CONSTANCE: HE TALKS TO THE POTS EVERY MORNING. THE POTS, TO THEIR CREDIT, LISTEN BEAUTIFULLY.',
-  'CONSTANCE: ONE DAY THIS YARD WILL BE TOO SMALL FOR HIS DREAMS. I GIVE IT A YEAR, TOPS.',
+  'CONSTANCE: THERE ARE WHOLE BOOKS ON GROWING THESE, FRANK. HE PREFERS TO LEARN WITH HIS HANDS.',
+  'CONSTANCE: A GARDEN IS A GLORIOUS THING, AND IT IS WORK. I KEEP TELLING HIM. HE KEEPS SMILING.',
 ];
 function objective() {
   const s = G.save;
-  if (s.tutorial === 1) return 'THE GRAND PLAN: A SEED IN EVERY POT (A)';
+  if (s.tutorial === 1) return 'THE GRAND PLAN: SIX POTS, SIX PROMISES (A)';
   if (s.tutorial === 2) return 'A DRINK FOR EACH POT: A AT A POT';
   if (s.chapterDone) return 'FREE TENDING. BERRYHILL COMES LATER.';
   if (s.deerPresent && !s.deerBeaten) return 'A DEER IS IN THE YARD! FACE IT, PRESS A';
@@ -1479,7 +1480,7 @@ function interact() {
     return say('THE COMPOST PILE. YESTERDAY\'S SCRAPS, TOMORROW\'S GARDEN.');
   }
   if (ch === 'G') return say('THE GATE STICKS. BEYOND IT: MOWED LAWNS AND ORDINARY LIFE.');
-  if (ch === 'T') return say('TOO MUCH SHADE HERE. THE BOOK OF TREES WAS WRITTEN BY BIRDS.');
+  if (ch === 'T') return say('TOO MUCH SHADE HERE. A FIELD NEEDS OPEN SKY, AND TIME.');
 }
 function potInteract(pi) {
   const s = G.save, p = s.pots[pi];
@@ -1490,13 +1491,13 @@ function potInteract(pi) {
       s.tutorial = 2; saveGame();
       return say([
         'PLANTED! SIX LITTLE PROMISES IN PEAT.',
-        'FRANK: AND EVERY PROMISE NEEDS A NAME. I HAVE GIVEN THIS SOME THOUGHT.',
+        'FRANK: A FIELD NEEDS A ROLL, AND EVERY PROMISE NEEDS A NAME. I HAVE GIVEN THIS SOME THOUGHT.',
         'FRANK: ADMIRAL! CAPTAIN! GENERAL! HOPE! PATIENCE! PROFESSOR! ROLL CALL COMPLETE.',
         'CONSTANCE: HE NAMED THE SEEDS, ALVIN. ALPHABETICALLY. THERE WAS A ROSTER.',
-        'A DRINK FOR EACH NEW FRIEND: PRESS A AT A POT TO WATER IT.',
+        'NOW, A DRINK FOR EACH NEW FRIEND. PRESS A AT A POT TO WATER.',
       ]);
     }
-    return say('YOU PLANT A BLUEBERRY SEED. SMALL AS A SECRET.');
+    return say('ANOTHER SEED TUCKED INTO PEAT. SMALL AS A SECRET.');
   }
   if (!p.watered) {
     p.watered = true; saveGame();
@@ -1504,9 +1505,9 @@ function potInteract(pi) {
       s.tutorial = 3; saveGame();
       return say(['CONSTANCE: NOW WE WAIT. FRANK HAS ALREADY NAMED ALL SIX. IT IS DAY ONE.', 'REST AT THE HOUSE DOOR TO PASS THE DAY. WATER AGAIN TOMORROW.']);
     }
-    return say(p.stage === 1 ? 'YOU WATER THE SEED. DREAM BIG, LITTLE ONE.' : 'YOU WATER THE ' + STAGE_NAMES[p.stage] + '. STEADY DOES IT.');
+    return say(p.stage === 1 ? 'YOU WATER THE SEED. GROW WELL, LITTLE ONE. NO RUSH.' : 'YOU WATER THE ' + STAGE_NAMES[p.stage] + '. STEADY DOES IT.');
   }
-  return say('ALREADY WATERED TODAY. EVEN PLANTS NEED A PACE.');
+  return say('ALREADY WATERED TODAY. WAITING IS MOST OF THE WORK.');
 }
 function restDay() {
   fading = 'dawn'; fade = 1;
@@ -1527,7 +1528,7 @@ function dawn() {
   if (checkChapter()) return;
   let line;
   if (sprouted && s.deerPresent && !s.deerBeaten) line = 'SOMETHING SPROUTED! BUT ALVIN IS BARKING AT THE FENCE... A DEER IS IN THE YARD!';
-  else if (sprouted) line = 'SOMETHING SPROUTED IN THE NIGHT! GO LOOK!';
+  else if (sprouted) line = 'TWO SMALL LEAVES IN THE NIGHT! COME AND SEE!';
   else if (seedled) line = 'A SPROUT BECAME A SEEDLING OVERNIGHT. LEAVES AND EVERYTHING.';
   else if (s.day >= 2 && !s.deerBeaten) line = MORNING_FORE[Math.floor(Math.random() * MORNING_FORE.length)];
   else line = MORNING_LINES[Math.floor(Math.random() * MORNING_LINES.length)];
@@ -1548,12 +1549,13 @@ function startIntro() {
   alvin.tx = 10; alvin.ty = 7; syncPixels(alvin);
   constance.tx = 12; constance.ty = 6; constance.dir = 'left';
   say([
-    'CONSTANCE: YOUR SEEDS CAME, FRANK. REAL BLUEBERRY SEEDS. THE MAILMAN LOOKS WORRIED.',
-    'FRANK: LET HIM. SOME OF THESE GO IN THE FRIDGE, TO CHILL AND DREAM OF SPRING.',
-    'CONSTANCE: SEEDS THAT NEED A NAP BEFORE THEY GROW. THEY WILL FIT RIGHT IN HERE.',
-    'FRANK: AND THESE SIX START TODAY! PEAT POTS, SUNSHINE, AND A LITTLE SPEECH I PREPARED.',
-    'CONSTANCE: HE REHEARSED THE SPEECH, ALVIN. TWICE. I COUNTED.',
-    'FRANK: WE HAVE NO FIELD YET, LOVE. SO THEY WILL GROW WHERE THEY ARE PLANTED. LIKE THE REST OF US.',
+    'CONSTANCE: YOUR SEEDS CAME, FRANK. SMALLER THAN I EXPECTED. SMALLER THAN SESAME SEEDS.',
+    'FRANK: SMALLER THAN A SNEEZE, LOVE. ONE GOOD SNEEZE AND THE WHOLE FIELD IS GONE.',
+    'FRANK: HALF OF THEM GO IN THE FRIDGE, TO SLEEP THROUGH A LITTLE WINTER AND WAKE UP READY.',
+    'CONSTANCE: AND THE OTHER HALF?',
+    'FRANK: PEAT POTS. TODAY. THE PACKET AND I HAVE OUR DIFFERENCES, SO WE HEDGE OUR BETS.',
+    'CONSTANCE: SIX POTS, THEN. I WILL PRETEND THIS IS A NORMAL SIZE FOR A DREAM.',
+    'FRANK: IT IS NOT THE SIZE OF THE START, LOVE. IT IS THAT WE START. THE FIELD WILL FIND US.',
     'ALVIN WAGS HIS WHOLE BACK HALF. HE HAS APPOINTED HIMSELF SUPERVISOR.',
     'WALK WITH THE ARROWS. PRESS A AT A PEAT POT TO PLANT A SEED.',
   ], () => { G.save.tutorial = 1; saveGame(); });
@@ -1656,7 +1658,7 @@ function deerAct() {
   if (t.armor) dmg = Math.max(1, dmg - 2);
   if (t.shield) { dmg = Math.floor(dmg / 2); t.shield = false; }
   t.vigor = Math.max(0, t.vigor - dmg);
-  if (name === 'STARE') trialSetMsg('DEER USED STARE. ALVIN STARES RIGHT BACK. (-' + dmg + ')');
+  if (name === 'STARE') trialSetMsg('DEER USED STARE. IT IS NOT AFRAID OF YOU. IT IS NOT AFRAID OF ANYONE. (-' + dmg + ')');
   else trialSetMsg('DEER USED ' + name + '! IT GETS AT ALVIN. (-' + dmg + ')');
   if (t.vigor <= 0) { t.over = true; t.result = 'lose'; }
   t.foeTurn = false;
@@ -1671,7 +1673,7 @@ function endTrial() {
     if (p.stage > 1) { p.stage--; if (p.stage < 3) p.seedlingDay = null; if (p.stage < 2) p.sproutedDay = null; }
     p.wateredDays = 0; p.vigor = MAX_VIGOR[p.stage] || 0;
     saveGame();
-    say('THE DEER GOT PAST ALVIN AND NIBBLED THE SPROUT BACK. IT WILL TRY AGAIN. SO WILL YOU.', () => { fading = 'dawn'; fade = 1; setTimeout(dawn, 350); });
+    say('THE DEER GOT PAST ALVIN AND MOWED THE SPROUT DOWN. IT WILL GROW BACK. SO WILL YOU.', () => { fading = 'dawn'; fade = 1; setTimeout(dawn, 350); });
   }
 }
 function trialSnapshot() {
@@ -2040,7 +2042,7 @@ function renderCard() {
   drawSceneBanner(2, true);
   drawText('CHAPTER COMPLETE', 80 - textW('CHAPTER COMPLETE', 1) / 2, 70, '#cfe8cf', 1);
   drawText('SEEDS', 80 - textW('SEEDS', 2) / 2, 78, '#ffd94a', 2);
-  const teaser = wrapText('SIX POTS. NO LAND. ONE VERY PATIENT BEGINNING.', 34);
+  const teaser = wrapText('SIX POTS, SIX PROMISES. NO LAND YET — BUT A START.', 34);
   teaser.forEach((l, i) => drawText(l, 80 - textW(l, 1) / 2, 91 + i * 7, '#ffffff', 1));
   // the roll call: the six, named, cycling two at a time so it never crowds
   const names = G.save.pots.map(p => p.name);
