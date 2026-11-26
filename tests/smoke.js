@@ -1142,6 +1142,67 @@ function findChromium() {
   await tap('z'); await page.waitForTimeout(300);
   await dismissDialogue(8);
 
+  // CHAPTER 9 — THE FORSYTHIA: first yellow, the spectacular one,
+  // and the late frost in three nights.
+  await page.evaluate(() => window.__hss.gotoArea('oma', 5, 5));
+  await page.evaluate(() => { player.dir = 'up'; });
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(8);
+  s = await S();
+  check('oma directs the forsythia, and keeps its name till the hole is dug', s.world.flags.forsythiaReady === true, '');
+  await page.evaluate(() => window.__hss.forsythia());
+  await dismissDialogue(8);
+  s = await S();
+  const vesper = s.plants.find(p => p.name === 'VESPER');
+  check('vesper: the one plant Frank did not name', !!vesper && vesper.giftName === true && s.world.step === 1, 'vesper=' + !!vesper);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(8);
+  s = await S();
+  check('first yellow: Oma sees it first, and the field answers in blossom', s.world.flags.forsythiaBloomed === true && s.plants.some(p => p.row && p.stage === 5), 'bloomed=' + s.world.flags.forsythiaBloomed);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(8);
+  s = await S();
+  const spec1 = s.plants.find(p => p.name === s.world.flags.spectacular);
+  check('the spectacular one, covered in blossom', !!spec1 && spec1.history.includes('COVERED IN BLOSSOM, SPRING YEAR 3') && s.world.step === 2, 'spec=' + s.world.flags.spectacular);
+  const frostNight = async (watch) => {
+    if (watch) await page.evaluate(r => window.__hss.setFrostWatch(r), watch);
+    await page.evaluate(() => window.__hss.waterEverything());
+    await page.evaluate(() => window.__hss.advanceDay());
+  };
+  await frostNight(1);
+  s = await S();
+  check('the late frost, night 1: FROST 45/32 at the watched row', s.mode === 'trial' && s.trial && s.trial.foe === 'FROST' && s.trial.maxPressure === 45 && s.trial.maxVigor === 32, JSON.stringify(s.trial && { mp: s.trial.maxPressure, mv: s.trial.maxVigor }));
+  await page.evaluate(() => { trial.pressure = 3; });
+  await page.waitForTimeout(1400);
+  await tap('z'); await page.waitForTimeout(250);
+  await tap('z'); await page.waitForTimeout(1600);
+  await dismissDialogue(8);
+  await frostNight(2);
+  s = await S();
+  check('night 2 comes for row 2', s.mode === 'trial' && s.trial && s.trial.maxPressure === 45, 'mode=' + s.mode);
+  await page.evaluate(() => { trial.pressure = 3; });
+  await page.waitForTimeout(1400);
+  await tap('z'); await page.waitForTimeout(250);
+  await tap('z'); await page.waitForTimeout(1600);
+  await dismissDialogue(8);
+  await frostNight(null);
+  await dismissDialogue(6);
+  s = await S();
+  check('night 3 walks unwatched; the campaign is spent', s.mode === 'overworld' && s.world.flags.frostNight === 3, 'night=' + s.world.flags.frostNight + ' mode=' + s.mode);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(8);
+  s = await S();
+  check('the reckoning: watched-and-won sets 90, unwatched 50', s.rows[0].fruitSet === 90 && s.rows[2].fruitSet === 50, 'r1=' + s.rows[0].fruitSet + ' r3=' + s.rows[2].fruitSet);
+  await page.evaluate(() => window.__hss.waterEverything());
+  await page.evaluate(() => window.__hss.advanceDay());
+  s = await S();
+  check('the forsythia chapter closes: card, chapter 10', s.mode === 'card' && s.world.ch === 10, 'mode=' + s.mode + ' ch=' + s.world.ch);
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(8);
+
   // a save written in the oldest formats still loads: pots as a bare stage
   // int and as {stage, waterDays} objects both migrate to named plants
   await page.evaluate(() => {

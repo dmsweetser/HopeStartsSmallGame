@@ -1531,6 +1531,10 @@ function npcTalk(npc) {
     if (w.ch === 5 && w.step === 4 && !s.promise) {
       return say(['OMA: FRANK. SIT. NO — STAND THERE, THE LIGHT IS BETTER AND I WANT TO SEE YOUR FACE FOR THIS.', 'OMA: I AM AN OLD WOMAN, AND I HAVE DECIDED SOMETHING, AND DECIDING IS A YOUNG PERSON\'S GAME SO I AM DOING IT QUICKLY.', 'OMA: I WILL STAY. HERE, IN MY ROOM WITH ITS OWN DOOR, UNTIL I TASTE THE FIRST WINE MADE FROM THIS FIELD\'S FRUIT. THAT IS MY PROMISE. WRITE IT IN YOUR BOOK.', 'FRANK WRITES IT IN THE REGISTER, IN HIS BEST HAND: OMA\'S PROMISE. THE JAR, FOR NOW, IS EMPTY.', 'OMA: NOW GO AND GROW ME A FIELD. I WILL BE HERE. I HAVE DECIDED.'], () => { s.promise = true; saveGame(); completeChapter(5); });
     }
+    if (w.ch === 9 && w.step === 0 && !w.flags.forsythiaReady) {
+      w.flags.forsythiaReady = true; saveGame();
+      return say(['OMA: THE FORSYTHIA, FRANK. IT HAS SAT IN ITS POT BY MY DOOR LONG ENOUGH, PATIENT AS A RELATIVE AT A WEDDING.', 'OMA: CARRY IT PAST MY WINDOW — SLOWLY, I WANT THE FULL PROCESSION — AND PLANT IT WHERE I SHOW YOU. I HAVE NAMED IT ALREADY. YOU WILL FIND OUT WHEN IT IS IN THE GROUND. SOME THINGS A WOMAN KEEPS UNTIL THE HOLE IS DUG.']);
+    }
     if (w.ch === 8 && w.step === 4 && !w.flags.butterflyReady) {
       w.flags.butterflyReady = true; saveGame();
       return say(['OMA: THE BUTTERFLY BUSH FROM THE OLD YARD, FRANK. IT SURVIVED THE SALE, THE MOVE, AND A WINTER IN A POT BY MY DOOR, OUT OF SPITE AND GOOD ROOTS.', 'OMA: PLANT IT BY MY PATIO. TODAY. I WILL DIRECT FROM THE DOOR, AND I WILL BE RIGHT ABOUT THE SPOT, AND YOU WILL PRETEND TO DECIDE AND THEN CHOOSE IT.', 'SHE DOES NOT SAY WHY TODAY. THE REGISTER KNOWS: IT IS THE ANNIVERSARY. SOME DATES A HOUSE KEEPS QUIETLY, IN ITS BONES.']);
@@ -1615,6 +1619,13 @@ function barnInteract(f) {
     if (w.ch >= 4) {
       if (player.ty >= 13) {
         if (w.ch === 6 && w.step === 5) return say('THE PLANTING GATE. THE FIELD, THE REGISTER, AND FRANK ALL CHECK THE SAME LIST.', which => { if (which === 0) doPlanting(); if (which === 1) say(['THE LIST, AS THE FIELD KEEPS IT:', ...(plantingGate().length ? plantingGate().map(m => '— ' + m) : ['— NOTHING. IT IS TIME.'])]); }, ['PLANTING DAY', 'READ THE LIST', 'NOT YET']);
+        if (w.ch === 9 && w.step === 2) {
+          const rowsWithPlants = [1, 2, 3, 4, 5, 6, 7].filter(rn => s.plants.some(p => !p.memorial && p.row === rn));
+          const opts = rowsWithPlants.map(rn => 'WATCH ROW ' + rn);
+          return say('THE FROST WATCH. ONE ROW A NIGHT GETS ALVIN. THE REST GET PRAYERS AND WHATEVER THE NIGHT DECIDES. TONIGHT\'S WATCH: ' + (w.flags.watchTonight ? 'ROW ' + w.flags.watchTonight : 'UNSET') + '.', which => {
+            if (which < rowsWithPlants.length) { w.flags.watchTonight = rowsWithPlants[which]; saveGame(); say('ROW ' + rowsWithPlants[which] + ' TONIGHT. ALVIN HAS BEEN TOLD. HE HAS OPINIONS ABOUT THE OTHER ROWS, AND IS KEEPING THEM PROFESSIONALLY TO HIMSELF.'); }
+          }, [...opts, 'LEAVE IT UNSET']);
+        }
         return say('BACK TO THE YARD?', which => { if (which === 0) { player.tx = 13; player.ty = 11; syncPixels(player); alvin.tx = 13; alvin.ty = 12; syncPixels(alvin); } }, ['CLIMB BACK', 'STAY']);
       }
       return say('THE FIELD GATE. IT SWINGS BOTH WAYS NOW, LIKE A DECISION THAT HAS BEEN MADE.', which => { if (which === 0) { player.tx = 13; player.ty = 13; syncPixels(player); alvin.tx = 13; alvin.ty = 12; syncPixels(alvin); if (w.ch === 4 && w.step === 0) stakeField(); } }, ['ENTER THE FIELD', 'NOT YET']);
@@ -1626,6 +1637,7 @@ function barnInteract(f) {
   if (w.ch >= 8 && f.x === 4 && f.y === 10) return burnPileInteract();
   if (w.ch >= 8 && (w.step || 0) >= 3 && !w.flags.strawDone && ((f.x === 4 || f.x === 5) && f.y === 5)) return strawberryInteract();
   if (w.ch >= 8 && w.flags.butterflyReady && !w.flags.butterflyPlanted && f.x === 19 && f.y === 5) return butterflyPlant();
+  if (w.ch === 9 && w.step === 0 && w.flags.forsythiaReady && !w.flags.forsythiaPlanted && f.x === 17 && f.y === 5) return forsythiaPlant();
   if (w.ch >= 6 && f.y === 12) return fenceInteract(f);
   if (w.ch >= 6 && f.y >= 13) return fieldInteract(f);
   if (w.ch >= 4 && (f.x === 6 || f.x === 7) && f.y === 5) return irisInteract();
@@ -1942,7 +1954,7 @@ function fieldInteract(f) {
     return say('ROW ' + rn + ': ' + inRow.length + ' BUSHES. ' + (row.mulched ? 'MULCHED. ' : 'UNMULCHED. ') + (lv > 0 ? 'WEEDS AT LEVEL ' + lv + ' IN THIS SECTION. ' : 'THE SECTION IS CLEAN. ') + inRow.map(p => p.name).slice(0, 4).join(', ') + (inRow.length > 4 ? '…' : ''), which => {
       const pick = opts[which];
       if (pick && pick.startsWith('PULL')) pullWeeds(sec);
-      else if (pick === 'WATER THE ROW') { inRow.forEach(waterPlant); row.watered = true; saveGame(); say('ROW ' + rn + ' WATERED, BUSH BY BUSH, NAME BY NAME.'); }
+      else if (pick === 'WATER THE ROW') { inRow.forEach(waterPlant); row.watered = true; if (w.ch === 9 && w.step <= 2) { (w.flags.blossomWatered = w.flags.blossomWatered || {})[rn] = true; } saveGame(); say('ROW ' + rn + ' WATERED, BUSH BY BUSH, NAME BY NAME.'); }
       else if (pick === 'MULCH IT (3 CARTS)') mulchRow(rn);
       else if (pick === 'FEED THE ROW (9 COMPOST)') feedRow(rn);
     }, opts);
@@ -2277,6 +2289,107 @@ TRIAL_OUTCOMES.weedsLongWar = {
     say(['THE TIDE KEEPS THE SECTION TONIGHT. THE WEEDS ARE NOT SORRY, AND THEY WILL BE BACK AT DAWN.', 'SO WILL ALVIN. IT IS, AS CONSTANCE SAYS, A LONG WAR — AND LONG WARS ARE WON BY THE SIDE THAT KEEPS SHOWING UP.']);
   },
 };
+function forsythiaPlant() {
+  const s = G.save, w = s.world;
+  const p = freshPlant('VESPER', { variety: 'FORSYTHIA', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: s.day, giftName: true, history: ['OMA NAMED IT. FRANK ONLY DUG.', 'CARRIED PAST HER WINDOW TO THE SPOT SHE CHOSE'] });
+  s.plants.push(p);
+  if (!s.dex.garden.includes('FORSYTHIA')) s.dex.garden.push('FORSYTHIA');
+  w.flags.forsythiaPlanted = true; w.step = 1; saveGame();
+  return say(['THE FORSYTHIA GOES IN WHERE OMA DIRECTED — IN SIGHT OF HER WINDOW, ON THE PATH SHE WALKS, WHERE SPRING WILL HAVE TO INTRODUCE ITSELF TO HER FIRST.', 'SHE NAMED IT HERSELF, FROM THE DOOR, WITHOUT BEING ASKED TWICE: VESPER. BECAUSE IT WILL GLOW AT DUSK, SHE SAYS, LIKE A LAMP LIT FOR VESPERS.', 'FRANK DIGS. THE NAMING, FOR ONCE, WAS NOT HIS TO DO, AND THE HOLE IS BETTER FOR IT.']);
+}
+function ch9Opening() {
+  say(['YEAR THREE PUTS ON ITS COAT. THE FIELD HAS SURVIVED A WAR AND A WINTER, AND THE BUSHES ARE ROUND WITH BUDS LIKE HELD BREATH.', 'OMA HAS A REQUEST, AND A SPOT PICKED OUT, AND A NAME READY. VISIT HER.']);
+}
+function ch9Dawn(ev) {
+  const s = G.save, w = s.world;
+  if (w.step === 1 && !w.flags.forsythiaBloomed) {
+    w.flags.forsythiaBloomed = true;
+    const f = s.plants.find(p => p.variety === 'FORSYTHIA');
+    if (f) f.stage = 5;
+    for (const p of s.plants) if (!p.memorial && p.row && p.stage === 4) { p.stage = 5; if (!p.blossomDay) p.blossomDay = s.day; }
+    saveGame();
+    return ['FIRST YELLOW.', 'OMA SEES IT FIRST — FROM HER WINDOW, BEFORE ANYONE IS AWAKE TO BE TOLD: THE FORSYTHIA, LIT LIKE A LAMP SOMEONE LEFT ON FOR A TRAVELLER.', 'AND THEN, ROW BY ROW, THE FIELD ANSWERS: CLIMAX FIRST, THEN ECHO, THEN CHANDLER — BLOSSOM, ALL OVER, ALL AT ONCE, LIKE THE WHOLE FIELD EXHALED.', 'BEES ARRIVE FROM NOWHERE IN PARTICULAR AND GET STRAIGHT TO WORK. WATER THE ROWS THIS WEEK. BLOSSOM IS THIRSTY WORK.'];
+  }
+  if (w.step === 1 && !w.flags.spectacular) {
+    const living = s.plants.filter(p => !p.memorial && p.row);
+    const all = s.plants.filter(p => p.row);
+    const mostAll = all.slice().sort((a, b) => b.tended - a.tended)[0];
+    let target = living.slice().sort((a, b) => (b.tended - a.tended) || (a.slot || 0) - (b.slot || 0))[0];
+    const hope = living.find(p => p.name === 'HOPE');
+    if (hope && living.length && hope.tended >= (target ? target.tended : 0)) target = hope;
+    if (!target) { w.step = 2; return null; }
+    if (target.stage < 5) { target.stage = 5; if (!target.blossomDay) target.blossomDay = s.day; }
+    if (!target.history.includes('COVERED IN BLOSSOM, SPRING YEAR 3')) target.history.push('COVERED IN BLOSSOM, SPRING YEAR 3');
+    w.flags.spectacular = target.name; w.step = 2; saveGame();
+    const lines = [];
+    if (mostAll && mostAll.memorial) lines.push('THE MOST-TENDED OF ALL OF THEM IS A NAME IN THE BACK PAGES NOW. THE MARKER GETS A MOMENT — ONE, GENTLE, BY NAME: ' + mostAll.name + '. THE FIELD REMEMBERS ITS OWN.');
+    lines.push('AND THEN: ' + target.name + ', FOUND AT DAWN COVERED IN BLOSSOM — NOT A LEAF SHOWING, A BUSH MADE ENTIRELY OF FLOWER, LIKE IT WAS TRYING TO BE NOTICED BY HEAVEN.');
+    if (target.history.includes('THE HARD SPRING')) lines.push('CONSTANCE, QUIETLY: THAT ONE NEARLY DIED IN A PLASTIC POT, FRANK. LOOK AT IT. JUST — LOOK AT IT.');
+    lines.push('IT IS WRITTEN IN THE REGISTER IN FRANK\'S BEST HAND: COVERED IN BLOSSOM, SPRING YEAR 3.');
+    lines.push('AND ON THE WIND, FROM THE NORTH, A RUMOUR THE RADIO CONFIRMS BY NOON: A LATE FROST IS COMING. THREE NIGHTS OF IT. SET THE WATCH AT THE FIELD GATE — ONE ROW A NIGHT.');
+    return lines;
+  }
+  if (w.step === 2) {
+    const night = (w.flags.frostNight || 0) + 1;
+    if (night > 3) { // the reckoning: the account first, the card at the next dawn
+      if (w.flags.reckoned) { completeChapter(9); return null; }
+      w.flags.reckoned = true;
+      const lines = ['THE RECKONING OF THE BLOSSOM.'];
+      const losses = s.plants.filter(p => p.memorial && p.cause === 'THE LATE FROST');
+      if (losses.length) lines.push('FIRST, THE LOSSES, BY NAME: ' + losses.map(p => p.name).join(', ') + '. THEY ARE IN THE BACK PAGES NOW, WITH THE REST OF THE TRUTH.');
+      for (let rn = 1; rn <= 7; rn++) {
+        const row = s.cropRows[rn - 1];
+        const inRow = s.plants.filter(p => !p.memorial && p.row === rn);
+        if (!inRow.length) continue;
+        const watched = (w.flags.watchedRows || []).includes(rn);
+        let fs = watched ? ((w.flags.frostResult || {})[rn] === 'win' ? 90 : 40) : 50;
+        if (!watched && night > 3) { const weak = inRow.slice().sort((a, b) => b.health - a.health)[0]; if (weak && weak.health < 3) weak.health++; }
+        if ((w.flags.blossomWatered || {})[rn]) fs += 20;
+        row.fruitSet = Math.max(10, Math.min(100, fs));
+      }
+      saveGame();
+      lines.push('THE FRUIT-SET IS COUNTED AND WRITTEN DOWN, ROW BY ROW. WHAT THE BLOSSOM PROMISED, THE SUMMER WILL NOW BE ASKED TO KEEP.');
+      return lines;
+    }
+    w.flags.frostNight = night;
+    const watch = w.flags.watchTonight;
+    w.flags.watchTonight = null;
+    if (watch) {
+      w.flags.watchedRows = [...(w.flags.watchedRows || []), watch];
+      const inRow = s.plants.filter(p => !p.memorial && p.row === watch);
+      const weak = inRow.slice().sort((a, b) => b.health - a.health)[0];
+      startTrial({ foe: 'FROST', kind: 'frostBlossom', pressure: 45, vigor: 32, snap: true, plantsList: inRow.length ? inRow : sixPlants(), msg: 'THE LATE FROST, NIGHT ' + night + ' OF 3. IT WALKS ROW ' + watch + ' LIKE IT OWNS THE DEED' + (weak ? ' — AND ' + weak.name + ' IS ' + HEALTH_NAMES[weak.health] + ' TONIGHT' : '') + '. ALVIN STANDS IN THE ROW AND DOES NOT BLINK.' });
+      return null;
+    }
+    saveGame();
+    return ['NIGHT ' + night + ' OF THE FROST, AND NO WATCH SET. THE COLD WALKS THE ROWS UNCHALLENGED, CHOOSING LIKE A SHOPPER.', 'THE FRUIT-SET WILL REMEMBER IT. SET THE WATCH AT THE GATE TOMORROW — WHAT IS LEFT OF TOMORROW.'];
+  }
+  return null;
+}
+TRIAL_OUTCOMES.frostBlossom = {
+  win(t) {
+    const s = G.save, w = s.world;
+    const rn = (t.plantsList && t.plantsList[0] && t.plantsList[0].row) || 1;
+    (w.flags.frostResult = w.flags.frostResult || {})[rn] = 'win'; saveGame();
+    say(['THE FROST BREAKS ON ROW ' + rn + ' LIKE A WAVE ON A FENCE POST. THE BLOSSOM HOLDS — SINGED AT THE EDGES, HOLDING.', 'ALVIN COMES IN WITH FROST ON HIS WHISKERS AND THE AIR OF A DOG WHO HAS BEEN SOMEWHERE AND DONE SOMETHING.']);
+  },
+  lose(t, fled) {
+    const s = G.save, w = s.world;
+    const rn = (t.plantsList && t.plantsList[0] && t.plantsList[0].row) || 1;
+    (w.flags.frostResult = w.flags.frostResult || {})[rn] = 'lose';
+    const lines = ['THE FROST TAKES ROW ' + rn + ' FOR THE NIGHT.'];
+    if (!fled) {
+      const weak = (t.plantsList || []).filter(p => !p.memorial).sort((a, b) => b.health - a.health)[0];
+      for (const p of (t.plantsList || [])) {
+        if (p.memorial) continue;
+        p.health++;
+        if (p.health >= 4 || (p === weak && p.health >= 3)) { killPlant(p, 'THE LATE FROST'); lines.push(p.name + ' DID NOT SURVIVE THE NIGHT. IT WILL BE NAMED FIRST IN THE RECKONING, AND IN THE BACK PAGES, WITH HONOUR.'); }
+      }
+    }
+    saveGame();
+    say(lines);
+  },
+};
 function ch4Opening() {
   say(['THE GLASS HOUSE IS SETTLED. THE FAMILY IS SETTLED. WHAT REMAINS IS THE FIELD ITSELF, AND A WINTER TO PLAN IN.', 'STAKES. STRING. A TAPE MEASURE. AND A TOWN CLERK WITH A RULEBOOK — BUT FIRST, THE FIELD. THE GATE SWINGS BOTH WAYS NOW.']);
 }
@@ -2522,6 +2635,13 @@ function renderBerry() {
       // the fence's second run, segment by segment
       ctx.fillStyle = '#c9c2ae';
       for (let sg = 0; sg < 4; sg++) if (s6.field.fenceSeg[sg]) ctx.fillRect((1 + sg * 6) * TILE - camX, 12 * TILE - camY + 12, 6 * TILE, 2);
+      if (s6.world.ch === 9 && (s6.world.step === 1 || s6.world.step === 2)) { // bees, working the blossom
+        ctx.fillStyle = '#ffd94a';
+        for (let bi2 = 0; bi2 < 4; bi2++) {
+          const bx = (3 + bi2 * 6) * TILE - camX + 8 + Math.sin(perfNow / 280 + bi2 * 2.1) * 5, by = 14 * TILE - camY + 6 + Math.cos(perfNow / 340 + bi2) * 3;
+          ctx.fillRect(bx, by, 3, 2); ctx.fillStyle = '#e8e2d2'; ctx.fillRect(bx + 1, by - 1, 1, 1); ctx.fillStyle = '#ffd94a';
+        }
+      }
       // planted rows: little bushes, in their rows
       for (const p of s6.plants) {
         if (p.memorial || !p.location.startsWith('ROW')) continue;
@@ -3261,6 +3381,7 @@ function objective() {
   if (w.ch === 6) return ['SOMETHING IS WRONG IN THE GLASS HOUSE.', 'WATER. VENT. DIRT. FIGHT FOR THEM.', 'WATER. VENT. DIRT. FIGHT FOR THEM.', 'WATER. VENT. DIRT. FIGHT FOR THEM.', 'REPOT THEM. THE FRIEND IS RIGHT: DIRT.', 'THE LONG PREP: TARP, PIPE, MULCH, FENCE.', 'PLANTING DAY.', 'THE FIRST NIGHT.'][w.step] || 'TEND THE FIELD.';
   if (w.ch === 7) return 'SOMETHING IS CUTTING THE SMALLEST. SET THE WATCH AT REST.';
   if (w.ch === 8) return ['THE LONG WAR: PULL, FEED, MULCH.', 'A VISIT, AND A SORTING LESSON.', 'THE PROUD WEED STANDS BY THE FENCE.', 'STRAWBERRIES FOR THE FAMILY GARDEN.', 'A BUSH FOR OMA\'S PATIO.', 'HOLD EVERY SECTION AT ZERO, A FULL WEEK.'][w.step] || 'THE LONG WAR.';
+  if (w.ch === 9) return ['A FORSYTHIA FOR OMA\'S WINDOW.', 'BLOSSOM WEEK. WATER THE ROWS.', 'THE LATE FROST: THREE NIGHTS. SET THE WATCH AT THE GATE.', 'THE RECKONING OF THE BLOSSOM.'][w.step] || 'TEND THE BLOSSOM.';
   if (s.tutorial === 1) return 'THE GRAND PLAN: SIX POTS, SIX PROMISES (A)';
   if (s.tutorial === 2) return 'A DRINK FOR EACH POT: A AT A POT';
   if (s.chapterDone) return 'FREE TENDING. BERRYHILL COMES LATER.';
@@ -3733,7 +3854,7 @@ TRIAL_OUTCOMES.frostTray = {
   },
 };
 
-function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); if (w.ch === 3) return ch3Dawn(ev); if (w.ch === 4) return ch4Dawn(ev); if (w.ch === 5) return ch5Dawn(ev); if (w.ch === 6) return ch6Dawn(ev); if (w.ch === 7) return ch7Dawn(ev); if (w.ch === 8) return ch8Dawn(ev); return null; }
+function chapterDawn(ev) { const w = G.save.world; if (w.ch === 2) return ch2Dawn(ev); if (w.ch === 3) return ch3Dawn(ev); if (w.ch === 4) return ch4Dawn(ev); if (w.ch === 5) return ch5Dawn(ev); if (w.ch === 6) return ch6Dawn(ev); if (w.ch === 7) return ch7Dawn(ev); if (w.ch === 8) return ch8Dawn(ev); if (w.ch === 9) return ch9Dawn(ev); return null; }
 
 const CHAPTER_INFO = [
   null,
@@ -4523,7 +4644,7 @@ function renderTrial() {
 function cardUpdate() {
   if (Input.aHit || Input.bHit) { mode = 'overworld'; chapterCardDone(cardChapter); } // KEEP TENDING
 }
-function chapterCardDone(n) { if (n === 1) ch2Opening(); if (n === 2) ch3Opening(); if (n === 3) ch4Opening(); if (n === 4) ch5Opening(); if (n === 5) ch6Opening(); if (n === 6) ch7Opening(); if (n === 7) ch8Opening(); }
+function chapterCardDone(n) { if (n === 1) ch2Opening(); if (n === 2) ch3Opening(); if (n === 3) ch4Opening(); if (n === 4) ch5Opening(); if (n === 5) ch6Opening(); if (n === 6) ch7Opening(); if (n === 7) ch8Opening(); if (n === 8) ch9Opening(); }
 function renderCard() {
   ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
   drawSceneBanner(2, true);
@@ -5009,6 +5130,8 @@ window.__hss = {
   burnPile() { burnPileInteract(); },
   strawberry() { strawberryInteract(); },
   butterfly() { butterflyPlant(); },
+  forsythia() { forsythiaPlant(); },
+  setFrostWatch(rn) { G.save.world.flags.watchTonight = rn; saveGame(); },
   carryPlants() { carryPlants(); },
   warp(x, y) { player.tx = x; player.ty = y; syncPixels(player); alvin.tx = x; alvin.ty = Math.min(AH - 1, y + 1); syncPixels(alvin); },
   gotoArea(a, x, y) { setArea(a, x, y); },
