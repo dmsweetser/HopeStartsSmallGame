@@ -1426,6 +1426,26 @@ function findChromium() {
   check('bare-int pot migrated to a named plant', s.pots[0].name === 'ADMIRAL' && s.pots[0].location === 'BENCH', JSON.stringify(s.pots[0]));
   check('waterDays-era pot migrated with name + days', s.pots[1].name === 'CAPTAIN' && s.pots[1].wateredDays === 1, JSON.stringify(s.pots[1]));
 
+  // THE TASTING, EVERY VERDICT (regression): Constance is a seated guest
+  // and speaks in EVERY verdict branch — the QA campaign's wine-tart run
+  // found her silent in the TART and SWEET AS CANDY branches (narrated
+  // about, never given a line) while the pastor spoke. Runs here, on a
+  // throwaway re-seated save, because tasting() completes chapter 10 as
+  // a side effect and nothing after this block needs the save.
+  {
+    const base = await page.evaluate(() => window.__hss.debugSave());
+    for (const v of ['TART', 'SWEET', 'SWEET AS CANDY', 'HONEST']) {
+      const sv = JSON.parse(JSON.stringify(base));
+      sv.world.ch = 10; sv.world.step = 5; sv.world.area = 'barnIn';
+      sv.wine.batches = [{ n: 1, verdict: 'TART' }, { n: 2, verdict: v }];
+      await page.evaluate(s2 => window.__hss.setSave(s2), sv);
+      await page.evaluate(() => window.__hss.tasting());
+      const ls = await page.evaluate(() => window.__hss.dlgLines());
+      check('tasting at ' + v + ': the pastor and Constance both speak, Oma does not', ls.some(l => l.name === 'PASTOR') && ls.some(l => l.name === 'CONSTANCE') && !ls.some(l => l.name === 'OMA'), 'lines=' + ls.map(l => l.name || '—').join(','));
+      await dismissDialogue(16);
+    }
+  }
+
   // FULLSCREEN FILL (Daniel, Nov 26, 2026): the stage fills the available
   // browser area — always the EXACT fit at the unchanged 160:144 aspect,
   // so the stage touches the limiting edge of the window at every size.
