@@ -18,15 +18,20 @@ body {
   background: #000;
   display: flex; flex-direction: column;
 }
-/* Portrait fill (Daniel's phone, Nov 26, 2026): on a portrait screen with
-   the deck in play, the console IS the device — it fills the whole
-   height edge to edge, the screen takes the full width at its 10:9
-   aspect, and the deck area takes whatever height remains, like the
-   body of a handheld. fitStage() toggles .fill. */
-#console.fill { height: 100dvh; border-radius: 0; }
+/* Portrait (Daniel's phone, Nov 26, 2026; reshaped Nov 27, 2026): on a
+   portrait screen with the deck in play, the console takes the full
+   width edge to edge, the screen sits at its 10:9 aspect directly
+   above the deck, and the deck HUGS its controls — the first cut let
+   the deck flex into a slab hundreds of pixels tall with the controls
+   floating in it, and Daniel was not a fan. The console now rides at
+   the foot of the device (margin-top: auto in the body's column) like
+   a handheld held low; whatever height a tall phone has to spare is
+   plain background above it, never an expanse around the controls.
+   fitStage() toggles .fill. */
+#console.fill { margin-top: auto; border-radius: 0; }
 #console.fill #deck {
-  flex: 1 1 auto; height: auto; min-height: 118px;
-  padding: 16px 14px;
+  flex: none; height: auto;
+  padding: 14px;
 }
 /* targets grow with the room the fill gives them, capped by vw so the
    row always fits the narrowest phone (an uncapped first attempt pushed
@@ -45,7 +50,7 @@ canvas#game {
    as one row at the screen's foot, and the title menu and the pause menu
    are the ONLY places book links appear — every other screen link-free. */
 #titleLinks {
-  position: absolute; left: 50%; bottom: 3.5%; transform: translateX(-50%);
+  position: absolute; left: 50%; bottom: 2%; transform: translateX(-50%);
   display: flex; gap: 8px; z-index: 5;
 }
 #audibleBtn, #bookBtn {
@@ -53,7 +58,7 @@ canvas#game {
      HOPE STARTS SMALL plaque above them, so the pair reads native to the
      screen instead of bolted on */
   background: #14251a; color: #ffe9a8; border: 2px solid #ffd94a; border-radius: 3px;
-  padding: 4px 10px; font-family: monospace; font-size: clamp(10px, 2.6vw, 15px);
+  padding: 2px 10px; font-family: monospace; font-size: clamp(10px, 2.6vw, 15px);
   font-weight: bold; text-decoration: none; letter-spacing: 1px; white-space: nowrap;
   box-shadow: 0 2px 0 #0a140d;
 }

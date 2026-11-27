@@ -6124,13 +6124,13 @@ const consoleEl = document.getElementById('console');
 // whole-number-scale preference left visible letterbox; Daniel's word
 // overruled it). Letterboxing remains only on the non-limiting axis.
 function fitStage() {
-  // Portrait fill (Daniel's Android phone, Nov 26, 2026): in portrait
-  // with the deck in play, the exact-fit console floated mid-screen with
-  // ~190px of empty background above and below it, and the deck hovered
-  // with it instead of sitting at the foot of the device. There the
-  // console fills the whole height (the .fill CSS): the screen takes
-  // the full width at the unchanged aspect and the deck area takes the
-  // remaining height. Everywhere else the exact fit below stands.
+  // Portrait (Daniel's Android phone, Nov 26, 2026; reshaped Nov 27,
+  // 2026): in portrait with the deck in play, the console takes the
+  // full width at the unchanged aspect and rides at the foot of the
+  // device, the deck hugging its controls directly under the screen
+  // (the .fill CSS). An earlier cut stretched the deck into the whole
+  // remaining height — a slab with the controls floating in it — and
+  // Daniel was not a fan. Everywhere else the exact fit below stands.
   const portrait = window.innerHeight > window.innerWidth;
   const fill = portrait && !deckEl.hidden;
   consoleEl.classList.toggle('fill', fill);
@@ -7482,21 +7482,28 @@ function renderTitle() {
   for (const tx of [8, 26, 128, 146]) { ctx.fillRect(tx, 112, 1, 2); ctx.fillRect(tx + 2, 113, 1, 2); }
   for (const tx of [16, 138]) { ctx.fillRect(tx, 88, 1, 2); ctx.fillRect(tx + 2, 89, 1, 2); }
   ctx.fillStyle = '#3f6a45'; ctx.fillRect(10, 126, 2, 2); ctx.fillRect(148, 104, 2, 2);
-  // the plaque casts a soft shadow, and wears a fine inner frame line
-  ctx.fillStyle = 'rgba(10,20,13,0.5)'; ctx.fillRect(17, 67, 132, 34);
-  ctx.fillStyle = '#14251a'; ctx.fillRect(14, 64, 132, 34);
-  ctx.fillStyle = '#ffd94a'; ctx.fillRect(14, 64, 132, 1); ctx.fillRect(14, 97, 132, 1); ctx.fillRect(14, 64, 1, 34); ctx.fillRect(145, 64, 1, 34);
-  ctx.fillStyle = '#2c5236'; ctx.fillRect(17, 67, 126, 1); ctx.fillRect(17, 94, 126, 1); ctx.fillRect(17, 67, 1, 28); ctx.fillRect(142, 67, 1, 28);
-  drawText(TEXT.screens.hopeStarts, 80 - textW(TEXT.screens.hopeStarts, 2) / 2 + 1, 69, '#14251a', 2);
-  drawText(TEXT.screens.hopeStarts, 80 - textW(TEXT.screens.hopeStarts, 2) / 2, 68, '#ffffff', 2);
-  drawText('SMALL', 80 - textW('SMALL', 2) / 2 + 1, 83, '#7a4a21', 2);
-  drawText('SMALL', 80 - textW('SMALL', 2) / 2, 82, TEXT.screens.ffd94a, 2);
+  // the plaque casts a soft shadow, and wears a fine inner frame line.
+  // The whole title composition rides four units higher than it first
+  // did, and the menu pitch is seven, not eight: with a save present
+  // the list runs four deep (NEW GAME / CONTINUE / CHAPTERS /
+  // CONTROLS), and at the old pitch the fourth row fell into the strip
+  // the HTML book plaques overlay at the screen's foot — CONTROLS hid
+  // behind them outright on Daniel's phone (Nov 27, 2026). The menu
+  // now ends at y=130 of 144, clear of the plaques at every size.
+  ctx.fillStyle = 'rgba(10,20,13,0.5)'; ctx.fillRect(17, 63, 132, 34);
+  ctx.fillStyle = '#14251a'; ctx.fillRect(14, 60, 132, 34);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(14, 60, 132, 1); ctx.fillRect(14, 93, 132, 1); ctx.fillRect(14, 60, 1, 34); ctx.fillRect(145, 60, 1, 34);
+  ctx.fillStyle = '#2c5236'; ctx.fillRect(17, 63, 126, 1); ctx.fillRect(17, 90, 126, 1); ctx.fillRect(17, 63, 1, 28); ctx.fillRect(142, 63, 1, 28);
+  drawText(TEXT.screens.hopeStarts, 80 - textW(TEXT.screens.hopeStarts, 2) / 2 + 1, 65, '#14251a', 2);
+  drawText(TEXT.screens.hopeStarts, 80 - textW(TEXT.screens.hopeStarts, 2) / 2, 64, '#ffffff', 2);
+  drawText('SMALL', 80 - textW('SMALL', 2) / 2 + 1, 79, '#7a4a21', 2);
+  drawText('SMALL', 80 - textW('SMALL', 2) / 2, 78, TEXT.screens.ffd94a, 2);
   const chW = textW(TEXT.screens.chapter1Seeds, 1);
-  drawText(TEXT.screens.chapter1Seeds, 80 - chW / 2, 101, '#cfe8cf', 1);
+  drawText(TEXT.screens.chapter1Seeds, 80 - chW / 2, 97, '#cfe8cf', 1);
   ctx.fillStyle = '#ffd94a'; // two short gold rules flank the chapter line
-  ctx.fillRect(80 - chW / 2 - 11, 103, 6, 1); ctx.fillRect(80 + chW / 2 + 5, 103, 6, 1);
+  ctx.fillRect(80 - chW / 2 - 11, 99, 6, 1); ctx.fillRect(80 + chW / 2 + 5, 99, 6, 1);
   titleLabels().forEach((l, i) => {
-    const y = 107 + i * 8;
+    const y = 103 + i * 7;
     if (i === titleSel) { ctx.fillStyle = 'rgba(10,20,13,0.45)'; ctx.fillRect(38, y - 1, 80, 7); } // the chosen row sits on a soft plate
     if (i === titleSel) drawText('▶', 42, y, TEXT.screens.ffd94a, 1);
     drawText(l, 50, y, i === titleSel ? '#ffffff' : '#9fc79f', 1);
