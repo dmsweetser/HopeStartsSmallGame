@@ -5395,9 +5395,13 @@ function drawHouseTile(ch, sx, sy, tx, ty) {
 function drawAreaProps() {
   if (area === 'barnIn' && G.save.wine.jar) { // the jar, breathing on the kitchen counter
     const jx = 9 * TILE - camX, jy = 2 * TILE - camY;
+    ctx.fillStyle = 'rgba(60,35,10,0.25)'; ctx.fillRect(jx + 2, jy + 14, 12, 2); // the jar's shade on the counter
     ctx.fillStyle = '#b8c8ce'; ctx.fillRect(jx + 3, jy + 4, 10, 12);
+    ctx.fillStyle = '#8fa5ad'; ctx.fillRect(jx + 11, jy + 4, 2, 12); ctx.fillRect(jx + 3, jy + 14, 10, 2); // glass in shade
     ctx.fillStyle = G.save.wine.jar.phase === 'done' ? '#7a2f4a' : '#a03a54'; ctx.fillRect(jx + 4, jy + 8, 8, 7);
-    ctx.fillStyle = '#e8e2d2'; ctx.fillRect(jx + 5, jy + 2, 6, 3);
+    ctx.fillStyle = '#e8c39a'; ctx.fillRect(jx + 5, jy + 2, 6, 3); // the cork
+    ctx.fillStyle = '#a5713d'; ctx.fillRect(jx + 9, jy + 2, 2, 3); // its shaded side
+    ctx.fillStyle = '#f4f8fc'; ctx.fillRect(jx + 4, jy + 5, 1, 5); // the glint down the glass
   }
   if (area === 'barnIn') { // Frank's office: the six on the shelf, the company as small pots
     const s2 = G.save;
