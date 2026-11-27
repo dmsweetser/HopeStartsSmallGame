@@ -5441,12 +5441,18 @@ function drawAreaProps() {
     const sx = 10 * TILE - camX, sy = 6 * TILE - camY;
     ctx.fillStyle = '#6b5136'; ctx.fillRect(sx, sy, TILE, TILE);
     ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx, sy + 10, TILE, 3); ctx.fillRect(sx, sy + 5, TILE, 3); ctx.fillRect(sx, sy, TILE, 3);
+    ctx.fillStyle = '#c9a86a'; ctx.fillRect(sx, sy, TILE, 1); ctx.fillRect(sx, sy + 5, TILE, 1); ctx.fillRect(sx, sy + 10, TILE, 1); // lit tread edges
+    ctx.fillStyle = '#4c3a22'; ctx.fillRect(sx, sy + 15, TILE, 1); // the last riser's shade
   }
   if (area === 'oma') { // the photograph on the shelf, facing the room
     const sx = 2 * TILE - camX, sy = 1 * TILE - camY;
     ctx.fillStyle = '#5e4c36'; ctx.fillRect(sx + 3, sy + 1, 9, 8);
-    ctx.fillStyle = '#e8e2d2'; ctx.fillRect(sx + 4, sy + 2, 7, 6);
-    ctx.fillStyle = '#8a919c'; ctx.fillRect(sx + 6, sy + 4, 3, 4);
+    ctx.fillStyle = '#c9a86a'; ctx.fillRect(sx + 4, sy + 2, 7, 6); // the gilt inner frame
+    ctx.fillStyle = '#dceefb'; ctx.fillRect(sx + 5, sy + 3, 5, 2);
+    ctx.fillStyle = '#bcd9f2'; ctx.fillRect(sx + 5, sy + 5, 5, 2);
+    ctx.fillStyle = '#3f7a2e'; ctx.fillRect(sx + 5, sy + 7, 5, 1); // the field they stood in
+    ctx.fillStyle = '#e8c39a'; ctx.fillRect(sx + 6, sy + 5, 1, 1); ctx.fillRect(sx + 8, sy + 5, 1, 1); // the two of them
+    ctx.fillStyle = '#8a5a30'; ctx.fillRect(sx + 6, sy + 6, 1, 1); ctx.fillRect(sx + 8, sy + 6, 1, 1);
     return;
   }
   if (area !== 'house') return;
