@@ -897,7 +897,7 @@ const CONSTANCE_SIDE = makeSprite([
 '...khhssssshk...',
 '...khhsseshk....',
 '...khhsssshk....',
-'....khssmsk.....',
+'....khssmmk.....',
 '...khhsssshk....',
 '....kkssskk.....',
 '....kddddk......',
@@ -923,7 +923,7 @@ const CONSTANCE_SIDE2 = makeSprite([
 '...khhssssshk...',
 '...khhsseshk....',
 '...khhsssshk....',
-'....khssmsk.....',
+'....khssmmk.....',
 '...khhsssshk....',
 '....kkssskk.....',
 '....kddddk......',
@@ -1001,7 +1001,7 @@ const CONSTANCE_SIDE_BLINK = makeSprite([
 '...khhssssshk...',
 '...khhssSshk....',
 '...khhsssshk....',
-'....khssmsk.....',
+'....khssmmk.....',
 '...khhsssshk....',
 '....kkssskk.....',
 '....kddddk......',
@@ -1046,7 +1046,7 @@ const CONSTANCE_SIDE_TALK = makeSprite([
 '.....koo.koo....',
 ], CONSTANCE_PAL);
 const CONSTANCE_SET = { down: [CONSTANCE_DOWN, CONSTANCE_DOWN2], up: [CONSTANCE_UP, CONSTANCE_UP2], side: [CONSTANCE_SIDE, CONSTANCE_SIDE2], blinkDown: CONSTANCE_DOWN_BLINK, blinkSide: CONSTANCE_SIDE_BLINK, talkDown: CONSTANCE_DOWN_TALK, talkSide: CONSTANCE_SIDE_TALK, w: 16, h: 24 };
-const JEREMIAH_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: '#4a2f1d', H: '#38220f', e: EYE, t: '#3b6fe0', T: '#2a4a9f', j: '#2a4a7f', w: '#e8e8e8', o: '#33261a' };
+const JEREMIAH_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: '#4a2f1d', H: '#38220f', e: EYE, t: '#3b6fe0', T: '#2a4a9f', j: '#2a4a7f', w: '#e8e8e8', o: '#33261a', m: '#7a3b2e' };
 const JEREMIAH_DOWN = makeSprite([
 '................',
 '.....kkkkkk.....',
@@ -1144,7 +1144,7 @@ const JEREMIAH_SIDE = makeSprite([
 '...khhssssk.....',
 '...khhssesk.....',
 '...khhssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '....khssssk.....',
 '....kkssskk.....',
 '....kttttk......',
@@ -1166,7 +1166,7 @@ const JEREMIAH_SIDE2 = makeSprite([
 '...khhssssk.....',
 '...khhssesk.....',
 '...khhssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '....khssssk.....',
 '....kkssskk.....',
 '....kttttk......',
@@ -1232,7 +1232,7 @@ const JEREMIAH_SIDE_BLINK = makeSprite([
 '...khhssssk.....',
 '...khhsssSk.....',
 '...khhssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '....khssssk.....',
 '....kkssskk.....',
 '....kttttk......',
@@ -1272,7 +1272,7 @@ const JEREMIAH_SET = { down: [JEREMIAH_DOWN, JEREMIAH_DOWN2], up: [JEREMIAH_UP, 
 /* THE PASTOR — an unnamed guest (role only), in for the one evening the
    whole field has been pointing at: the October tasting. A dark suit, and
    the little white tab at his throat that says the rest. */
-const PASTOR_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: '#5a5148', H: '#453f36', e: EYE, t: '#33373f', T: '#22252b', j: '#26282e', w: '#f4f1e6', o: '#33261a' };
+const PASTOR_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: '#5a5148', H: '#453f36', e: EYE, t: '#33373f', T: '#22252b', j: '#26282e', w: '#f4f1e6', o: '#33261a', m: '#7a3b2e' };
 const PASTOR_DOWN = makeSprite([
 '................',
 '.....kkkkkk.....',
@@ -1392,7 +1392,7 @@ const PASTOR_SIDE = makeSprite([
 '...khhssesk.....',
 '...khhssssk.....',
 '....khssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '....khssssk.....',
 '.....kksskk.....',
 '....ktwwtk......',
@@ -1419,7 +1419,7 @@ const PASTOR_SIDE2 = makeSprite([
 '...khhssesk.....',
 '...khhssssk.....',
 '....khssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '....khssssk.....',
 '.....kksskk.....',
 '....ktwwtk......',
@@ -1500,7 +1500,7 @@ const PASTOR_SIDE_BLINK = makeSprite([
 '...khhsssSk.....',
 '...khhssssk.....',
 '....khssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '....khssssk.....',
 '.....kksskk.....',
 '....ktwwtk......',
@@ -1544,7 +1544,7 @@ const PASTOR_SIDE_TALK = makeSprite([
 ], PASTOR_PAL);
 
 const PASTOR_SET = { down: [PASTOR_DOWN, PASTOR_DOWN2], up: [PASTOR_UP, PASTOR_UP2], side: [PASTOR_SIDE, PASTOR_SIDE2], blinkDown: PASTOR_DOWN_BLINK, blinkSide: PASTOR_SIDE_BLINK, talkDown: PASTOR_DOWN_TALK, talkSide: PASTOR_SIDE_TALK, w: 16, h: 24 };
-const ZOEY_PAL = { k: '#20242a', s: '#f0c8a0', S: '#d99e5f', h: '#7a4a21', H: '#5e3717', e: EYE, d: '#e06a9a', D: '#b84a78', l: '#5e4a6e', w: '#f8f8f8', o: '#33261a' };
+const ZOEY_PAL = { k: '#20242a', s: '#f0c8a0', S: '#d99e5f', h: '#7a4a21', H: '#5e3717', e: EYE, d: '#e06a9a', D: '#b84a78', l: '#5e4a6e', w: '#f8f8f8', o: '#33261a', m: '#7a3b2e' };
 const ZOEY_DOWN = makeSprite([
 '......kDkDk.....',
 '.....kkkkkk.....',
@@ -1641,7 +1641,7 @@ const ZOEY_SIDE = makeSprite([
 '...khhssssHk....',
 '...khhssesk.....',
 '...khhssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '...khhssssHk....',
 '....kkssskk.....',
 '....kddddk......',
@@ -1663,7 +1663,7 @@ const ZOEY_SIDE2 = makeSprite([
 '...khhssssHk....',
 '...khhssesk.....',
 '...khhssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '...khhssssHk....',
 '....kkssskk.....',
 '....kddddk......',
@@ -1729,7 +1729,7 @@ const ZOEY_SIDE_BLINK = makeSprite([
 '...khhssssHk....',
 '...khhsssSk.....',
 '...khhssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '...khhssssHk....',
 '....kkssskk.....',
 '....kddddk......',
@@ -1766,7 +1766,7 @@ const ZOEY_SIDE_TALK = makeSprite([
 ], ZOEY_PAL);
 
 const ZOEY_SET = { down: [ZOEY_DOWN, ZOEY_DOWN2], up: [ZOEY_UP, ZOEY_UP2], side: [ZOEY_SIDE, ZOEY_SIDE2], blinkDown: ZOEY_DOWN_BLINK, blinkSide: ZOEY_SIDE_BLINK, talkDown: ZOEY_DOWN_TALK, talkSide: ZOEY_SIDE_TALK, w: 16, h: 19 };
-const OMA_PAL = { k: '#20242a', s: '#e8b98a', S: '#cf9455', h: '#d8d8d8', H: '#a8a8a8', e: EYE, g: '#7f9fb0', t: '#7a5aa0', T: '#5e4480', w: '#f3e9d2', l: '#4a3a5e', o: '#33261a' };
+const OMA_PAL = { k: '#20242a', s: '#e8b98a', S: '#cf9455', h: '#d8d8d8', H: '#a8a8a8', e: EYE, g: '#7f9fb0', t: '#7a5aa0', T: '#5e4480', w: '#f3e9d2', l: '#4a3a5e', o: '#33261a', m: '#7a3b2e' };
 const OMA_DOWN = makeSprite([
 '......kkkk......',
 '....kkhhhhkk....',
@@ -1876,7 +1876,7 @@ const OMA_SIDE = makeSprite([
 '...khhssssk.....',
 '...khhgsegk.....',
 '...khhssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '...khhssssk.....',
 '....kkssskk.....',
 '....kttttk......',
@@ -1901,7 +1901,7 @@ const OMA_SIDE2 = makeSprite([
 '...khhssssk.....',
 '...khhgsegk.....',
 '...khhssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '...khhssssk.....',
 '....kkssskk.....',
 '....kttttk......',
@@ -1976,7 +1976,7 @@ const OMA_SIDE_BLINK = makeSprite([
 '...khhssssk.....',
 '...khhgssgk.....',
 '...khhssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '...khhssssk.....',
 '....kkssskk.....',
 '....kttttk......',
@@ -2018,8 +2018,8 @@ const OMA_SIDE_TALK = makeSprite([
 ], OMA_PAL);
 
 const OMA_SET = { down: [OMA_DOWN, OMA_DOWN2], up: [OMA_UP, OMA_UP2], side: [OMA_SIDE, OMA_SIDE2], blinkDown: OMA_DOWN_BLINK, blinkSide: OMA_SIDE_BLINK, talkDown: OMA_DOWN_TALK, talkSide: OMA_SIDE_TALK, w: 16, h: 22 };
-const MOM_PAL = { k: '#20242a', s: '#eec39b', S: '#d9a06b', h: '#8a5a34', H: '#6e4525', e: EYE, t: '#b07f2a', T: '#8a5f1e', w: '#f3e9d2', l: '#5e4a2a', o: '#33261a' };
-const FRIEND_PAL = { k: '#20242a', s: '#d9a06b', S: '#b57f3d', h: '#2a2a2a', H: '#171717', e: '#20242a', t: '#5a7a4a', T: '#47633b', j: '#3a3a3a', o: '#26221e' };
+const MOM_PAL = { k: '#20242a', s: '#eec39b', S: '#d9a06b', h: '#8a5a34', H: '#6e4525', e: EYE, t: '#b07f2a', T: '#8a5f1e', w: '#f3e9d2', l: '#5e4a2a', o: '#33261a', m: '#7a3b2e' };
+const FRIEND_PAL = { k: '#20242a', s: '#d9a06b', S: '#b57f3d', h: '#2a2a2a', H: '#171717', e: '#20242a', t: '#5a7a4a', T: '#47633b', j: '#3a3a3a', o: '#26221e', m: '#7a3b2e' };
 const PASTORWIFE_PAL = { k: '#20242a', s: '#f0c8a0', S: '#d99e5f', h: '#8a6a3a', l: '#a8895c', e: '#20242a', m: '#7a3b2e', d: '#a03a5e', D: '#5e2a3f', L: '#f3e9d2', o: '#33261a' };
 const MOM_DOWN = makeSprite([
 '................',
@@ -2137,7 +2137,7 @@ const MOM_SIDE = makeSprite([
 '...khhssssHk....',
 '...khhssesk.....',
 '...khhssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '...khhssssHk....',
 '....kkssskk.....',
 '....kttttk......',
@@ -2164,7 +2164,7 @@ const MOM_SIDE2 = makeSprite([
 '...khhssssHk....',
 '...khhssesk.....',
 '...khhssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '...khhssssHk....',
 '....kkssskk.....',
 '....kttttk......',
@@ -2245,7 +2245,7 @@ const MOM_SIDE_BLINK = makeSprite([
 '...khhssssHk....',
 '...khhsssSk.....',
 '...khhssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '...khhssssHk....',
 '....kkssskk.....',
 '....kttttk......',
@@ -2405,7 +2405,7 @@ const FRIEND_SIDE = makeSprite([
 '...khhssesk.....',
 '...khhssssk.....',
 '....khssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '....khssssk.....',
 '.....kksskk.....',
 '....kttttk......',
@@ -2431,7 +2431,7 @@ const FRIEND_SIDE2 = makeSprite([
 '...khhssesk.....',
 '...khhssssk.....',
 '....khssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '....khssssk.....',
 '.....kksskk.....',
 '....kttttk......',
@@ -2509,7 +2509,7 @@ const FRIEND_SIDE_BLINK = makeSprite([
 '...khhsssSk.....',
 '...khhssssk.....',
 '....khssssk.....',
-'....khssosk.....',
+'....khssmmk.....',
 '....khssssk.....',
 '.....kksskk.....',
 '....kttttk......',
@@ -2662,7 +2662,7 @@ const PASTORWIFE_SIDE = makeSprite([
 '...khhssssshk...',
 '...khhsseshk....',
 '...khhsssshk....',
-'....khssmsk.....',
+'....khssmmk.....',
 '...khhsssshk....',
 '....kkssskk.....',
 '....kddddk......',
@@ -2688,7 +2688,7 @@ const PASTORWIFE_SIDE2 = makeSprite([
 '...khhssssshk...',
 '...khhsseshk....',
 '...khhsssshk....',
-'....khssmsk.....',
+'....khssmmk.....',
 '...khhsssshk....',
 '....kkssskk.....',
 '....kddddk......',
@@ -2766,7 +2766,7 @@ const PASTORWIFE_SIDE_BLINK = makeSprite([
 '...khhssssshk...',
 '...khhssSshk....',
 '...khhsssshk....',
-'....khssmsk.....',
+'....khssmmk.....',
 '...khhsssshk....',
 '....kkssskk.....',
 '....kddddk......',
