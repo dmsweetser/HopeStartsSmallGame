@@ -1889,6 +1889,26 @@ function findChromium() {
   // the plaques' top edge must clear the menu's last row (canvas
   // y=130 of 144, a fraction of 0.903) at every size, tall phones and
   // chrome-shortened viewports included.
+  const phoneMeasure = () => {
+    const R = id => { const r = document.getElementById(id).getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; };
+    const scr = R('screen'), lnk = R('titleLinks');
+    // the OPEN title menu, row by row: CHAPTERS (canvas y 117-123 of
+    // 144) and CONTROLS (y 124-130) are the rows Daniel's phone lost.
+    // Count their text pixels in the canvas backing store (320x288) —
+    // proof the rows are drawn — and let the geometry below prove
+    // they sit inside the visible screen, clear of the plaques.
+    const g = document.getElementById('game').getContext('2d');
+    const bandPx = (y0, y1) => {
+      const img = g.getImageData(90, y0 * 2, 140, (y1 - y0) * 2).data;
+      let n = 0;
+      for (let i = 0; i < img.length; i += 4) {
+        const r = img[i], gg = img[i + 1], b = img[i + 2];
+        if (Math.abs(r - 159) < 26 && Math.abs(gg - 199) < 26 && Math.abs(b - 159) < 26) n++; // menu green #9fc79f
+      }
+      return n;
+    };
+    return { iw: window.innerWidth, ih: window.innerHeight, console: R('console'), screen: scr, deck: R('deck'), stick: R('stickBase'), btnA: R('btnA'), btnMenu: R('btnMenu'), deckHidden: document.getElementById('deck').hidden, pad: window.__hss.state().padVisible, scrollW: document.documentElement.scrollWidth, scrollH: document.documentElement.scrollHeight, linksTopFrac: (lnk.top - scr.top) / (scr.bottom - scr.top), linksIn: lnk.left >= scr.left - 1 && lnk.right <= scr.right + 1 && lnk.bottom <= scr.bottom + 1, menuChaptersPx: bandPx(116, 123), menuControlsPx: bandPx(123, 130) };
+  };
   const phoneAt = async (w, h) => {
     const c2 = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true, userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36' });
     const p2 = await c2.newPage();
@@ -1898,24 +1918,47 @@ function findChromium() {
     await p2.reload({ waitUntil: 'load' });
     await p2.waitForFunction(() => window.__hss, null, { timeout: 8000 });
     await p2.waitForTimeout(500);
-    const m = await p2.evaluate(() => {
-      const R = id => { const r = document.getElementById(id).getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; };
-      const scr = R('screen'), lnk = R('titleLinks');
-      return { iw: window.innerWidth, ih: window.innerHeight, console: R('console'), screen: scr, deck: R('deck'), stick: R('stickBase'), btnA: R('btnA'), btnMenu: R('btnMenu'), deckHidden: document.getElementById('deck').hidden, pad: window.__hss.state().padVisible, scrollW: document.documentElement.scrollWidth, scrollH: document.documentElement.scrollHeight, linksTopFrac: (lnk.top - scr.top) / (scr.bottom - scr.top), linksIn: lnk.left >= scr.left - 1 && lnk.right <= scr.right + 1 && lnk.bottom <= scr.bottom + 1 };
-    });
+    const m = await p2.evaluate(phoneMeasure);
     await c2.close();
     return m;
   };
-  for (const [w, h] of [[360, 740], [390, 844], [412, 915], [412, 720]]) {
-    const m = await phoneAt(w, h);
+  const portraitOK = m => {
     const deckH = m.deck.bottom - m.deck.top;
-    check('portrait ' + w + 'x' + h + ': console at the foot, deck hugs its controls, full title menu clear of the plaques',
-      (m.ih - m.console.bottom) <= 2 && !m.deckHidden && m.pad === true &&
+    // the last menu rows inside the visible screen: the band from
+    // CHAPTERS (117/144) to the menu's foot (130/144) must land
+    // within the viewport and above the plaques' top edge
+    const bandTop = m.screen.top + (117 / 144) * (m.screen.bottom - m.screen.top);
+    const bandBottom = m.screen.top + (130 / 144) * (m.screen.bottom - m.screen.top);
+    return (m.ih - m.console.bottom) <= 2 && !m.deckHidden && m.pad === true &&
       m.deck.top >= m.screen.bottom - 2 && m.deck.bottom <= m.ih + 1 && deckH <= 175 &&
       m.stick.left >= -1 && m.btnA.right <= m.iw + 1 && m.btnMenu.top >= m.deck.top - 1 && m.btnMenu.bottom <= m.ih + 1 &&
       m.linksTopFrac >= 0.905 && m.linksIn &&
-      m.scrollW <= m.iw && m.scrollH <= m.ih + 1,
-      'bottomGap=' + Math.round(m.ih - m.console.bottom) + ' deckH=' + Math.round(deckH) + ' linksTopFrac=' + m.linksTopFrac.toFixed(3));
+      bandTop >= -1 && bandBottom <= m.ih + 1 && m.menuChaptersPx > 40 && m.menuControlsPx > 40 &&
+      m.scrollW <= m.iw && m.scrollH <= m.ih + 1;
+  };
+  const portraitExtra = m => 'bottomGap=' + Math.round(m.ih - m.console.bottom) + ' deckH=' + Math.round(m.deck.bottom - m.deck.top) + ' linksTopFrac=' + m.linksTopFrac.toFixed(3) + ' menuPx=' + m.menuChaptersPx + '/' + m.menuControlsPx;
+  // 360x780 is Daniel's own phone (1080x2340 at DPR 3, Edge)
+  for (const [w, h] of [[360, 740], [360, 780], [390, 844], [412, 915], [412, 720]]) {
+    const m = await phoneAt(w, h);
+    check('portrait ' + w + 'x' + h + ': console at the foot, deck hugs its controls, open menu rows all inside the visible screen', portraitOK(m), portraitExtra(m));
+  }
+  // the dynamic case: Edge's toolbars show and hide, so innerHeight
+  // moves under the page — 360x780 with the toolbar out (~692) must
+  // re-foot the console and keep every menu row visible
+  {
+    const c2 = await browser.newContext({ viewport: { width: 360, height: 780 }, hasTouch: true, isMobile: true, userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36' });
+    const p2 = await c2.newPage();
+    await p2.goto('http://127.0.0.1:8907/index.html', { waitUntil: 'load' });
+    await p2.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+    await p2.evaluate(() => { const sv = __hss.debugSave(); __hss.setSave(sv); });
+    await p2.reload({ waitUntil: 'load' });
+    await p2.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+    await p2.waitForTimeout(400);
+    await p2.setViewportSize({ width: 360, height: 692 }); // the toolbar slides in: innerHeight shrinks
+    await p2.waitForTimeout(500);
+    const m = await p2.evaluate(phoneMeasure);
+    check('portrait dynamic 360x780->692: the toolbar takes its height back — console re-foots, deck compact, menu rows still all visible', portraitOK(m) && m.ih === 692, portraitExtra(m) + ' ih=' + m.ih);
+    await c2.close();
   }
 
   /* Desktop landscape (Daniel, Nov 27, 2026): with the deck forced
