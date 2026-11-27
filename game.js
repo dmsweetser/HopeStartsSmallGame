@@ -4001,7 +4001,11 @@ function npcTalk(npc) {
         return say([F(TEXT.talk.omaNameIsThirsty, { name: pick.name }), TEXT.talk.omaWaterItAnd]);
       }
     }
-    const stories = [TEXT.talk.omaYourOpaKept, TEXT.talk.omaWhenTheAdmiral, TEXT.talk.omaAskMeAbout];
+    if (w.ch >= 5 && !w.flags.opaHeard) {
+      w.flags.opaHeard = true; saveGame();
+      return say(TEXT.faith.opaExchange); // Opa, in memory: the thread's most delicate beat
+    }
+    const stories = [TEXT.talk.omaYourOpaKept, TEXT.talk.omaWhenTheAdmiral, TEXT.talk.omaAskMeAbout, TEXT.faith.omaTightMonth];
     return say(stories[s.day % stories.length]);
   }
   if (npc.id === 'pastor') {
@@ -4050,7 +4054,7 @@ function barnInteract(f) {
     }
     if (w.ch === 4 && w.step === 2) {
       w.step = 3; saveGame();
-      return say(TEXT.barn.aLetterFromThe);
+      return say([...TEXT.barn.aLetterFromThe, TEXT.faith.ordinanceClause]); // some no's are also answers
     }
     return say(TEXT.barn.theGoodShedSound);
   }
@@ -4059,7 +4063,7 @@ function barnInteract(f) {
       if (player.ty >= 13) {
         if (w.ch === 6 && w.step === 5) return say(TEXT.barn.thePlantingGateThe, which => { if (which === 0) doPlanting(); if (which === 1) say([TEXT.barn.theListAsThe, ...(plantingGate().length ? plantingGate().map(m => '— ' + m) : TEXT.barn.nothingItIsTime)]); }, TEXT.barn.plantingDay);
         if (w.ch === 9 && w.step === 2) {
-          const rowsWithPlants = [1, 2, 3, 4, 5, 6, 7].filter(rn => s.plants.some(p => !p.memorial && p.row === rn));
+          const rowsWithPlants = [1, 2, 3, 4, 5, 6, 7].filter(rn => rowHasBushes(rn));
           const opts = rowsWithPlants.map(rn => F(TEXT.barn.watchRowRn, { rn: rn }));
           return say(F(TEXT.barn.theFrostWatchOne, { v: (w.flags.watchTonight ? F(TEXT.barn.rowWatchtonight, { watchTonight: w.flags.watchTonight }) : "UNSET") }), which => {
             if (which < rowsWithPlants.length) { w.flags.watchTonight = rowsWithPlants[which]; saveGame(); say(F(TEXT.barn.rowWhichTonightAlvin, { which: rowsWithPlants[which] })); }
@@ -4169,8 +4173,11 @@ function barnInInteract(f) {
 }
 function waterLocation(loc) {
   let n = 0;
-  if (loc === 'GREENHOUSE' && G.save.world.ch === 6 && G.save.world.step <= 3) G.save.world.flags.mitWaterDay = G.save.day;
-  for (const p of G.save.plants) if (!p.memorial && p.location === loc && p.stage >= 1 && !p.watered) { waterPlant(p); n++; }
+  const s = G.save;
+  if (loc === 'GREENHOUSE' && s.world.ch === 6 && s.world.step <= 3) s.world.flags.mitWaterDay = s.day;
+  for (const p of s.plants) if (!p.memorial && !p.gone && p.location === loc && p.stage >= 1 && !p.watered) { waterPlant(p); n++; }
+  if (s.company && !s.company.gone && s.company.n > 0 && s.company.loc === loc && !s.company.watered) { s.company.watered = true; if (s.company.health === 3) s.company.lastRescue = s.day; n++; }
+  if (s.nursery && s.nursery.stock > 0 && loc === 'GREENHOUSE' && !s.nursery.watered) { s.nursery.watered = true; n++; }
   saveGame();
   say((n ? F(TEXT.carry.wateredAllOfThem, { n: n }) : TEXT.carry.everyoneHereIsAlready));
 }
@@ -4182,8 +4189,9 @@ function carryPlants() {
   saveGame();
   const left = s.plants.filter(p => p.location === 'OFFICE' && !p.memorial).length;
   if (!left) {
+    if (s.company && s.company.loc === 'OFFICE') s.company.loc = 'GREENHOUSE'; // the Company rides over with the loads
     w.step = 8; layoutNPCs();
-    return say(TEXT.carry.theLastLoadGoes);
+    return say([...TEXT.carry.theLastLoadGoes, TEXT.faith.movingHands]);
   }
   say([F(TEXT.carry.aLoadGoesOver, { joinVal: load.map(p => p.name).join(", ") }), F(TEXT.carry.leftStillWaitOn, { left: left })]);
 }
@@ -4208,15 +4216,22 @@ function greenInteract(f) {
     }
     if (w.ch === 6 && w.step === 4 && w.flags.repotReady) return repot();
     if (w.ch === 6 && w.step <= 3) {
+      const comp = s.company && !s.company.gone && s.company.n > 0 && s.company.loc === 'GREENHOUSE' ? s.company : null;
+      const choices = comp ? [TEXT.greenhouse.waterThemAll[0], TEXT.greenhouse.waterThemAll[1], TEXT.greenhouse.feedTheCompany, TEXT.greenhouse.waterThemAll[2]] : TEXT.greenhouse.waterThemAll;
       return say(TEXT.greenhouse.theBenchesEveryLeaf, which => {
         if (which === 0) waterLocation('GREENHOUSE');
         if (which === 1) {
-          const weak = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE').sort((a, b) => b.health - a.health)[0];
+          const weak = s.plants.filter(p => !p.memorial && !p.gone && p.location === 'GREENHOUSE').sort((a, b) => b.health - a.health)[0];
           if (!weak) return say(TEXT.greenhouse.noOneHereTo);
           if (s.goodDirt <= 0) return say(F(TEXT.greenhouse.nameIsTheWeakest, { name: weak.name }));
           feedDirt(weak); say(F(TEXT.greenhouse.goodDirtForName, { name: weak.name }));
         }
-      }, TEXT.greenhouse.waterThemAll);
+        if (which === 2 && comp) {
+          if (s.goodDirt <= 0) return say(TEXT.greenhouse.noOneHereTo);
+          s.goodDirt--; comp.dirtFed = true; if (comp.health > 0) comp.health--; w.flags.mitDirtDay = s.day; saveGame();
+          say(TEXT.greenhouse.goodDirtForTheCompany);
+        }
+      }, choices);
     }
     return say(TEXT.greenhouse.theBenchesEveryPlant, which => { if (which === 0) waterLocation('GREENHOUSE'); }, TEXT.greenhouse.waterTheBenches);
   }
@@ -4238,6 +4253,7 @@ function chooseLoadOrder(order) {
   s.world.flags.loadOrder = order; s.world.step = 5;
   if (order === 'plants') {
     for (const p of s.plants) if (!p.memorial && (p.location === 'BENCH' || p.location === 'WINDOW')) p.location = 'OFFICE';
+    if (s.company) s.company.loc = 'OFFICE';
     s.world.flags.plantsMoved = true; saveGame();
     say(TEXT.carry.thePlantsRideFirst);
   } else {
@@ -4262,7 +4278,7 @@ function irisInteract() {
     }
     if (w.ch === 4 && w.step === 1) w.step = 2;
     saveGame();
-    return say([TEXT.iris.irisesInheritedWithThe, F(TEXT.iris.frankNamesThemOn, { joinVal: made.join(", ") }), TEXT.iris.theyGoInThe]);
+    return say([TEXT.iris.irisesInheritedWithThe, F(TEXT.iris.frankNamesThemOn, { joinVal: made.join(", ") }), TEXT.iris.theyGoInThe, ...TEXT.faith.irisGlory]);
   }
   const dry = irises.filter(p => !p.watered);
   if (dry.length) return say(TEXT.iris.theIrisesADrink, which => { if (which === 0) { dry.forEach(waterPlant); say(TEXT.iris.wateredTheIrisesStand); } }, TEXT.iris.waterThem);
@@ -4283,7 +4299,7 @@ function patchInteract() {
     s.field.protoNet = true; saveGame();
     return say(TEXT.patch.theNettingPrototypeA);
   }
-  const planted = s.plants.filter(p => p.location === 'GARDEN' && p.variety === TEXT.plants.blackberry);
+  const planted = s.plants.filter(p => !p.gone && p.location === 'GARDEN' && p.variety === TEXT.plants.blackberry);
   if (planted.length < 2) {
     const p = freshPlant(allocName(s.plants), { variety: 'BLACKBERRY', stage: 3, location: 'GARDEN', gardenState: 'NEW', sownDay: s.day, history: TEXT.plants.rescuedFromThePatch });
     s.plants.push(p);
@@ -4302,13 +4318,13 @@ function ch5Dawn(ev) {
   if (w.step === 0 && w.flags.stairsBuilt) { w.step = 1; return TEXT.dawns.theStairsAreDone; }
   if (w.step === 3 && !w.flags.patchTrialDone) {
     w.flags.patchTrialDone = true;
-    const bb = s.plants.filter(p => !p.memorial && p.location === 'GARDEN' && p.variety === TEXT.plants.blackberry);
+    const bb = s.plants.filter(p => !p.memorial && !p.gone && p.location === 'GARDEN' && p.variety === TEXT.plants.blackberry);
     startTrial({ foe: 'WEEDS', kind: 'weedsPatch', pressure: 35, vigor: 26, plantsList: bb.length ? bb : sixPlants(), msg: TEXT.trials.thePatchFightsBack });
     return null;
   }
   if (w.step === 3 && w.flags.patchTrialDone && w.flags.patchWeedsBack) {
     w.flags.patchWeedsBack = false;
-    const bb = s.plants.filter(p => !p.memorial && p.location === 'GARDEN' && p.variety === TEXT.plants.blackberry);
+    const bb = s.plants.filter(p => !p.memorial && !p.gone && p.location === 'GARDEN' && p.variety === TEXT.plants.blackberry);
     startTrial({ foe: 'WEEDS', kind: 'weedsPatch', pressure: 35, vigor: 26, plantsList: bb.length ? bb : sixPlants(), msg: TEXT.trials.theWeedsReturnAs });
     return null;
   }
@@ -4414,9 +4430,9 @@ function fieldInteract(f) {
   const bi = bands.findIndex(([a, b]) => f.x >= a && f.x <= b);
   const rn = 1 + (f.y - 13) * 3 + Math.floor((f.x - 2) / 8); // the row this tile belongs to (1..12)
   const row = s.cropRows[rn - 1];
-  const inRow = s.plants.filter(p => !p.memorial && p.row === rn);
+  const inRow = s.plants.filter(p => !p.memorial && !p.gone && p.row === rn);
   const sec = Math.floor((rn - 1) / 2), lv = s.field.weedLv[sec] || 0;
-  if (inRow.length) {
+  if (inRow.length || (row.bushCount || 0) > 0) {
     const opts = [];
     if ((w.ch === 10 && w.step === 2) || (w.ch === 11 && seasonOf(s.day).idx === 1)) opts.push(TEXT.field.harvestTheRow);
     if (w.ch >= 10 && seasonOf(s.day).idx === 3) opts.push(TEXT.field.pruneTheRow);
@@ -4425,7 +4441,7 @@ function fieldInteract(f) {
     if (!row.mulched) opts.push(TEXT.field.mulchIt3Carts);
     else if (s.compost >= 9 && row.yieldRating < 3) opts.push(TEXT.field.feedTheRow9);
     opts.push(TEXT.greenhouse.leaveIt);
-    return say(F(TEXT.field.rowRnLengthBushes, { rn: rn, length: inRow.length, v: (row.mulched ? "MULCHED. " : "UNMULCHED. "), v2: (lv > 0 ? F(TEXT.field.weedsAtLevelLv, { lv: lv }) : TEXT.field.theSectionIsClean), joinVal: inRow.map(p => p.name).slice(0, 4).join(", "), v3: (inRow.length > 4 ? TEXT.field.line : "") }), which => {
+    return say(inRow.length ? F(TEXT.field.rowRnLengthBushes, { rn: rn, length: inRow.length + (row.bushCount || 0), v: (row.mulched ? "MULCHED. " : "UNMULCHED. "), v2: (lv > 0 ? F(TEXT.field.weedsAtLevelLv, { lv: lv }) : TEXT.field.theSectionIsClean), joinVal: inRow.map(p => p.name).slice(0, 4).join(", "), v3: (inRow.length > 4 ? TEXT.field.line : "") }) : F(TEXT.field.rowCountHead, { rn: rn, n: row.bushCount || 0, v: (row.mulched ? " MULCHED." : " UNMULCHED."), v2: (lv > 0 ? F(TEXT.field.weedsAtLevelLv, { lv: lv }) : TEXT.field.theSectionIsClean) }), which => {
       const pick = opts[which];
       if (pick === TEXT.field.harvestTheRow) harvestRow(rn);
       else if (pick === TEXT.field.pruneTheRow) pruneRow(rn);
@@ -4442,9 +4458,8 @@ function fieldInteract(f) {
   if (st === 2) return say(TEXT.field.cookedThroughWhatLives, which => { if (which === 0) moveTarp(bi); }, TEXT.field.moveTheTarp);
   // clear ground: the row work that remains
   if (lv > 0) return say(F(TEXT.field.emptyGroundRowRn, { rn: rn, lv: lv }), which => { if (which === 0) pullWeeds(sec); }, TEXT.field.pullTheWeeds);
-  if (w.ch === 11 && !inRow.length) {
-    const stock = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE' && p.stage >= 3);
-    if (stock.length) return say(F(TEXT.field.emptyGroundRowRn_2, { rn: rn, length: stock.length }), which => { if (which === 0) plantNurseryRow(rn); }, TEXT.field.plantTheNurseryStock);
+  if (w.ch === 11 && !inRow.length && !(row.bushCount > 0)) {
+    if (s.nursery && s.nursery.stock > 0 && s.nursery.stage >= 3) return say(F(TEXT.field.emptyGroundRowRn_2, { rn: rn, length: s.nursery.stock }), which => { if (which === 0) plantNurseryRow(rn); }, TEXT.field.plantTheNurseryStock);
   }
   if (row && !row.mulched) return say(F(TEXT.field.clearGroundRowRn, { rn: rn }), which => { if (which === 0) mulchRow(rn); }, TEXT.field.mulchIt3Carts_2);
   return say(F(TEXT.field.rowRnReadyThe, { rn: rn }));
@@ -4460,9 +4475,14 @@ function mulchRow(rn) {
 function plantingGate() {
   const s = G.save, w = s.world, missing = [];
   if (s.day - (w.flags.repotDay || 0) < 5) missing.push(F(TEXT.planting.recoveryVOf5, { v: s.day - (w.flags.repotDay || 0) }));
-  const stock = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE' && p.stage >= 3);
-  const declining = stock.filter(p => p.health >= 2);
+  // the gate names no specific plant beyond the Favorites' own recovery:
+  // the surviving six, recovered; the Company, recovered and grown
+  const declining = sixPlants().filter(p => !p.memorial && p.health >= 2);
   if (declining.length) missing.push(F(TEXT.planting.nameVStillDeclining, { name: declining[0].name, v: (declining.length > 1 ? F(TEXT.planting.andVMoreAre, { v: declining.length - 1 }) : " IS") }));
+  if (s.company && !s.company.gone && s.company.n > 0) {
+    if (s.company.health >= 2) missing.push(TEXT.planting.companyDeclining);
+    else if (s.company.stage < 3) missing.push(TEXT.planting.companyTooYoung);
+  }
   if (s.field.tarp.filter(t => t === 3).length < 4) missing.push(F(TEXT.planting.tarpLengthOf4, { length: s.field.tarp.filter(t => t === 3).length }));
   if (s.field.fenceSeg.filter(Boolean).length < 3) missing.push(F(TEXT.planting.fenceLengthOf4, { length: s.field.fenceSeg.filter(Boolean).length }));
   const unmulched = [0, 1, 2, 3, 4, 5, 6].filter(i => !s.cropRows[i].mulched);
@@ -4473,15 +4493,17 @@ function doPlanting() {
   const s = G.save, w = s.world;
   const missing = plantingGate();
   if (missing.length) return say([TEXT.planting.notYetTheField, ...missing.map(m => '— ' + m)]);
-  const stock = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE' && p.stage >= 3);
-  const six = stock.filter(p => p.firstSix).sort((a, b) => a.slot - b.slot);
+  // Row 1 is the surviving six, one at a time — and the gift bush at the
+  // row's end. The shipped backfill is retired (spec A5): a gap in Row 1
+  // is honest, and the marker stone already honours an empty place.
+  const six = sixPlants().filter(p => !p.memorial).sort((a, b) => a.slot - b.slot);
   const general = six.find(p => p.name === 'GENERAL');
   const rowOne = [];
   if (general) { rowOne.push(general); for (const p of six) if (p !== general) rowOne.push(p); }
   else for (const p of six) rowOne.push(p);
-  const others = stock.filter(p => !p.firstSix).sort((a, b) => (b.stage - a.stage) || (b.tended - a.tended));
-  while (rowOne.length < 6 && others.length) rowOne.push(others.shift());
-  const lines = TEXT.planting.plantingDayTheAuger;
+  const gift = s.plants.find(p => p.giftName && !p.memorial && p.location === 'GREENHOUSE');
+  if (gift) rowOne.push(gift);
+  const lines = [...TEXT.planting.plantingDayTheAuger];
   if (!general && sixPlants().some(p => p.name === 'GENERAL' && p.memorial)) {
     w.flags.markerStone = true;
     lines.push(TEXT.planting.atTheHeadOf, TEXT.planting.constanceHeGuardsThe);
@@ -4489,25 +4511,41 @@ function doPlanting() {
   rowOne.forEach((p, i) => { p.location = 'ROW1'; p.row = 1; p.plantedDay = s.day; p.slot = i; if (!p.history.includes(TEXT.plants.plantedInRow1)) p.history.push(TEXT.plants.plantedInRow1); });
   w.flags.bookend = rowOne.length ? rowOne[0].name : null;
   if (general) lines.push(TEXT.planting.theGeneralGoesIn);
-  const byVar = { ECHO: [], CHANDLER: [], CLIMAX: [] };
-  for (const p of others) (byVar[p.variety] || byVar.CHANDLER).push(p);
-  const queue = [...byVar.ECHO, ...byVar.CHANDLER, ...byVar.CLIMAX];
-  let rn = 2;
-  for (const p of queue) { // round-robin over rows 2-7, by variety, strongest first
-    let guard = 0;
-    while (s.plants.filter(q => q.row === rn && !q.memorial).length >= 12 && guard++ < 6) rn = rn >= 7 ? 2 : rn + 1;
-    p.location = 'ROW' + rn; p.row = rn; p.plantedDay = s.day;
-    if (!p.history.includes(F(TEXT.plants.plantedInRowRn, { rn: rn }))) p.history.push(F(TEXT.plants.plantedInRowRn, { rn: rn }));
-    rn = rn >= 7 ? 2 : rn + 1;
+  // the Company goes into rows 2–7 as counts, by variety; the youngest
+  // share stays behind as the founding Nursery stock
+  const c = s.company;
+  if (c && !c.gone && c.n > 0) {
+    const plantable = Math.min(c.n, 36);
+    const per = []; let left = plantable;
+    for (let i = 0; i < 6; i++) { const take = Math.ceil(left / (6 - i)); per.push(take); left -= take; }
+    const varsLeft = Object.assign({}, c.vars);
+    per.forEach((take, i) => {
+      if (take <= 0) return;
+      const rn = i + 2, row = s.cropRows[rn - 1];
+      row.bushCount = (row.bushCount || 0) + take;
+      row.plantedDay = s.day;
+      row.stage = Math.max(row.stage || 0, c.stage);
+      row.wintered = c.wintered; row.chill = c.chill || 0;
+      let best = null, bestN = -1;
+      for (const v of Object.keys(varsLeft)) if (varsLeft[v] > bestN) { bestN = varsLeft[v]; best = v; }
+      row.variety = best || 'CHANDLER';
+      if (best) varsLeft[best] = Math.max(0, varsLeft[best] - take);
+      row.history.push(F(TEXT.register.rowPlantedWith, { joinVal: take + ' OF THE COMPANY' }));
+    });
+    const rest = c.n - plantable;
+    c.plantedOut = per.map((t, i) => [i + 2, t]).filter(x => x[1] > 0);
+    if (rest > 0) s.nursery = freshNursery({ stock: rest, stage: Math.max(2, c.stage - 1), health: c.health });
+    c.n = 0; c.gone = true;
+    lines.push(TEXT.planting.theCompanyGoesInto);
   }
-  lines.push(TEXT.planting.theCompanyGoesInto);
+  lines.push(...TEXT.faith.plantingHandover); // the thread's summit: the growing is not his to do
   lines.push(TEXT.planting.andInTheHeat, TEXT.planting.frankGoInWhen);
   w.step = 6; saveGame();
   say(lines);
 }
 function repot() {
   const s = G.save, w = s.world;
-  const lines = TEXT.planting.theFriendAgainRolling;
+  const lines = [...TEXT.planting.theFriendAgainRolling, TEXT.faith.crisisDiagnosis];
   const fed = w.flags.fedNames || [];
   let sixDied = null;
   if (!w.flags.mitAny) {
@@ -4523,11 +4561,23 @@ function repot() {
     }
   }
   if (sixDied) lines.push(F(TEXT.planting.constanceQuietlyOverName, { name: sixDied.name }));
+  // the crisis takes the Company by count (spec A5): survivors run
+  // ~55–65%, scaled by the player's mitigation, read at dawn as a number
+  if (s.company && !s.company.gone && s.company.n > 0) {
+    const c = s.company;
+    const loss = Math.min(c.n, Math.round(c.n * (w.flags.mitAny ? 0.35 : 0.45)));
+    c.n -= loss;
+    if (s.germ) s.germ.lost = (s.germ.lost || 0) + loss;
+    if (loss > 0) lines.push(F(w.flags.mitAny ? TEXT.planting.companyTollRescued : TEXT.planting.companyToll, { n: loss, left: c.n }));
+    if (!c.history.includes(TEXT.plants.theHardSpring)) c.history.push(TEXT.plants.theHardSpring);
+    if (c.n <= 0) { c.n = 0; c.gone = true; }
+  }
   const survivors = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE');
   for (const p of survivors) if (!p.history.includes(TEXT.plants.theHardSpring)) p.history.push(TEXT.plants.theHardSpring);
-  const gift = freshPlant(allocName(s.plants), { variety: 'CHANDLER', stage: 4, location: 'GREENHOUSE', sownDay: s.day, giftName: true, history: TEXT.plants.aGiftFromA });
+  const gift = freshPlant(allocName(s.plants), { variety: 'CHANDLER', stage: 4, location: 'GREENHOUSE', sownDay: s.day, giftName: true, fav: true, history: TEXT.plants.aGiftFromA });
   s.plants.push(gift);
   lines.push(F(TEXT.planting.andBeforeTheFriend, { name: gift.name }));
+  lines.push(TEXT.faith.giftThanks);
   lines.push(TEXT.planting.theGlassHouseBreathes);
   w.flags.repotDay = s.day; w.flags.repotReady = false; w.step = 5; saveGame();
   say(lines);
@@ -4545,10 +4595,22 @@ function ch6Dawn(ev) {
       if ((w.flags.wasWatered || {})[p.name]) return;
       if (hashDay(s.day * 31 + i) % 5 < 2 && p.health < 3) { p.health++; slipped.push(p.name); }
     });
+    let companySlipped = false;
+    if (s.company && !s.company.gone && s.company.n > 0 && s.company.loc === 'GREENHOUSE' && !s.field.vent && !w.flags.companyWatered) {
+      if (hashDay(s.day * 31 + 7) % 5 < 2 && s.company.health < 3) { s.company.health++; companySlipped = true; }
+    }
+    // an unmitigated night — vent shut, nothing watered — always costs
+    // the weakest of the six a step; the census used to guarantee it
+    if (!slipped.length && !s.field.vent && !Object.keys(w.flags.wasWatered || {}).length && gh.length) {
+      const weak = gh.slice().sort((a, b) => b.health - a.health)[0];
+      if (weak && weak.health < 3) { weak.health++; slipped.push(weak.name); }
+    }
     if (Object.keys(w.flags.wasWatered || {}).length || s.field.vent || w.flags.mitDirtDay === s.day - 1) w.flags.mitAny = true;
     w.step++;
     const hints = TEXT.dawns.waterThemTheBench;
-    return [F(TEXT.dawns.theGlassHouseIs, { v: (slipped.length ? F(TEXT.dawns.joinvalVSlippedIn, { joinVal: slipped.slice(0, 3).join(", "), v: (slipped.length > 3 ? " AND MORE" : "") }) : TEXT.dawns.theyHeldThisTime) }), hints[(w.step - 1) % 3], F(TEXT.dawns.theCrisisHasThree, { step: w.step })];
+    const lines = [F(TEXT.dawns.theGlassHouseIs, { v: (slipped.length ? F(TEXT.dawns.joinvalVSlippedIn, { joinVal: slipped.slice(0, 3).join(", "), v: (slipped.length > 3 ? " AND MORE" : "") }) : TEXT.dawns.theyHeldThisTime) }), hints[(w.step - 1) % 3], F(TEXT.dawns.theCrisisHasThree, { step: w.step })];
+    if (companySlipped) lines.splice(1, 0, TEXT.dawn.companySlipped);
+    return lines;
   }
   if (w.step === 3) {
     w.step = 4; w.flags.repotReady = true; saveGame();
@@ -4586,17 +4648,16 @@ TRIAL_OUTCOMES.deerFirstNight = {
     say(lines);
   },
 };
-function smallestNursery() {
-  const gh = G.save.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE');
-  return gh.sort((a, b) => (a.stage - b.stage) || (a.tended - b.tended))[0] || null;
-}
+/* Decision 7: the Barber strikes the Nursery stock by count — each
+   strike shears one stock plant, written on the Nursery page as a
+   SHORN line. The trial itself is unchanged. */
 function barberStrike() {
-  const p = smallestNursery();
-  if (!p) return null;
-  if (p.health < 3) p.health++;
-  if (!p.history.includes(TEXT.plants.shornInTheNight)) p.history.push(TEXT.plants.shornInTheNight);
+  const s = G.save, n = s.nursery;
+  if (!n || n.stock <= 0) return null;
+  n.stock--;
+  n.history.push(TEXT.register.shornLine);
   saveGame();
-  return p;
+  return n;
 }
 function ch7Opening() {
   say(TEXT.openings.theFieldSettlesInto);
@@ -4606,10 +4667,10 @@ function ch7Dawn(ev) {
   if (w.step === 0) {
     w.step = 1;
     const gift = s.plants.find(p => p.giftName && !p.memorial);
-    const lines = TEXT.dawns.fallIsComingInto;
+    const lines = [...TEXT.dawns.fallIsComingInto];
     if (gift) { if (!gift.history.includes(TEXT.plants.firstFallTurnedFirst)) gift.history.push(TEXT.plants.firstFallTurnedFirst); lines.push(TEXT.dawns.theGiftBushTurns); }
     const p = barberStrike();
-    if (p) lines.push(F(TEXT.dawns.andInTheNursery, { name: p.name }), TEXT.dawns.constanceWhateverItIs);
+    if (p) lines.push(TEXT.dawn.nurseryShorn, TEXT.dawns.constanceWhateverItIs);
     return lines;
   }
   if (w.step === 1) {
@@ -4617,8 +4678,7 @@ function ch7Dawn(ev) {
       w.flags.watchRight = (w.flags.watchRight || 0) + 1;
       if (w.flags.watchRight >= 2) {
         w.step = 2;
-        const gh = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE');
-        startTrial({ foe: 'BARBER', kind: 'barber', pressure: 30, vigor: 24, plantsList: gh.length ? gh : sixPlants(), msg: TEXT.trials.twoQuietNightsUnder });
+        startTrial({ foe: 'BARBER', kind: 'barber', pressure: 30, vigor: 24, plantsList: [], msg: TEXT.trials.twoQuietNightsUnder });
         return null;
       }
       return TEXT.dawns.aQuietNightIn;
@@ -4627,11 +4687,10 @@ function ch7Dawn(ev) {
     w.flags.strikes = (w.flags.strikes || 0) + 1;
     if ((w.flags.strikes || 0) >= 2) {
       w.step = 2;
-      const gh = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE');
-      startTrial({ foe: 'BARBER', kind: 'barber', pressure: 40, vigor: 24, plantsList: gh.length ? gh : sixPlants(), msg: TEXT.trials.itComesInDaylight });
+      startTrial({ foe: 'BARBER', kind: 'barber', pressure: 40, vigor: 24, plantsList: [], msg: TEXT.trials.itComesInDaylight });
       return null;
     }
-    return [(p ? F(TEXT.dawns.shornAgainNameThe, { name: p.name }) : TEXT.dawns.aQuietNight), TEXT.dawns.setTheWatchWhere];
+    return [(p ? TEXT.dawn.shornAgainNursery : TEXT.dawns.aQuietNight), TEXT.dawns.setTheWatchWhere];
   }
   if (w.step === 3) { completeChapter(7); return null; }
   return null;
@@ -4643,10 +4702,11 @@ TRIAL_OUTCOMES.barber = {
   },
   lose(t, fled) {
     const s = G.save, w = s.world;
-    const p = smallestNursery();
-    if (p && !fled) { if (p.health < 3) p.health++; if (!p.history.includes(TEXT.plants.shornInTheNight)) p.history.push(TEXT.plants.shornInTheNight); }
+    const n = s.nursery;
+    let lost = false;
+    if (n && n.stock > 0 && !fled) { n.stock--; n.history.push(TEXT.register.stockLostLine); lost = true; }
     w.step = 1; w.flags.strikes = 1; saveGame();
-    say([F(TEXT.trials.itSlipsAwayBetween, { v: (p ? F(TEXT.trials.leavingNameShornBehind, { name: p.name }) : "") }), TEXT.trials.itWillComeAgain]);
+    say([F(TEXT.trials.itSlipsAwayBetween, { v: (lost ? TEXT.register.stockLostLine : "") }), TEXT.trials.itWillComeAgain]);
   },
 };
 function pullWeeds(sec) {
@@ -4667,7 +4727,9 @@ function feedRow(rn) {
   if (s.compost < 9) return say(F(TEXT.field.aRowFeedingTakes, { compost: s.compost }));
   s.compost -= 9;
   const row = s.cropRows[rn - 1];
-  row.yieldRating = Math.min(3, row.yieldRating + 1); row.fedStamp = seasonKey(); saveGame();
+  row.yieldRating = Math.min(3, row.yieldRating + 1); row.fedStamp = seasonKey();
+  if (row.rowHealth > 0) row.rowHealth--; // good dirt is the row's rescue medicine too (spec A3)
+  saveGame();
   say(F(TEXT.field.rowRnFedNine, { rn: rn, yieldRating: row.yieldRating }));
 }
 function proudWeedInteract() {
@@ -4691,7 +4753,7 @@ function burnPileInteract() {
 }
 function strawberryInteract() {
   const s = G.save, w = s.world;
-  const have = s.plants.filter(p => p.variety === TEXT.plants.strawberry);
+  const have = s.plants.filter(p => !p.gone && p.variety === TEXT.plants.strawberry);
   if (have.length >= 4) { w.flags.strawDone = true; if (w.step === 3) w.step = 4; saveGame(); return say(TEXT.field.theStrawberryPatchFour); }
   const p = freshPlant(allocName(s.plants), { variety: 'STRAWBERRY', stage: 3, location: 'GARDEN', gardenState: 'NEW', sownDay: s.day, runners: true, history: TEXT.plants.aFoundingClumpOf });
   s.plants.push(p);
@@ -4702,7 +4764,7 @@ function strawberryInteract() {
 }
 function butterflyPlant() {
   const s = G.save, w = s.world;
-  const p = freshPlant('LAMPLIGHT', { variety: 'BUTTERFLY', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: 1, giftName: true, history: TEXT.plants.opaNamedItIn });
+  const p = freshPlant('LAMPLIGHT', { variety: 'BUTTERFLY', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: 1, giftName: true, fav: true, history: TEXT.plants.opaNamedItIn });
   s.plants.push(p);
   if (!s.dex.garden.includes(TEXT.plants.butterfly)) s.dex.garden.push(TEXT.plants.butterfly);
   w.flags.butterflyPlanted = true; w.step = 5; saveGame();
@@ -4739,7 +4801,11 @@ function ch8Dawn(ev) {
       if (s.field.weedLv[i] >= 3) {
         if (w.flags.lv3since[i] == null) w.flags.lv3since[i] = s.day;
         else if (s.day - w.flags.lv3since[i] >= 7) {
-          const inSec = s.plants.filter(p => !p.memorial && p.row && Math.floor((p.row - 1) / 2) === i).sort((a, b) => b.health - a.health)[0];
+          // the section's weekly harm steps its rows' health — and, at
+          // CRITICAL, costs a bush (spec A5); Row 1's Favorites still
+          // feel it by name, as they feel everything
+          for (const rn of [i * 2 + 1, i * 2 + 2]) rowStepHarm(s.cropRows[rn - 1], rn, TEXT.dawn.theWeeds, ev);
+          const inSec = s.plants.filter(p => !p.memorial && !p.gone && p.row && Math.floor((p.row - 1) / 2) === i).sort((a, b) => b.health - a.health)[0];
           if (inSec && inSec.health < 3) inSec.health++;
           w.flags.lv3since[i] = s.day;
         }
@@ -4771,7 +4837,7 @@ TRIAL_OUTCOMES.weedsLongWar = {
 };
 function forsythiaPlant() {
   const s = G.save, w = s.world;
-  const p = freshPlant('VESPER', { variety: 'FORSYTHIA', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: s.day, giftName: true, history: TEXT.plants.omaNamedItFrank });
+  const p = freshPlant('VESPER', { variety: 'FORSYTHIA', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: s.day, giftName: true, fav: true, history: TEXT.plants.omaNamedItFrank });
   s.plants.push(p);
   if (!s.dex.garden.includes(TEXT.plants.forsythia)) s.dex.garden.push(TEXT.plants.forsythia);
   w.flags.forsythiaPlanted = true; w.step = 1; saveGame();
@@ -4787,12 +4853,15 @@ function ch9Dawn(ev) {
     const f = s.plants.find(p => p.variety === TEXT.plants.forsythia);
     if (f) f.stage = 5;
     for (const p of s.plants) if (!p.memorial && p.row && p.stage === 4) { p.stage = 5; if (!p.blossomDay) p.blossomDay = s.day; }
+    for (const r of s.cropRows) if ((r.bushCount || 0) > 0 && r.stage === 4) r.stage = 5;
     saveGame();
     return TEXT.dawns.firstYellow;
   }
   if (w.step === 1 && !w.flags.spectacular) {
-    const living = s.plants.filter(p => !p.memorial && p.row);
-    const all = s.plants.filter(p => p.row);
+    // the spectacular one is computed over Favorites only (spec A5) —
+    // tended counts exist only in the circle now
+    const living = favPlants().filter(p => p.row);
+    const all = s.plants.filter(p => isFav(p) && p.row);
     const mostAll = all.slice().sort((a, b) => b.tended - a.tended)[0];
     let target = living.slice().sort((a, b) => (b.tended - a.tended) || (a.slot || 0) - (b.slot || 0))[0];
     const hope = living.find(p => p.name === 'HOPE');
@@ -4804,7 +4873,7 @@ function ch9Dawn(ev) {
     const lines = [];
     if (mostAll && mostAll.memorial) lines.push(F(TEXT.dawns.theMostTendedOf, { name: mostAll.name }));
     lines.push(F(TEXT.dawns.andThenNameFound, { name: target.name }));
-    if (target.history.includes(TEXT.plants.theHardSpring)) lines.push(TEXT.dawns.constanceQuietlyThatOne);
+    if (target.history.includes(TEXT.plants.theHardSpring)) { lines.push(TEXT.dawns.constanceQuietlyThatOne); lines.push(TEXT.faith.spectacularClause); }
     lines.push(TEXT.dawns.itIsWrittenIn);
     lines.push(TEXT.dawns.andOnTheWind);
     return lines;
@@ -4814,31 +4883,48 @@ function ch9Dawn(ev) {
     if (night > 3) { // the reckoning: the account first, the card at the next dawn
       if (w.flags.reckoned) { completeChapter(9); return null; }
       w.flags.reckoned = true;
-      const lines = TEXT.dawns.theReckoningOfThe;
+      const lines = [...TEXT.dawns.theReckoningOfThe];
       const losses = s.plants.filter(p => p.memorial && p.cause === TEXT.plants.theLateFrost);
       if (losses.length) lines.push(F(TEXT.dawns.firstTheLossesBy, { joinVal: losses.map(p => p.name).join(", ") }));
       for (let rn = 1; rn <= 7; rn++) {
         const row = s.cropRows[rn - 1];
-        const inRow = s.plants.filter(p => !p.memorial && p.row === rn);
-        if (!inRow.length) continue;
+        if (!rowHasBushes(rn)) continue;
         const watched = (w.flags.watchedRows || []).includes(rn);
         let fs = watched ? ((w.flags.frostResult || {})[rn] === 'win' ? 90 : 40) : 50;
-        if (!watched && night > 3) { const weak = inRow.slice().sort((a, b) => b.health - a.health)[0]; if (weak && weak.health < 3) weak.health++; }
+        if (!watched) {
+          if (rn === 1) { const weak = s.plants.filter(p => !p.memorial && p.row === 1).sort((a, b) => b.health - a.health)[0]; if (weak && weak.health < 3) weak.health++; }
+          else rowStepHarm(row, rn, TEXT.dawn.theLateFrostRow, ev); // crop rows take the hardest night at row scale
+        }
         if ((w.flags.blossomWatered || {})[rn]) fs += 20;
         row.fruitSet = Math.max(10, Math.min(100, fs));
       }
       saveGame();
       lines.push(TEXT.dawns.theFruitSetIs);
+      // Favorite #10: the frost survivor — a crop-row bush that entered a
+      // frost night DECLINING or worse and lived is named on the spot
+      if (!w.flags.frostSurvivorNamed) {
+        const seen = w.flags.frostRowHealth || {};
+        const cand = [2, 3, 4, 5, 6, 7].filter(rn => (seen[rn] || 0) >= 2 && (s.cropRows[rn - 1].bushCount || 0) > 0);
+        if (cand.length) {
+          cand.sort((a, b) => (seen[b] - seen[a]) || (a - b));
+          const p = splitFavoriteFromRow(cand[0], 'frost');
+          if (p) { w.flags.frostSurvivorNamed = p.name; lines.push(F(TEXT.field.frostSurvivorNamed, { rn: cand[0], name: p.name })); }
+        }
+      }
+      lines.push(TEXT.faith.reckoningWater); // trust, shown as a man picking up the can
       return lines;
     }
     w.flags.frostNight = night;
+    // remember how each crop row entered the night — the reckoning asks
+    w.flags.frostRowHealth = w.flags.frostRowHealth || {};
+    for (let rn = 2; rn <= 7; rn++) { const row = s.cropRows[rn - 1]; if ((row.bushCount || 0) > 0) w.flags.frostRowHealth[rn] = Math.max(w.flags.frostRowHealth[rn] || 0, row.rowHealth || 0); }
     const watch = w.flags.watchTonight;
     w.flags.watchTonight = null;
     if (watch) {
       w.flags.watchedRows = [...(w.flags.watchedRows || []), watch];
       const inRow = s.plants.filter(p => !p.memorial && p.row === watch);
       const weak = inRow.slice().sort((a, b) => b.health - a.health)[0];
-      startTrial({ foe: 'FROST', kind: 'frostBlossom', pressure: 45, vigor: 32, snap: true, plantsList: inRow.length ? inRow : sixPlants(), msg: F(TEXT.trials.theLateFrostNight, { night: night, watch: watch, v: (weak ? F(TEXT.trials.andNameIsV, { name: weak.name, v: HEALTH_NAMES[weak.health] }) : "") }) });
+      startTrial({ foe: 'FROST', kind: 'frostBlossom', pressure: 45, vigor: 32, snap: true, row: watch, plantsList: (watch === 1 ? (inRow.length ? inRow : sixPlants()) : []), msg: F(TEXT.trials.theLateFrostNight, { night: night, watch: watch, v: (weak ? F(TEXT.trials.andNameIsV, { name: weak.name, v: HEALTH_NAMES[weak.health] }) : "") }) });
       return null;
     }
     saveGame();
@@ -4849,21 +4935,29 @@ function ch9Dawn(ev) {
 TRIAL_OUTCOMES.frostBlossom = {
   win(t) {
     const s = G.save, w = s.world;
-    const rn = (t.plantsList && t.plantsList[0] && t.plantsList[0].row) || 1;
+    const rn = t.row || (t.plantsList && t.plantsList[0] && t.plantsList[0].row) || 1;
     (w.flags.frostResult = w.flags.frostResult || {})[rn] = 'win'; saveGame();
     say([F(TEXT.trials.theFrostBreaksOn, { rn: rn }), TEXT.trials.alvinComesInWith]);
   },
   lose(t, fled) {
     const s = G.save, w = s.world;
-    const rn = (t.plantsList && t.plantsList[0] && t.plantsList[0].row) || 1;
+    const rn = t.row || (t.plantsList && t.plantsList[0] && t.plantsList[0].row) || 1;
     (w.flags.frostResult = w.flags.frostResult || {})[rn] = 'lose';
     const lines = [F(TEXT.trials.theFrostTakesRow, { rn: rn })];
     if (!fled) {
-      const weak = (t.plantsList || []).filter(p => !p.memorial).sort((a, b) => b.health - a.health)[0];
-      for (const p of (t.plantsList || [])) {
-        if (p.memorial) continue;
-        p.health++;
-        if (p.health >= 4 || (p === weak && p.health >= 3)) { killPlant(p, TEXT.plants.theLateFrost); lines.push(F(TEXT.trials.nameDidNotSurvive_2, { name: p.name })); }
+      if (t.plantsList && t.plantsList.length) {
+        // Row 1 stakes Favorites: individual outcomes, as shipped
+        const weak = t.plantsList.filter(p => !p.memorial).sort((a, b) => b.health - a.health)[0];
+        for (const p of t.plantsList) {
+          if (p.memorial) continue;
+          p.health++;
+          if (p.health >= 4 || (p === weak && p.health >= 3)) { killPlant(p, TEXT.plants.theLateFrost); lines.push(F(TEXT.trials.nameDidNotSurvive_2, { name: p.name })); }
+        }
+      } else {
+        // a crop row stakes the row: a health step — and a bush only if
+        // the row entered the night CRITICAL (spec A5)
+        const row = s.cropRows[rn - 1];
+        if (row) { if ((row.rowHealth || 0) >= 3) loseRowBush(row, rn, TEXT.dawn.theLateFrostRow, null); else row.rowHealth++; }
       }
     }
     saveGame();
@@ -4880,11 +4974,19 @@ function pruneRow(rn) {
 }
 function plantNurseryRow(rn) {
   const s = G.save;
-  const stock = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE' && p.stage >= 3).sort((a, b) => (b.stage - a.stage) || (b.tended - a.tended)).slice(0, 12);
-  if (!stock.length) return say(TEXT.field.theNurseryShelfHolds);
-  for (const p of stock) { p.location = 'ROW' + rn; p.row = rn; p.plantedDay = s.day; if (!p.history.includes(F(TEXT.plants.plantedInRowRn, { rn: rn }))) p.history.push(F(TEXT.plants.plantedInRowRn, { rn: rn })); }
+  const n = s.nursery;
+  const row = s.cropRows[rn - 1];
+  if (!n || n.stock <= 0 || n.stage < 3) return say(TEXT.field.theNurseryShelfHolds);
+  const take = Math.min(n.stock, 12 - (row.bushCount || 0) - s.plants.filter(p => !p.memorial && !p.gone && p.row === rn).length);
+  if (take <= 0) return say(TEXT.field.theNurseryShelfHolds);
+  n.stock -= take;
+  row.bushCount = (row.bushCount || 0) + take;
+  if (row.plantedDay == null) row.plantedDay = s.day;
+  row.stage = Math.max(row.stage || 0, n.stage);
+  if (!row.variety) row.variety = 'CHANDLER';
+  row.history.push(F(TEXT.register.rowPlantedWith, { joinVal: take + ' FROM THE NURSERY' }));
   saveGame();
-  say(F(TEXT.field.lengthBushesGoInto, { length: stock.length, rn: rn, joinVal: stock.slice(0, 4).map(p => p.name).join(", "), v: (stock.length > 4 ? TEXT.field.line : "") }));
+  say(F(TEXT.field.lengthBushesGoInto, { length: take, rn: rn }));
 }
 function sowTrayLT() {
   const s = G.save, w = s.world;
@@ -4895,17 +4997,15 @@ function sowTrayLT() {
 }
 function potUpLT() {
   const s = G.save;
-  const made = Math.min(12, s.tray.n);
-  const vars = ['ECHO', 'CHANDLER', 'CLIMAX'];
-  const names = [];
-  for (let i = 0; i < made; i++) {
-    const p = freshPlant(allocName(s.plants), { variety: vars[(s.tray.pottedTotal + i) % 3], stage: 2, location: 'GREENHOUSE', sownDay: s.tray.sownDay || s.day, history: TEXT.plants.sownInTheLong });
-    s.plants.push(p); names.push(p.name);
-  }
+  if (!s.nursery) s.nursery = freshNursery();
+  const made = Math.min(12 - s.nursery.stock, s.tray.n);
+  if (made <= 0) return say(TEXT.field.theNurseryShelfHolds);
+  s.nursery.stock += made;
+  if (!s.nursery.history.includes(TEXT.plants.sownInTheLong)) s.nursery.history.push(TEXT.plants.sownInTheLong);
   s.tray.n -= made; s.tray.pottedTotal += made;
   if (s.tray.n <= 0) { s.tray.ready = false; s.tray.n = 0; }
   saveGame();
-  say(F(TEXT.field.madePottedUpAnd, { made: made, joinVal: names.slice(0, 4).join(", "), v: (names.length > 4 ? TEXT.field.line : "") }));
+  say(F(TEXT.field.madePottedUpAnd, { made: made }));
 }
 function shareStand() {
   const s = G.save, w = s.world, year = seasonOf(s.day).year;
@@ -4933,7 +5033,7 @@ function ltDawn(ev) {
     const idx = w.flags.seasonChanged; w.flags.seasonChanged = null; saveGame();
     if (idx === 0) { // spring
       for (const p of s.plants) if (!p.memorial && p.row && p.stage === 4) { p.stage = 5; if (!p.blossomDay) p.blossomDay = s.day; p.fruitSetOk = true; }
-      for (let rn = 1; rn <= 12; rn++) { const row = s.cropRows[rn - 1]; if (row.prunedYear === so.year - 1) { row.yieldRating = Math.min(3, (row.yieldRating || 1) + 1); row.prunedYear = null; } if (s.plants.some(p => !p.memorial && p.row === rn)) row.fruitSet = 60; }
+      for (let rn = 1; rn <= 12; rn++) { const row = s.cropRows[rn - 1]; if (row.prunedYear === so.year - 1) { row.yieldRating = Math.min(3, (row.yieldRating || 1) + 1); row.prunedYear = null; } if (rowHasBushes(rn)) { row.fruitSet = 60; if (row.stage >= 4) row.fruitSetOk = true; if (row.stage === 4) row.stage = 5; } }
       const lines = TEXT.dawns.springAgainTrueAs;
       if (w.flags.proudRoots && !w.flags.proudShoot) { w.flags.proudShoot = true; lines.push(TEXT.dawns.byTheFenceOne); }
       if (!w.flags.goats && !w.flags.goatAppeal && so.year >= (w.flags.ltStartYear || so.year) + 1) { w.flags.goatAppeal = 'filed'; lines.push(TEXT.dawns.aLetterComesFrom); }
@@ -4944,7 +5044,7 @@ function ltDawn(ev) {
     }
     if (idx === 1) { // summer
       for (const p of s.plants) if (!p.memorial && p.row && p.stage === 5) { p.stage = 6; if (!p.fruitDay) p.fruitDay = s.day; }
-      for (let rn = 1; rn <= 12; rn++) if (s.plants.some(p => !p.memorial && p.row === rn)) s.cropRows[rn - 1].ripeDay = s.day;
+      for (let rn = 1; rn <= 12; rn++) if (rowHasBushes(rn)) { const row = s.cropRows[rn - 1]; row.ripeDay = s.day; if (row.stage === 5) row.stage = 6; }
       saveGame();
       return TEXT.dawns.summerTheFieldTurns;
     }
@@ -4956,16 +5056,45 @@ function ltDawn(ev) {
     }
     if (idx === 3) { // winter: the bushes rest back to wood
       for (const p of s.plants) if (!p.memorial && p.row && p.stage === 6) p.stage = 4;
+      for (const r of s.cropRows) if ((r.bushCount || 0) > 0 && r.stage === 6) r.stage = 4;
       saveGame();
       return TEXT.dawns.winterTheFieldSleeps;
     }
   }
+  // the Long Tending's springs re-run the frost-survivor check (spec A1):
+  // last spring's frost candidate, if it entered DECLINING or worse and
+  // lived, is named at this dawn
+  if (w.flags.ltFrostCandidate != null && !w.flags.frostSurvivorNamed) {
+    const rn = w.flags.ltFrostCandidate; w.flags.ltFrostCandidate = null;
+    if ((w.flags.ltFrostHealth || 0) >= 2 && (s.cropRows[rn - 1].bushCount || 0) > 0) {
+      const p = splitFavoriteFromRow(rn, 'frost');
+      if (p) { w.flags.frostSurvivorNamed = p.name; saveGame(); return [F(TEXT.field.frostSurvivorNamed, { rn: rn, name: p.name })]; }
+    }
+  }
+  // Favorite #12: Alvin's plant — the dog settles beside one row bush,
+  // dawn after dawn, until the pattern is undeniable and Frank notices
+  if (!w.flags.alvinPlantNamed) {
+    if (w.flags.alvinSitRow == null) {
+      const cand = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter(rn => (s.cropRows[rn - 1].bushCount || 0) >= 2);
+      if (cand.length) { cand.sort((a, b) => (s.cropRows[b - 1].bushCount - s.cropRows[a - 1].bushCount) || (a - b)); w.flags.alvinSitRow = cand[0]; w.flags.alvinSitDays = 0; }
+    }
+    if (w.flags.alvinSitRow != null) {
+      w.flags.alvinSitDays = (w.flags.alvinSitDays || 0) + 1;
+      if (w.flags.alvinSitDays >= 5) {
+        const rn = w.flags.alvinSitRow;
+        const p = splitFavoriteFromRow(rn, 'alvin');
+        if (p) { w.flags.alvinPlantNamed = p.name; saveGame(); return [F(TEXT.field.alvinPlantNamed, { rn: rn, name: p.name })]; }
+        w.flags.alvinSitRow = null; w.flags.alvinSitDays = 0;
+      }
+    }
+  }
   if (so.idx === 0 && hashDay(s.day) % 7 === 0) { // a spring frost night
-    const rows = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter(rn => s.plants.some(p => !p.memorial && p.row === rn));
+    const rows = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter(rn => rowHasBushes(rn));
     if (rows.length) {
       const rn = rows[hashDay(s.day) % rows.length];
       const inRow = s.plants.filter(p => !p.memorial && p.row === rn);
-      startTrial({ foe: 'FROST', kind: 'frostBlossom', pressure: 45, vigor: 32, snap: true, plantsList: inRow, msg: F(TEXT.trials.aLateFrostIn, { rn: rn }) });
+      if (rn >= 2) { w.flags.ltFrostCandidate = rn; w.flags.ltFrostHealth = s.cropRows[rn - 1].rowHealth || 0; }
+      startTrial({ foe: 'FROST', kind: 'frostBlossom', pressure: 45, vigor: 32, snap: true, row: rn, plantsList: (rn === 1 ? inRow : []), msg: F(TEXT.trials.aLateFrostIn, { rn: rn }) });
       return null;
     }
   }
@@ -5023,6 +5152,7 @@ function ch3Dawn(ev) {
     if (w.flags.loadOrder === 'furniture' && !w.flags.plantsMoved) {
       w.flags.plantsMoved = true;
       for (const p of s.plants) if (!p.memorial && (p.location === 'BENCH' || p.location === 'WINDOW')) { p.wateredDays = Math.max(0, p.wateredDays - 1); p.location = 'OFFICE'; }
+      if (s.company) { s.company.loc = 'OFFICE'; s.company.wateredDays = Math.max(0, s.company.wateredDays - 1); }
       w.step = 6; saveGame();
       return TEXT.dawns.thePlantsSpentThe;
     }
@@ -5110,7 +5240,9 @@ function houseInteract(f) {
 }
 function waterShelf() {
   let n = 0;
-  for (const p of G.save.plants) if (!p.memorial && p.location === 'WINDOW' && p.stage >= 1 && !p.watered) { waterPlant(p); n++; }
+  const s = G.save;
+  for (const p of s.plants) if (!p.memorial && !p.gone && p.location === 'WINDOW' && p.stage >= 1 && !p.watered) { waterPlant(p); n++; }
+  if (s.company && !s.company.gone && s.company.n > 0 && s.company.loc === 'WINDOW' && !s.company.watered) { s.company.watered = true; n++; }
   saveGame();
   say((n ? F(TEXT.house.theWholeShelfEnd, { n: n }) : TEXT.house.everyoneOnTheShelf));
 }
@@ -5126,31 +5258,36 @@ function storageTrip() {
     w.step = 6; layoutNPCs();
     return say(TEXT.house.theLastLoadGoes);
   }
-  say([F(TEXT.house.loadTripsOf3, { trips: w.flags.trips }), TEXT.house.theHouseGetsEmptier]);
+  const lines = [F(TEXT.house.loadTripsOf3, { trips: w.flags.trips }), TEXT.house.theHouseGetsEmptier];
+  if (w.flags.trips === 2) lines.push(TEXT.faith.greatEmptying); // gratitude as habit, under load
+  say(lines);
 }
 function potUp() {
   const s = G.save, w = s.world;
   if (!s.tray.ready || s.tray.n <= 0) return;
-  const variety = (s.tray.pottedTotal % 2 === 0 ? TEXT.house.echo : TEXT.house.chandler);
-  const name = allocName(s.plants);
-  const slot = F(TEXT.house.n6Length, { length: s.plants.filter(p => p.location === 'WINDOW' && !p.firstSix).length });
-  const p = freshPlant(name, { variety, stage: 2, sownDay: s.tray.sownDay, sproutedDay: s.day, location: 'WINDOW', slot, history: TEXT.plants.germinatedInTheFridge });
-  s.plants.push(p);
+  // REVISION (Nov 27, 2026): potting-up makes the Company — one collective
+  // record. Names follow knowledge; the field will teach Frank who they
+  // are, one at a time, as things happen to them (spec A2).
+  const variety = (s.tray.pottedTotal % 2 === 0 ? 'ECHO' : 'CHANDLER');
+  if (!s.company) s.company = freshCompany({ loc: 'WINDOW' });
+  s.company.n++;
+  s.company.vars[variety] = (s.company.vars[variety] || 0) + 1;
   s.tray.n--; s.tray.pottedTotal++;
   dexAdd('SPROUT', variety);
   saveGame();
   if (s.tray.pottedTotal === 1) {
-    return say([TEXT.house.pottingUpOneSprout, F(TEXT.house.meetNameOfThe, { name: name, variety: variety }), F(TEXT.house.thereAreNMore, { n: s.tray.n })]);
+    return say([TEXT.house.companyFirst, TEXT.house.companyFirst2, TEXT.house.companyFirst3, F(TEXT.house.companyFirst4, { n: s.tray.n })]);
   }
   if (s.tray.n === 0) return finishPotting();
-  toast(F(TEXT.house.pottedUpNameVariety, { name: name, variety: variety, n: s.tray.n }));
+  toast(F(TEXT.house.companyToast, { n: s.tray.n }));
 }
 function finishPotting() {
   const s = G.save, w = s.world;
   for (const p of sixPlants()) if (p.location === 'BENCH' && !p.memorial) p.location = 'WINDOW';
+  if (s.company) s.company.loc = 'WINDOW';
   s.germ = { sown: 96, potted: s.tray.pottedTotal, lost: 0 };
   w.step = 8; saveGame(); layoutNPCs();
-  say([TEXT.house.theLastOneIs, F(TEXT.house.theRegisterRecordsThe, { pottedTotal: s.tray.pottedTotal }), TEXT.house.constanceNowTheHouse]);
+  say([TEXT.house.companyLast, F(TEXT.house.theRegisterRecordsThe, { pottedTotal: s.tray.pottedTotal }), TEXT.house.constanceNowTheHouse]);
 }
 function signSale() {
   const s = G.save;
@@ -5249,6 +5386,18 @@ function renderBerry() {
         const px = (2 + (rn - 1) % 3 * 8 + (idx % 6)) * TILE - camX, py = (13 + Math.floor((rn - 1) / 3) + Math.floor(idx / 6) * 0) * TILE - camY;
         ctx.fillStyle = p.health >= 2 ? '#7a8a3a' : '#3f7a2e'; ctx.fillRect(px + 4, py + 6, 8, 6);
         ctx.fillStyle = '#2e5a22'; ctx.fillRect(px + 6, py + 3, 4, 4);
+      }
+      // the rows' counted bushes draw after their Favorites
+      for (let rn2 = 1; rn2 <= 12; rn2++) {
+        const row2 = s6.cropRows[rn2 - 1];
+        if (!row2 || !(row2.bushCount > 0)) continue;
+        const favN = s6.plants.filter(q => q.row === rn2 && !q.memorial).length;
+        for (let bi3 = 0; bi3 < row2.bushCount; bi3++) {
+          const idx = favN + bi3;
+          const px = (2 + (rn2 - 1) % 3 * 8 + (idx % 6)) * TILE - camX, py = (13 + Math.floor((rn2 - 1) / 3)) * TILE - camY;
+          ctx.fillStyle = (row2.rowHealth || 0) >= 2 ? '#7a8a3a' : '#3f7a2e'; ctx.fillRect(px + 4, py + 6, 8, 6);
+          ctx.fillStyle = '#2e5a22'; ctx.fillRect(px + 6, py + 3, 4, 4);
+        }
       }
     }
   }
@@ -5414,16 +5563,21 @@ function drawAreaProps() {
         if (p.watered) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(sx + 11, sy - 4, 2, 3); }
       }
     }
-    const comp = s2.plants.filter(p => p.location === 'OFFICE' && !p.memorial && (p.slot == null || p.slot >= 6));
-    comp.slice(0, 9).forEach((p, i) => {
-      const sx = (11 + (i % 3)) * TILE - camX, sy = (2 + Math.floor(i / 3)) * TILE - camY;
-      ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], sx + 3, sy + 3, 10, 10);
-    });
+    if (s2.company && !s2.company.gone && s2.company.n > 0 && s2.company.loc === 'OFFICE') {
+      const c = s2.company, pots = Math.min(9, c.n);
+      for (let i = 0; i < pots; i++) {
+        const sx = (11 + (i % 3)) * TILE - camX, sy = (2 + Math.floor(i / 3)) * TILE - camY;
+        ctx.drawImage(POT_SPRITES[Math.min(c.stage, 3)], sx + 3, sy + 3, 10, 10);
+        if (c.watered) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(sx + 11, sy - 1, 2, 3); }
+      }
+    }
     return;
   }
   if (area === 'green') { // the benches, north and south
     const s2 = G.save;
-    const gp = s2.plants.filter(p => p.location === 'GREENHOUSE' && !p.memorial);
+    const gp = s2.plants.filter(p => p.location === 'GREENHOUSE' && !p.memorial && !p.gone);
+    if (s2.company && !s2.company.gone && s2.company.n > 0 && s2.company.loc === 'GREENHOUSE') gp.push({ stage: s2.company.stage, watered: s2.company.watered, health: s2.company.health });
+    if (s2.nursery && s2.nursery.stock > 0) gp.push({ stage: s2.nursery.stage, watered: s2.nursery.watered, health: s2.nursery.health });
     gp.slice(0, 20).forEach((p, i) => {
       const north = i < 10;
       const sx = (1 + (i % 10)) * TILE - camX, sy = (north ? 1 : 5) * TILE - camY;
@@ -5527,6 +5681,7 @@ function freshPlant(name, o) {
     wintered: false, chill: 0, history: [], harvestByYear: {},
     memorial: false, diedDay: null, cause: null, husk: false, firstHarvestDay: null, firstHarvestLbs: null,
     firstSix: false, gardenState: null, giftName: false, fruitSetOk: false,
+    fav: false, gone: false, // REVISION (Nov 27, 2026): the two tiers — a Favorite, or a garden plant gone (a register line, not a memorial)
   }, o);
 }
 /* Old saves stored pots as bare stage ints, then as {stage, waterDays, ...}
@@ -5547,12 +5702,37 @@ function migratePot(p, i) {
     dirt: !!p.dirt, dirtCredit: p.dirtCredit || 0,
   });
 }
-function freshRow() { return { yieldRating: 1, fruitSet: 0, wateredDays: 0, watered: false, poundsByYear: {} }; }
+function freshRow() {
+  return {
+    yieldRating: 1, fruitSet: 0, wateredDays: 0, watered: false, poundsByYear: {},
+    // REVISION (Nov 27, 2026): the row's whole truth — a collective record
+    bushCount: 0, rowHealth: 0, dryDays: 0, warnedDay: null, history: [],
+    variety: null, plantedDay: null, stage: 0, fruitSetOk: false, chill: 0, wintered: false, foundingRoll: null,
+  };
+}
+/* The Company: the potted sprouts of chapter 2, one collective record —
+   counted, staged, watered and worried over as a body, never a census.
+   Plant-shaped where the dawn engine needs it to be. */
+function freshCompany(o) {
+  return Object.assign({
+    n: 0, stage: 2, wateredDays: 0, watered: false, health: 0, dryDays: 0,
+    warnedDay: null, chill: 0, wintered: false, fruitSetOk: false,
+    vars: { ECHO: 0, CHANDLER: 0 }, loc: 'WINDOW', roll: [], history: [], gone: false, plantedOut: null,
+  }, o || {});
+}
+/* The Nursery: collective stock for rows 8–12, on the same pattern. */
+function freshNursery(o) {
+  return Object.assign({
+    stock: 0, stage: 2, wateredDays: 0, watered: false, health: 0, dryDays: 0, history: [],
+    warnedDay: null, chill: 0, wintered: false, fruitSetOk: false,
+  }, o || {});
+}
 let G = null; // game state (serializable part in G.save)
 function newSave() {
   const s = attachPotsAlias({
-    v: 2, day: 1, seedsLeft: 6, tea: 3, teaBrewedDay: 0,
-    plants: PLANT_NAMES.map((n, i) => freshPlant(n, { variety: SIX_VARIETY[i], location: 'BENCH', slot: i, firstSix: true })),
+    v: 3, day: 1, seedsLeft: 6, tea: 3, teaBrewedDay: 0,
+    plants: PLANT_NAMES.map((n, i) => freshPlant(n, { variety: SIX_VARIETY[i], location: 'BENCH', slot: i, firstSix: true, fav: true })),
+    company: null, nursery: null,
     tray: { n: 0, watered: false, sownDay: null, stratDays: 0, ready: false, pottedTotal: 0 },
     dex: { blueberry: [], garden: [], cells: [] },
     deerBeaten: false, deerPresent: false, chapterDone: false,
@@ -5602,13 +5782,85 @@ function migrateSaveV1(s1) {
   if (s1.dex && Array.isArray(s1.dex.blueberry)) s.dex.blueberry = s1.dex.blueberry.slice();
   if (Array.isArray(s1.weeds)) s.weeds = s1.weeds;
   if (s.chapterDone) { s.world.ch = 2; s.world.step = 0; }
-  return ensureV2(s);
+  return ensureV3(s);
+}
+/* v3 shape insurance (REVISION, Nov 27, 2026): the two collective records
+   and the extended row records, backfilled without inventing history. */
+function ensureV3(s) {
+  if (s.company === undefined) s.company = null;
+  if (s.nursery === undefined) s.nursery = null;
+  if (s.company) s.company = Object.assign(freshCompany(), s.company);
+  if (s.nursery) s.nursery = Object.assign(freshNursery(), s.nursery);
+  if (Array.isArray(s.cropRows)) s.cropRows = s.cropRows.map(r => Object.assign(freshRow(), r));
+  for (const p of s.plants || []) {
+    if (p.fav === undefined) p.fav = false;
+    if (p.gone === undefined) p.gone = false;
+    if (!p.memorial && (p.firstSix || p.giftName)) p.fav = true; // the founding six and the gift-named are Favorites by rule
+  }
+  return s;
+}
+/* Save migration v2 -> v3 (spec A6): Favorites are determined by rule —
+   the first six, gift-named story plants, and Row 1's living, taken in
+   bench order to the cap of twelve. Every other living individual folds
+   into its row or collective with its name read into the founding roll;
+   its harvests sum into the row's pounds. Memorials are preserved
+   verbatim and never count against the cap. Field totals do not move. */
+function migrateSaveV2toV3(s2) {
+  const s = ensureV2(s2);
+  s.cropRows = s.cropRows.map(r => Object.assign(freshRow(), r));
+  const planted = s.plants.some(p => p.row != null) || (s.world && s.world.ch >= 7);
+  const quals = s.plants.filter(p => !p.memorial && (p.firstSix || p.giftName || p.row === 1));
+  quals.sort((a, b) => ((a.slot != null ? a.slot : 999) - (b.slot != null ? b.slot : 999)));
+  const keep = new Set(quals.slice(0, 12));
+  for (const p of keep) p.fav = true;
+  const folded = [], nurseryNames = [];
+  for (const p of s.plants) {
+    if (p.memorial || keep.has(p) || p.location === 'GARDEN') continue;
+    folded.push(p);
+    if (p.row != null) {
+      const row = s.cropRows[p.row - 1];
+      row.bushCount = (row.bushCount || 0) + 1;
+      (row.foundingRoll = row.foundingRoll || []).push(p.name);
+      for (const y of Object.keys(p.harvestByYear || {})) row.poundsByYear[y] = Math.round(((row.poundsByYear[y] || 0) + (p.harvestByYear[y] || 0)) * 10) / 10;
+      if (row.plantedDay == null) row.plantedDay = p.plantedDay;
+      if (!row.variety) row.variety = p.variety;
+      if ((p.stage || 0) > (row.stage || 0)) row.stage = p.stage;
+    } else if (planted) {
+      if (!s.nursery) s.nursery = freshNursery();
+      s.nursery.stock++;
+      nurseryNames.push(p.name);
+      if ((p.stage || 0) > s.nursery.stage) s.nursery.stage = p.stage;
+    } else {
+      if (!s.company) s.company = freshCompany({ loc: p.location || 'WINDOW' });
+      s.company.n++;
+      s.company.roll.push(p.name);
+      s.company.vars[p.variety] = (s.company.vars[p.variety] || 0) + 1;
+      if ((p.stage || 0) > s.company.stage) s.company.stage = p.stage;
+      if ((p.health || 0) > s.company.health) s.company.health = p.health;
+    }
+  }
+  for (const row of s.cropRows) if (row.foundingRoll && row.foundingRoll.length) row.history.push(F(TEXT.register.rowPlantedWith, { joinVal: row.foundingRoll.join(", ") }));
+  if (nurseryNames.length && s.nursery) s.nursery.history.push(F(TEXT.register.nurseryStockedWith, { joinVal: nurseryNames.join(", ") }));
+  s.plants = s.plants.filter(p => !folded.includes(p));
+  s.v = 3;
+  return ensureV3(s);
+}
+function normalizeSave(obj) {
+  if (!obj) return newSave();
+  if (obj.v === 1 && Array.isArray(obj.pots)) return migrateSaveV1(obj);
+  if (obj.v === 2 && Array.isArray(obj.plants)) return migrateSaveV2toV3(obj);
+  return ensureV3(ensureV2(obj));
 }
 function saveGame() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(G.save)); } catch (e) {} }
 function loadSave() {
   try {
-    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (s && s.v === 2 && Array.isArray(s.plants)) return ensureV2(s);
+    const raw = localStorage.getItem(SAVE_KEY);
+    const s = JSON.parse(raw);
+    if (s && s.v === 2 && Array.isArray(s.plants)) {
+      // one-time backup of the pre-migration save, kept under its own key
+      try { if (!localStorage.getItem('hss-save-v1-v2backup')) localStorage.setItem('hss-save-v1-v2backup', raw); } catch (e) {}
+    }
+    if (s && (s.v === 3 || s.v === 2) && Array.isArray(s.plants)) return normalizeSave(s);
     if (s && s.v === 1 && Array.isArray(s.pots)) return migrateSaveV1(s);
   } catch (e) {}
   return null;
@@ -5623,8 +5875,60 @@ function attachPotsAlias(s) {
   }
   return s;
 }
-function plantsAt(loc) { return G.save.plants.filter(p => !p.memorial && (loc === 'ROW' ? p.row != null : p.location === loc)); }
-function livingPlants() { return G.save.plants.filter(p => !p.memorial); }
+function plantsAt(loc) { return G.save.plants.filter(p => !p.memorial && !p.gone && (loc === 'ROW' ? p.row != null : p.location === loc)); }
+function livingPlants() { return G.save.plants.filter(p => !p.memorial && !p.gone); }
+/* ==================== THE TWO TIERS (REVISION, Nov 27, 2026) ====================
+   A plant is a Favorite (individual: name, card, health ladder, memorial)
+   or it is counted — in the Company, the Nursery, or a row's bushCount.
+   The game chooses the Favorites, at beats, to a hard cap of twelve. */
+const FAV_CAP = 12;
+function isFav(p) { return !!(p && (p.fav || p.firstSix || p.giftName)); }
+function favPlants() { return G.save.plants.filter(p => isFav(p) && !p.memorial && !p.gone); }
+function favCount() { return favPlants().length; }
+function makeFavorite(p) { if (p && !p.memorial) { p.fav = true; } return p; }
+function fieldBushes() {
+  let n = 0;
+  for (const r of G.save.cropRows) n += (r.bushCount || 0);
+  for (const p of G.save.plants) if (!p.memorial && !p.gone && p.row != null) n++;
+  return n;
+}
+function rowHasBushes(rn) { const r = G.save.cropRows[rn - 1]; return !!((r && (r.bushCount || 0) > 0) || G.save.plants.some(p => !p.memorial && !p.gone && p.row === rn)); }
+/* A row pays for neglect in bushes, never below one (Decision 4): the
+   loss is written in the row's own page and spoken at dawn. */
+function loseRowBush(row, rn, cause, ev) {
+  if (!row || (row.bushCount || 0) <= 1) { row.rowHealth = 2; return false; }
+  row.bushCount--;
+  row.rowHealth = 2; // the row has paid; the warning cycle restarts honestly
+  row.history.push(F(TEXT.dawn.rowLostBush, { rn: rn, cause: cause }));
+  if (ev) ev.ups.push(F(TEXT.dawn.rowLostBush, { rn: rn, cause: cause }));
+  return true;
+}
+/* One step down the row's ladder; at CRITICAL a further step costs a bush. */
+function rowStepHarm(row, rn, cause, ev) {
+  if (!row || !(row.bushCount > 0)) return;
+  if (row.rowHealth >= 3) loseRowBush(row, rn, cause, ev);
+  else row.rowHealth++;
+}
+/* An event-Favorite is born: one bush splits out of its row's count at
+   the beat that chose it, named from Frank's pools, its card opening
+   with the line that earned it. No menu, ever. */
+function splitFavoriteFromRow(rn, kind) {
+  const s = G.save, row = s.cropRows[rn - 1];
+  if (!row || (row.bushCount || 0) < 1 || favCount() >= FAV_CAP) return null;
+  row.bushCount--;
+  const linesFor = { frost: TEXT.plants.namedAtTheReckoning, fruit: TEXT.plants.namedAtFirstPicking, alvin: TEXT.plants.namedByAlvin };
+  const p = freshPlant(allocName(s.plants), {
+    variety: row.variety || 'CHANDLER', stage: (kind === 'fruit' ? 6 : Math.max(4, row.stage || 4)), location: 'ROW' + rn, row: rn,
+    sownDay: row.plantedDay, bushDay: row.plantedDay, plantedDay: s.day, fav: true,
+    health: row.rowHealth || 0, wintered: !!row.wintered, chill: row.chill || 0, fruitSetOk: !!row.fruitSetOk,
+    history: (linesFor[kind] || []).slice(),
+  });
+  if (p.stage >= 5) p.blossomDay = s.day;
+  if (p.stage >= 6) p.fruitDay = s.day;
+  s.plants.push(p);
+  row.history.push(F(TEXT.register.rowFavNote, { name: p.name }));
+  return p;
+}
 function housingOf(p) { return p.row != null ? 'field' : p.location === 'GARDEN' ? 'garden' : 'pot'; }
 function dexAdd(stageName, variety) {
   if (!G.save.dex.blueberry.includes(stageName)) G.save.dex.blueberry.push(stageName);
@@ -6304,6 +6608,14 @@ function feedDirt(p) { // good dirt: +8 Vigor, +1 growth credit, one health step
   saveGame();
 }
 function killPlant(p, cause) {
+  // Decision 3: a garden death (Favorites excepted) is a register line on
+  // the garden page, not a back-page memorial — the full ceremony belongs
+  // to the Favorites alone.
+  if (p.location === 'GARDEN' && !isFav(p)) {
+    p.health = 4; p.gone = true; p.diedDay = G.save.day; p.cause = (cause || TEXT.plants.itWasNotWatered); p.watered = false;
+    saveGame();
+    return;
+  }
   p.health = 4; p.memorial = true; p.diedDay = G.save.day; p.cause = (cause || TEXT.plants.itWasNotWatered); p.husk = true; p.watered = false;
   saveGame();
 }
@@ -6312,7 +6624,9 @@ function killPlant(p, cause) {
 function clearHusk(p) {
   p.husk = false; p.location = 'MEMORIAL'; p.row = null; p.slot = null;
   G.save.compost += 2; saveGame();
-  return say([F(TEXT.plants.frankClearsWhatIs, { name: p.name }), TEXT.plants.intoTheCompostIt, TEXT.plants.n2Compost]);
+  const lines = [F(TEXT.plants.frankClearsWhatIs, { name: p.name }), TEXT.plants.intoTheCompostIt, TEXT.plants.n2Compost];
+  if (isFav(p)) lines.push(TEXT.faith.huskHope); // the seed goes into the ground in hope, not despair
+  return say(lines);
 }
 function growthCheck(p, so, ev) {
   const eff = () => p.wateredDays + (p.dirtCredit || 0);
@@ -6327,7 +6641,7 @@ function growthCheck(p, so, ev) {
    it by housing thresholds, winter banks chill, and death — only from
    CRITICAL, only after a warned dawn spent unrescued — is carried out. */
 function plantDawn(p, so, ev) {
-  if (p.memorial) return;
+  if (p.memorial || p.gone) return;
   const s = G.save, housing = housingOf(p);
   const winter = so.idx === 3;
   const rowW = p.row != null && s.cropRows[p.row].watered;
@@ -6356,6 +6670,83 @@ function plantDawn(p, so, ev) {
   p.watered = false;
   p.vigor = MAX_VIGOR[p.stage] || 0;
 }
+/* The collective dawn: the Company and the Nursery climb and descend
+   the same ladder as a plant, on pot thresholds — but their deaths are
+   count losses, reported plainly, never named (spec A2/A3). */
+function collectiveGrowth(c, so) {
+  if (c.stage === 1 && c.wateredDays >= 2) { c.wateredDays = 0; c.stage = 2; }
+  else if (c.stage === 2 && c.wateredDays >= 3) { c.wateredDays = 0; c.stage = 3; }
+  else if (c.stage === 3 && c.wateredDays >= 8 && c.wintered) { c.wateredDays = 0; c.stage = 4; }
+  else if (c.stage === 4 && so.idx === 0 && (c.chill || 0) >= 10 && c.wateredDays >= 3) { c.wateredDays = 0; c.stage = 5; }
+  else if (c.stage === 5 && c.fruitSetOk && c.wateredDays >= 6) { c.wateredDays = 0; c.stage = 6; }
+}
+function collectiveDawn(c, so, ev, onDeath) {
+  if (!c) return;
+  const s = G.save, winter = so.idx === 3;
+  const wasWatered = c.watered;
+  if (c.health === 3 && c.warnedDay != null && c.warnedDay < s.day && !wasWatered) {
+    onDeath();
+    c.warnedDay = null; c.watered = false;
+    return;
+  }
+  if (wasWatered) {
+    c.dryDays = 0;
+    if (c.health > 0) c.health--;
+    if (!winter && c.stage >= 1) { c.wateredDays += 1; collectiveGrowth(c, so); }
+  } else if (c.stage >= 1 && s.world.ch >= 2 && !winter) {
+    c.dryDays++;
+    const th = DRY_THRESH.pot;
+    const implied = (c.dryDays >= th[0] ? 1 : 0) + (c.dryDays >= th[1] ? 1 : 0) + (c.dryDays >= th[2] ? 1 : 0);
+    if (implied > c.health) c.health = implied;
+  }
+  if (winter && c.stage >= 3) c.chill = (c.chill || 0) + 1;
+  c.watered = false;
+}
+function companyDawn(so, ev) {
+  const s = G.save, c = s.company;
+  if (!c || c.gone || c.n <= 0) return;
+  s.world.flags.companyWatered = !!c.watered; // the crisis dawns read this before it resets
+  collectiveDawn(c, so, ev, () => {
+    const loss = Math.min(c.n, Math.max(1, Math.round(c.n * 0.2)));
+    c.n -= loss; c.health = 2;
+    if (c.n <= 0) { c.n = 0; c.gone = true; }
+    ev.ups.push(F(TEXT.dawn.companyLost, { n: loss }));
+  });
+}
+function nurseryDawn(so, ev) {
+  const s = G.save, n = s.nursery;
+  if (!n || n.stock <= 0) return;
+  collectiveDawn(n, so, ev, () => {
+    const loss = Math.min(n.stock, Math.max(1, Math.round(n.stock * 0.25)));
+    n.stock -= loss; n.health = 2;
+    ev.ups.push(F(TEXT.dawn.stockLost, { n: loss }));
+  });
+}
+/* One row's dawn: irrigation and rain climb its ladder one step; dry
+   days descend it on the field thresholds; a CRITICAL row left
+   unrescued pays a bush (floor 1) and restarts at DECLINING. */
+function rowDawn(row, rn, so, ev) {
+  const s = G.save, winter = so.idx === 3;
+  if (!((row.bushCount || 0) > 0)) { row.watered = false; return; }
+  const wasWatered = row.watered;
+  if (row.rowHealth === 3 && row.warnedDay != null && row.warnedDay < s.day && !wasWatered) {
+    loseRowBush(row, rn, TEXT.dawn.aDrySpell, ev);
+    row.warnedDay = null; row.watered = false;
+    return;
+  }
+  if (wasWatered) {
+    row.dryDays = 0;
+    if (row.rowHealth > 0) row.rowHealth--;
+    if (!winter && row.stage >= 1) { row.wateredDays++; collectiveGrowth(row, so); }
+  } else if (!winter && s.world.ch >= 2) {
+    row.dryDays = (row.dryDays || 0) + 1;
+    const th = DRY_THRESH.field;
+    const implied = (row.dryDays >= th[0] ? 1 : 0) + (row.dryDays >= th[1] ? 1 : 0) + (row.dryDays >= th[2] ? 1 : 0);
+    if (implied > row.rowHealth) row.rowHealth = implied;
+  }
+  if (winter && row.stage >= 3) row.chill = (row.chill || 0) + 1;
+  row.watered = false;
+}
 const SEASON_LINES = TEXT.dawn.springTheYearTurns;
 function restDay() {
   fading = 'dawn'; fade = 1;
@@ -6376,17 +6767,30 @@ function dawn() {
   const ev = { sprouted: false, seedled: false, deaths: [], ups: [] };
   const anyWatered = s.plants.some(p => p.watered) || s.cropRows.some(r => r.watered);
   for (const p of s.plants) plantDawn(p, so, ev);
-  for (const r of s.cropRows) { if (r.watered) r.wateredDays++; r.watered = false; }
+  companyDawn(so, ev);
+  nurseryDawn(so, ev);
+  s.cropRows.forEach((r, i) => rowDawn(r, i + 1, so, ev));
   if (s.tray.n > 0) { if (s.tray.watered) s.tray.stratDays++; s.tray.watered = false; }
   wineDawn();
   const failing = [];
-  for (const p of s.plants) if (!p.memorial && p.health === 3) { p.warnedDay = s.day; failing.push(p.name); }
+  for (const p of s.plants) if (!p.memorial && !p.gone && p.health === 3) { p.warnedDay = s.day; failing.push(p.name); }
+  const rowFailing = [];
+  s.cropRows.forEach((r, i) => { if ((r.bushCount || 0) > 0 && r.rowHealth === 3) { r.warnedDay = s.day; rowFailing.push(i + 1); } });
+  const companyFailing = !!(s.company && !s.company.gone && s.company.n > 0 && s.company.health === 3);
+  if (companyFailing) s.company.warnedDay = s.day;
+  const nurseryFailing = !!(s.nursery && s.nursery.stock > 0 && s.nursery.health === 3);
+  if (nurseryFailing) s.nursery.warnedDay = s.day;
   if (w.ch <= 2) spawnWeeds(anyWatered ? 3 : 2);
   if (sixPlants().some(p => p.stage >= 2) && !s.deerBeaten && !s.deerPresent) s.deerPresent = true;
   let seasonLine = null;
   if (so.idx !== prev.idx) {
     seasonLine = SEASON_LINES[so.idx];
-    if (so.idx === 0) for (const p of s.plants) if (p.stage >= 3) p.wintered = true;
+    if (so.idx === 0) {
+      for (const p of s.plants) if (p.stage >= 3) p.wintered = true;
+      if (s.company && s.company.stage >= 3) s.company.wintered = true;
+      if (s.nursery && s.nursery.stage >= 3) s.nursery.wintered = true;
+      for (const r of s.cropRows) if ((r.stage || 0) >= 3) r.wintered = true;
+    }
     w.lastSeason = so.idx;
   }
   chapterDawnPrep(ev);
@@ -6398,7 +6802,11 @@ function dawn() {
   if (mode === 'card' || mode === 'trial') return;
   let lines = [];
   if (ev.deaths.length) lines.push(F(TEXT.dawn.inTheNightQuietly, { joinVal: ev.deaths.join(", ") }));
+  if (ev.ups.length) lines.push(...ev.ups);
   if (failing.length) lines.push(F(TEXT.dawn.vIsFailingWater, { v: failing[0] }));
+  for (const rn of rowFailing) lines.push(F(TEXT.dawn.rowFailing, { rn: rn }));
+  if (companyFailing) lines.push(TEXT.dawn.companyFailing);
+  if (nurseryFailing) lines.push(TEXT.dawn.nurseryFailing);
   if (seasonLine) lines.push(seasonLine);
   if (w.rainToday) lines.push(TEXT.dawn.rainInTheNight);
   if (beat) lines = lines.concat(beat);
@@ -6411,6 +6819,7 @@ function dawn() {
     else if (s.day >= 2 && !s.deerBeaten && w.ch === 1) line = MORNING_FORE[Math.floor(Math.random() * MORNING_FORE.length)];
     else line = MORNING_LINES[Math.floor(Math.random() * MORNING_LINES.length)];
     lines = [line];
+    if (ev.sprouted && w.ch === 1 && !w.flags.sproutThanks) { w.flags.sproutThanks = true; lines.push(TEXT.faith.firstSprout); }
   }
   const soNow = seasonOf(s.day); // chapter beats may move the calendar (a summer passes)
   lines.unshift('DAY ' + s.day + ' · ' + SEASON_NAMES[soNow.idx] + ', YEAR ' + soNow.year + '.');
@@ -6503,20 +6912,36 @@ function harvestRow(rn) {
   const row = s.cropRows[rn - 1];
   if (row.harvestedYear === year) return say(F(TEXT.field.rowRnIsPicked, { rn: rn }));
   if (row.fruitFell === year) return say(F(TEXT.field.rowRnSFruit, { rn: rn }));
-  const ripe = s.plants.filter(p => !p.memorial && p.row === rn && p.stage >= 6);
-  if (!ripe.length) return say(F(TEXT.field.rowRnIsNot, { rn: rn }));
+  const ripe = s.plants.filter(p => !p.memorial && !p.gone && p.row === rn && p.stage >= 6);
+  const countRipe = (row.bushCount || 0) > 0 && (row.stage || 0) >= 6;
+  if (!ripe.length && !countRipe) return say(F(TEXT.field.rowRnIsNot, { rn: rn }));
   if (!projUse()) return;
   const base = perBushLbs();
   let total = 0;
   const lines = [];
+  if (rn === 1 && w.ch === 10 && !w.flags.harvestThanks) { w.flags.harvestThanks = true; lines.push(TEXT.faith.harvestThanks); }
+  // Favorite #11: the first to fruit — at the first picking of a crop
+  // row in the wine chapter, Frank names the bush that fed them first
+  if (rn >= 2 && w.ch === 10 && !w.flags.firstFruitNamed && countRipe) {
+    const p = splitFavoriteFromRow(rn, 'fruit');
+    if (p) { w.flags.firstFruitNamed = p.name; lines.push(F(TEXT.field.firstFruitNamed, { name: p.name })); ripe.push(p); }
+  }
   for (const p of ripe) {
     const lbs = Math.round(base * (0.6 + 0.2 * (row.yieldRating || 1)) * ((row.fruitSet || 60) / 100) * (0.85 + (hashDay(s.day * 7 + p.name.length * 13) % 30) / 100) * 10) / 10;
     total += lbs;
     p.harvestByYear[year] = Math.round(((p.harvestByYear[year] || 0) + lbs) * 10) / 10;
     if (!p.firstHarvestDay) { p.firstHarvestDay = s.day; p.firstHarvestLbs = lbs; }
-    if (rn === 1) lines.push(F(TEXT.field.nameTofixedvalLbsInto, { name: p.name, toFixedVal: lbs.toFixed(1) }));
+    lines.push(F(TEXT.field.nameTofixedvalLbsInto, { name: p.name, toFixedVal: lbs.toFixed(1) }));
+  }
+  if (countRipe) {
+    // the row yields as a body: bushCount × the per-bush ramp, at the
+    // row's rating and fruit-set (spec A5) — the shipped sum's expectation
+    const rowLbs = Math.round((row.bushCount || 0) * base * (0.6 + 0.2 * (row.yieldRating || 1)) * ((row.fruitSet || 60) / 100) * (0.85 + (hashDay(s.day * 7 + rn * 13) % 30) / 100) * 10) / 10;
+    total += rowLbs;
+    lines.push(F(TEXT.field.rowHarvestedCount, { rn: rn, toFixedVal: rowLbs.toFixed(1) }));
   }
   total = Math.round(total * 10) / 10;
+  row.poundsByYear[year] = Math.round(((row.poundsByYear[year] || 0) + total) * 10) / 10;
   s.wine.pounds += total; s.wine.poundsByYear[year] = Math.round(((s.wine.poundsByYear[year] || 0) + total) * 10) / 10;
   row.harvestedYear = year; saveGame();
   if (rn === 1) {
@@ -6539,8 +6964,10 @@ function tasting() {
   else if (b && b.verdict === TEXT.wine.sweetAsCandy) lines.push(TEXT.wine.theWineIsPoured_2, TEXT.wine.pastorTheChildrenAt, TEXT.wine.constanceYouHaveMade);
   else if (b && b.verdict === TEXT.wine.tart) lines.push(TEXT.wine.theWineIsPoured_3, TEXT.wine.pastorItWouldWake, TEXT.wine.constanceItIsThe);
   else lines.push(TEXT.wine.theWineIsPoured_4, TEXT.wine.pastorItIsAn, TEXT.wine.constanceItTastesLike);
+  lines.push(TEXT.faith.sharedCounts); // what was given away counts as yield in this house
   lines.push(TEXT.wine.constanceRaisesHerGlass);
   lines.push(TEXT.wine.andAtTheEnd, TEXT.wine.frankNextYearAnd);
+  lines.push(TEXT.faith.settlement); // he did his part, sealed it, and waited on what he could not hurry
   say(lines, () => completeChapter(10));
 }
 function ch10Opening() {
@@ -6552,7 +6979,7 @@ function ch10Dawn(ev) {
   if (w.step === 2 && !w.flags.ripened) {
     w.flags.ripened = true;
     for (const p of s.plants) if (!p.memorial && p.row && p.stage === 5) { p.stage = 6; if (!p.fruitDay) p.fruitDay = s.day; }
-    for (let rn = 1; rn <= 12; rn++) if (s.plants.some(p => !p.memorial && p.row === rn)) s.cropRows[rn - 1].ripeDay = s.day;
+    for (let rn = 1; rn <= 12; rn++) { const row = s.cropRows[rn - 1]; if (rowHasBushes(rn)) { row.ripeDay = s.day; if (row.stage === 5) row.stage = 6; } }
     saveGame();
     return TEXT.dawns.theFieldTurnsBerry;
   }
@@ -6562,7 +6989,7 @@ function ch10Dawn(ev) {
       const row = s.cropRows[rn - 1];
       if (row.ripeDay && row.harvestedYear !== year && row.fruitFell !== year && s.day - row.ripeDay > 5) { row.fruitFell = year; lines.push(F(TEXT.dawns.rowRnSFruit, { rn: rn })); }
     }
-    const open = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter(rn => s.plants.some(p => !p.memorial && p.row === rn) && s.cropRows[rn - 1].harvestedYear !== year && s.cropRows[rn - 1].fruitFell !== year);
+    const open = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter(rn => rowHasBushes(rn) && s.cropRows[rn - 1].harvestedYear !== year && s.cropRows[rn - 1].fruitFell !== year);
     if (!open.length) { w.step = 3; saveGame(); lines.push(F(TEXT.dawns.theHarvestIsIn, { toFixedVal: (s.wine.poundsByYear[year] || 0).toFixed(1) })); }
     if (lines.length) return lines;
   }
@@ -6635,10 +7062,11 @@ function ch2Dawn(ev) {
 }
 function startFrostTrial() {
   const s = G.save, w = s.world;
-  const sprouts = s.plants.filter(p => !p.memorial && p.location === 'WINDOW' && !p.firstSix);
-  if (!w.flags.blanket) for (const p of sprouts) if (p.health === 0) p.health = 1; // the cold finds them first
+  // Decision 8: the tutorial's cold finds the Company first (a count
+  // loss); named mortality is taught through the six alone.
+  if (!w.flags.blanket && s.company && s.company.health === 0) s.company.health = 1;
   saveGame();
-  startTrial({ foe: 'FROST', kind: 'frostTray', pressure: 25, vigor: 22, plantsList: sprouts.length ? sprouts : sixPlants(), msg: TEXT.trials.theColdComesFor });
+  startTrial({ foe: 'FROST', kind: 'frostTray', pressure: 25, vigor: 22, plantsList: sixPlants(), msg: TEXT.trials.theColdComesFor });
 }
 TRIAL_OUTCOMES.frostTray = {
   win(t) {
@@ -6649,13 +7077,16 @@ TRIAL_OUTCOMES.frostTray = {
     const s = G.save, w = s.world;
     if (fled) { w.flags.frostIn = 1; saveGame(); return say(TEXT.trials.alvinBacksOffTo); }
     w.flags.frostDone = true; w.flags.coldComing = false;
-    for (const p of s.plants) {
-      if (p.memorial || p.location !== 'WINDOW') continue;
-      if (p.health < 3) p.health++;
-    }
     for (const p of sixPlants()) { if (!p.memorial) { if (p.health < 3) p.health++; p.wateredDays = Math.max(0, p.wateredDays - 1); } }
+    const lines = [...TEXT.trials.theColdGotIn];
+    if (s.company && s.company.n > 0) {
+      const loss = Math.min(s.company.n, 4);
+      s.company.n -= loss;
+      if (s.germ) s.germ.lost = (s.germ.lost || 0) + loss;
+      lines.push(F(TEXT.trials.companyColdLoss, { n: loss }));
+    }
     saveGame();
-    say(TEXT.trials.theColdGotIn);
+    say(lines);
   },
 };
 
@@ -6921,7 +7352,7 @@ function endTrial() {
   if (t.kind === 'deer') {
     if (t.result === 'win') {
       s.deerBeaten = true; s.deerPresent = false; saveGame();
-      say(TEXT.trials.theYardIsSafe, () => { checkChapter(); });
+      say([].concat(TEXT.trials.theYardIsSafe, TEXT.faith.tenantYard), () => { checkChapter(); });
     } else if (t.result === 'lose') {
       const p = sixPlants()[t.pot];
       if (p.stage > 1) { p.stage--; if (p.stage < 3) p.seedlingDay = null; if (p.stage < 2) p.sproutedDay = null; }
@@ -7569,14 +8000,15 @@ function renderControls() {
    the stages witnessed across the six lives (G.save.dex). */
 let regView = 'list', regSel = 0, regCardSel = 0;
 let regLoc = 'BENCH', regPage = 0, regPlant = -1; // regPlant: index into G.save.plants for the open card
-const REG_LOCS = ['BENCH', 'WINDOW', 'FRIDGE', 'GREENHOUSE', 'NURSERY', 'OFFICE', 'ROW1', 'ROW2', 'ROW3', 'ROW4', 'ROW5', 'ROW6', 'ROW7', 'ROW8', 'ROW9', 'ROW10', 'ROW11', 'ROW12', 'GARDEN', 'MEMORIAL'];
+const REG_LOCS = ['FAVORITES', 'BENCH', 'WINDOW', 'FRIDGE', 'GREENHOUSE', 'NURSERY', 'OFFICE', 'ROW1', 'ROW2', 'ROW3', 'ROW4', 'ROW5', 'ROW6', 'ROW7', 'ROW8', 'ROW9', 'ROW10', 'ROW11', 'ROW12', 'GARDEN', 'MEMORIAL'];
 const LOC_PRETTY = TEXT.register.locPretty;
 function locPretty(loc) { return (LOC_PRETTY[loc] || (loc.startsWith('ROW') ? F(TEXT.misc.fieldReplaceval, { replaceVal: loc.replace("ROW", "ROW ") }) : loc)); }
 function regLocPlants(loc) {
-  if (loc.startsWith('AZ:')) return G.save.plants.filter(p => p.name.startsWith(loc.slice(3)));
+  if (loc === 'FAVORITES') return favPlants();
+  if (loc.startsWith('AZ:')) return G.save.plants.filter(p => p.name.startsWith(loc.slice(3)) && (isFav(p) || p.location === 'GARDEN' || p.memorial)); // the index of THE NAMED (spec A4)
   if (loc === 'MEMORIAL') return G.save.plants.filter(p => p.memorial);
-  if (loc === 'NURSERY') return G.save.plants.filter(p => p.location === 'GREENHOUSE' && !p.memorial);
-  if (loc.startsWith('ROW')) { const r = parseInt(loc.slice(3), 10); return G.save.plants.filter(p => p.row === r && !p.memorial); }
+  if (loc === 'NURSERY') return G.save.plants.filter(p => p.location === 'GREENHOUSE' && !p.memorial && !p.gone);
+  if (loc.startsWith('ROW')) { const r = parseInt(loc.slice(3), 10); return G.save.plants.filter(p => p.row === r && !p.memorial && !p.gone); }
   return G.save.plants.filter(p => p.location === loc && !p.memorial);
 }
 function regLocationsPresent() {
@@ -7643,7 +8075,7 @@ function registerUpdate() {
     if (menuNavHit('down')) regSel = (regSel + 6) % 26;
     if (Input.aHit) {
       const letter = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[regSel];
-      const found = G.save.plants.filter(p => p.name.startsWith(letter));
+      const found = G.save.plants.filter(p => p.name.startsWith(letter) && (isFav(p) || p.location === 'GARDEN' || p.memorial));
       if (found.length) { regLoc = 'AZ:' + letter; regPage = 0; regSel = -1; regView = 'list'; }
     }
   } else if (regView === 'back') {
@@ -7653,6 +8085,18 @@ function registerUpdate() {
     if (menuNavHit('down')) regSel = (regSel + 1) % Math.max(1, mems.length);
     if (Input.aHit && mems.length) { regPlant = G.save.plants.indexOf(mems[regSel]); regView = 'card'; regCardSel = 0; }
   } else if (regView === 'page') {
+    if (regPage === 'ROWS') {
+      const planted = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter(rn => rowHasBushes(rn) || G.save.cropRows[rn - 1].plantedDay != null);
+      if (Input.bHit) { regView = 'index'; regSel = 0; return; }
+      if (menuNavHit('up')) regSel = (regSel + Math.max(1, planted.length) - 1) % Math.max(1, planted.length);
+      if (menuNavHit('down')) regSel = (regSel + 1) % Math.max(1, planted.length);
+      if (Input.aHit && planted.length) { regPage = 'ROWDET:' + planted[regSel]; }
+      return;
+    }
+    if (typeof regPage === 'string' && regPage.startsWith('ROWDET:')) {
+      if (Input.bHit || Input.aHit) { regPage = 'ROWS'; regSel = 0; }
+      return;
+    }
     if (Input.bHit || Input.aHit) { regView = 'index'; regSel = 0; return; }
   } else { // card
     if (Input.bHit) { regView = regLoc === 'MEMORIAL' || (G.save.plants[regPlant] && G.save.plants[regPlant].memorial) ? 'back' : 'list'; if (regView === 'list') regSel = 0; return; }
@@ -7664,7 +8108,9 @@ function registerUpdate() {
   }
 }
 function regIndexEntries() {
-  const es = regLocationsPresent().map(l => ({ kind: 'loc', loc: l, label: locPretty(l) + ' (' + regLocPlants(l).length + ')' }));
+  const es = regLocationsPresent().map(l => ({ kind: 'loc', loc: l, label: (l === 'FAVORITES' ? TEXT.register.favorites : locPretty(l)) + ' (' + regLocPlants(l).length + ')' }));
+  if (G.save.cropRows.some(r => (r.bushCount || 0) > 0 || r.plantedDay != null)) es.push({ kind: 'page', page: 'ROWS', label: TEXT.register.theRows });
+  if ((G.save.company && !G.save.company.gone) || (G.save.company && G.save.company.plantedOut) || (G.save.nursery && (G.save.nursery.stock > 0 || G.save.nursery.history.length))) es.push({ kind: 'page', page: 'COMPANY', label: TEXT.register.theCompanyNursery });
   es.push({ kind: 'az', label: TEXT.register.aZNameIndex });
   es.push({ kind: 'back', label: TEXT.register.theBackPagesIn });
   if (G.save.germ) es.push({ kind: 'page', page: 'GERMINATION', label: TEXT.register.germinationRecord });
@@ -7693,7 +8139,7 @@ function renderRegister() {
   const s = G.save;
   if (regView === 'list') {
     const az = regLoc.startsWith('AZ:');
-    const plants = az ? s.plants.filter(p => p.name.startsWith(regLoc.slice(3))) : regLocPlants(regLoc);
+    const plants = regLocPlants(regLoc);
     drawText(TEXT.register.plantRegister, 80 - textW(TEXT.register.plantRegister, 2) / 2, 10, '#20242a', 2);
     const head = (az ? F(TEXT.register.namesSliceval, { sliceVal: regLoc.slice(3) }) : F(TEXT.register.locprettyval, { locPrettyVal: locPretty(regLoc) }));
     if (regSel < 0) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(9, 21, 142, 10); drawText('▶', 11, 23, '#b03030', 1); }
@@ -7709,6 +8155,7 @@ function renderRegister() {
       drawText(plantStageLabel(p).slice(0, 9), 92, y, '#5a6270', 1);
       const hg = healthGlyph(p);
       if (p.memorial) drawText('RESTS', 128, y, '#5a6270', 1);
+      else if (p.gone) drawText('GONE', 128, y, '#5a6270', 1);
       else if (hg) drawText(hg, 128, y, HEALTH_COL[p.health], 1);
       else drawText(p.watered ? 'WET' : '', 128, y, '#3b6fe0', 1);
     });
@@ -7729,7 +8176,7 @@ function renderRegister() {
     drawText(TEXT.register.nameIndex, 80 - textW(TEXT.register.nameIndex, 2) / 2, 10, '#20242a', 2);
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach((L, i) => {
       const x = 16 + (i % 6) * 22, y = 34 + Math.floor(i / 6) * 16;
-      const has = s.plants.some(p => p.name.startsWith(L));
+      const has = s.plants.some(p => p.name.startsWith(L) && (isFav(p) || p.location === 'GARDEN' || p.memorial));
       if (i === regSel) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(x - 3, y - 3, 12, 12); }
       drawText(L, x, y, has ? '#20242a' : '#b9c0c9', 1);
     });
@@ -7747,13 +8194,15 @@ function renderRegister() {
     if (!mems.length) drawText(TEXT.register.noOneRestsHere, 14, 40, '#5a6270', 1);
     const named = s.plants.length, living = livingPlants().length;
     drawText(F(TEXT.register.rollCallNamedNamed, { named: named, living: living, length: mems.length }), 12, 100, '#20242a', 1);
-    drawText(F(TEXT.register.berrydexLength18Cells, { length: s.dex.cells.length }), 12, 110, '#20242a', 1);
-    if (ltGoalsMet()) drawText(TEXT.register.wellTended, 80 - textW(TEXT.register.wellTended, 1) / 2, 124, '#2e8b3a', 1);
+    drawText(F(TEXT.register.inTheGround, { n: fieldBushes() }), 12, 110, '#20242a', 1);
+    drawText(F(TEXT.register.berrydexLength18Cells, { length: s.dex.cells.length }), 12, 118, '#20242a', 1);
+    if (ltGoalsMet()) drawText(TEXT.register.wellTended, 80 - textW(TEXT.register.wellTended, 1) / 2, 128, '#2e8b3a', 1);
     drawText(TEXT.screens.bBack, 12, 129, '#5a6270', 1);
     drawPaw(142, 124, '#b09a72');
   } else if (regView === 'page') {
     const pg = regPageLines();
     drawText(pg.title, 80 - textW(pg.title, 2) / 2, 10, '#20242a', 2);
+    if (regPage === 'ROWS') drawText('▶', 6, 32 + regSel * 9, '#b03030', 1);
     pg.lines.slice(0, 12).forEach((l, i) => drawText(l.slice(0, 36), 14, 32 + i * 9, '#20242a', 1));
     drawText(TEXT.screens.bBack, 12, 129, '#5a6270', 1);
     drawPaw(142, 124, '#b09a72');
@@ -7775,6 +8224,7 @@ function renderRegister() {
     drawText(F(TEXT.register.healthV, { v: HEALTH_NAMES[p.health] }), 14, 43, HEALTH_COL[p.health], 1);
     const rows = [F(TEXT.register.sownDayorvalV, { dayOrVal: dayOr(p.sownDay, TEXT.register.notYet), v: (p.sproutedDay ? F(TEXT.register.sproutedDaySproutedday, { sproutedDay: p.sproutedDay }) : "") }), F(TEXT.register.seedlingDayorvalV, { dayOrVal: dayOr(p.seedlingDay, TEXT.register.notYet), v: (p.bushDay ? F(TEXT.register.bushDayBushday, { bushDay: p.bushDay }) : "") }), F(TEXT.register.daysTendedTendedToday, { tended: p.tended, v: (p.stage === 0 ? "-" : (p.watered ? TEXT.register.watered : TEXT.register.thirsty)) })];
     if (p.memorial) rows.push(F(TEXT.register.diedDayDiedday, { diedDay: p.diedDay }), F(TEXT.register.causeV, { v: (p.cause || "") }));
+    if (p.gone) rows.push(F(TEXT.dawn.gardenGoneLine, { name: p.name }));
     const hy = Object.keys(p.harvestByYear || {});
     if (hy.length) rows.push(F(TEXT.register.harvestJoinval, { joinVal: hy.map(y => 'Y' + y + ' ' + p.harvestByYear[y] + 'LB').join(" · ") }));
     (p.history || []).slice(0, 2).forEach(h => rows.push(h));
@@ -7790,8 +8240,57 @@ function renderRegister() {
 function regPageLines() {
   const s = G.save;
   if (regPage === TEXT.register.germination && s.germ) return { title: TEXT.register.germination, lines: [F(TEXT.register.sownSownSeedsLate, { sown: s.germ.sown }), F(TEXT.register.pottedUpPottedEvery, { potted: s.germ.potted }), F(TEXT.register.lostAlongTheWay, { lost: s.germ.lost }), TEXT.register.theTrayIsEmpty] };
-  if (regPage === 'PROMISE') return { title: TEXT.register.omaSPromise, lines: [TEXT.register.shePromisedToStay, TEXT.register.untilSheTastesThe, TEXT.register.madeFromThisField, "", (s.wine.batches.some(b => b.verdict) ? TEXT.register.theJarIsFilled : TEXT.register.theJarWaitsEmpty)] };
-  if (regPage === 'TENDING') { const g = ltGoals(); const mark = b => b ? '* ' : '- '; return { title: TEXT.cards.theLongTending, lines: [F(TEXT.register.markvalBerrydexLength18, { markVal: mark(g.dex), length: G.save.dex.cells.length }), F(TEXT.register.markvalAll12Rows, { markVal: mark(g.rows) }), F(TEXT.register.markvalA900Lb, { markVal: mark(g.nineHundred) }), F(TEXT.register.markvalALovelyBatch, { markVal: mark(g.lovely) }), F(TEXT.register.markvalCellarStreak3, { markVal: mark(g.streak) }), F(TEXT.register.markvalEveryGardenEntry, { markVal: mark(g.garden) }), F(TEXT.register.markvalRow1Accounted, { markVal: mark(g.rowOne) }), F(TEXT.register.markvalRollCallLength, { markVal: mark(g.rollCall), length: G.save.plants.length }), "", (ltGoalsMet() ? TEXT.register.wellTended : TEXT.register.theFieldIsYoung)] }; }
+  if (regPage === 'PROMISE') {
+    // Decision 10: the filled-jar line is the LOVELY ending's, not any
+    // verdict's — a lesser wine gets the soberer line
+    const b = s.wine.batches[s.wine.batches.length - 1];
+    const jarLine = (!b || !b.verdict) ? TEXT.register.theJarWaitsEmpty : (b.verdict === TEXT.wine.lovely ? TEXT.register.theJarIsFilled : TEXT.register.theJarIsFilledLesson);
+    return { title: TEXT.register.omaSPromise, lines: [TEXT.register.shePromisedToStay, TEXT.register.untilSheTastesThe, TEXT.register.madeFromThisField, "", jarLine] };
+  }
+  if (regPage === 'ROWS') {
+    const lines = [];
+    for (let rn = 1; rn <= 12; rn++) {
+      const row = s.cropRows[rn - 1];
+      if (!rowHasBushes(rn) && row.plantedDay == null) continue;
+      const total = (row.bushCount || 0) + s.plants.filter(p => !p.memorial && !p.gone && p.row === rn).length;
+      lines.push(F(TEXT.register.rowSummaryLine, { rn: rn, variety: row.variety || 'CHANDLER', n: total }) + ((row.rowHealth || 0) > 0 ? ' ' + '!'.repeat(row.rowHealth) : ''));
+    }
+    return { title: TEXT.register.theRows, lines: (lines.length ? lines : [TEXT.register.nothingHereYet]) };
+  }
+  if (typeof regPage === 'string' && regPage.startsWith('ROWDET:')) {
+    const rn = parseInt(regPage.slice(7), 10), row = s.cropRows[rn - 1];
+    const favs = s.plants.filter(p => !p.memorial && !p.gone && p.row === rn);
+    const lifetime = Math.round(Object.values(row.poundsByYear || {}).reduce((a, b) => a + b, 0) * 10) / 10;
+    const lines = [
+      F(TEXT.register.rowPlantedLine, { v: dayOr(row.plantedDay, TEXT.register.notYet) }),
+      F(TEXT.register.rowDetailLine, { stage: STAGE_NAMES[row.stage || 0] || '', health: HEALTH_NAMES[row.rowHealth || 0], rating: row.yieldRating || 1 }),
+      F(TEXT.register.rowPoundsLine, { lbs: lifetime, fs: row.fruitSet || 0 }),
+    ];
+    if (favs.length === 1) lines.push(F(TEXT.register.rowFavNote, { name: favs[0].name }));
+    else if (favs.length > 1) lines.push(F(TEXT.register.rowFavNoteMany, { n: favs.length }));
+    for (const h of (row.history || []).slice(-6)) lines.push(h);
+    return { title: F(TEXT.register.rowSummaryLine, { rn: rn, variety: row.variety || 'CHANDLER', n: (row.bushCount || 0) + favs.length }), lines };
+  }
+  if (regPage === 'COMPANY') {
+    const lines = [], c = s.company, n = s.nursery;
+    if (c && !c.gone && c.n > 0) {
+      lines.push(F(TEXT.register.companyCardN, { n: c.n }));
+      lines.push(F(TEXT.register.companyCardStage, { stage: STAGE_NAMES[c.stage] || '', health: HEALTH_NAMES[c.health] || '', loc: locPretty(c.loc) }));
+      for (const h of (c.history || []).slice(-2)) lines.push(h);
+      if (c.roll && c.roll.length) { lines.push(TEXT.register.companyRollLine, TEXT.register.companyRollLine2); lines.push(c.roll.slice(0, 8).join(", ") + (c.roll.length > 8 ? "…" : "")); }
+    } else if (c && c.plantedOut) {
+      lines.push(TEXT.register.companyArchived, TEXT.register.companyArchived2);
+      lines.push(F(TEXT.register.companyPlantedOut, { v: c.plantedOut.map(x => 'ROW ' + x[0] + ' ×' + x[1]).join(", ") }));
+      if (c.roll && c.roll.length) { lines.push(TEXT.register.companyRollLine, TEXT.register.companyRollLine2); lines.push(c.roll.slice(0, 8).join(", ") + (c.roll.length > 8 ? "…" : "")); }
+    }
+    if (n && (n.stock > 0 || n.history.length)) {
+      lines.push(F(TEXT.register.nurseryCard, { n: n.stock }));
+      lines.push(F(TEXT.register.nurseryCardStage, { stage: STAGE_NAMES[n.stage] || '', health: HEALTH_NAMES[n.health] || '' }));
+      for (const h of (n.history || []).slice(-3)) lines.push(h);
+    }
+    return { title: TEXT.register.theCompanyNursery, lines: (lines.length ? lines : [TEXT.register.nothingHereYet]) };
+  }
+  if (regPage === 'TENDING') { const g = ltGoals(); const mark = b => b ? '* ' : '- '; return { title: TEXT.cards.theLongTending, lines: [F(TEXT.register.markvalBerrydexLength18, { markVal: mark(g.dex), length: G.save.dex.cells.length }), F(TEXT.register.markvalAll12Rows, { markVal: mark(g.rows) }), F(TEXT.register.markvalA900Lb, { markVal: mark(g.nineHundred) }), F(TEXT.register.markvalALovelyBatch, { markVal: mark(g.lovely) }), F(TEXT.register.markvalCellarStreak3, { markVal: mark(g.streak) }), F(TEXT.register.markvalEveryGardenEntry, { markVal: mark(g.garden) }), F(TEXT.register.markvalRow1Accounted, { markVal: mark(g.rowOne) }), F(TEXT.register.markvalRollCallLength, { markVal: mark(g.rollCall), length: fieldBushes() }), "", (ltGoalsMet() ? TEXT.register.wellTended : TEXT.register.theFieldIsYoung)] }; }
   if (regPage === 'GOATS') return { title: TEXT.register.theGoats, lines: TEXT.register.twoGoatsByAppeal };
   if (regPage === 'BARBER') return { title: TEXT.trials.theBarber, lines: TEXT.register.unknownSmallPrecise };
   if (regPage === 'CELLAR') {
@@ -7806,16 +8305,19 @@ function ltGoals() {
   const years = [...new Set(s.wine.batches.filter(b => b.verdict === TEXT.wine.lovely).map(b => b.year))].sort((a, b) => a - b);
   let streak = false;
   for (const y of years) if (years.includes(y + 1) && years.includes(y + 2)) streak = true;
-  const garden = s.plants.filter(p => p.location === 'GARDEN' && !p.memorial);
+  const garden = s.plants.filter(p => p.location === 'GARDEN' && !p.memorial && !p.gone);
   return {
     dex: s.dex.cells.length >= 18,
-    rows: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].every(rn => s.plants.some(p => !p.memorial && p.row === rn)),
+    rows: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].every(rn => rowHasBushes(rn)),
     nineHundred: Object.values(s.wine.poundsByYear).some(v => v >= 900),
     lovely: s.wine.batches.some(b => b.verdict === TEXT.wine.lovely),
     streak,
     garden: garden.length > 0 && garden.every(p => p.gardenState === 'FLOURISHING'),
-    rowOne: s.plants.filter(p => p.firstSix).every(p => p.memorial || p.firstHarvestDay != null),
-    rollCall: s.plants.length >= 100,
+    // Decision 5: THE FAVORITES ACCOUNTED FOR — every field Favorite
+    // (the six and the row-born) carries a first harvest or a memorial
+    rowOne: s.plants.filter(p => isFav(p) && (p.firstSix || p.row != null)).every(p => p.memorial || p.firstHarvestDay != null),
+    // Decision 5: THE FIELD AT FULL STRENGTH — 120 bushes in the ground
+    rollCall: fieldBushes() >= 120,
   };
 }
 function ltGoalsMet() { const g = ltGoals(); return Object.values(g).every(Boolean); }
@@ -7884,7 +8386,7 @@ requestAnimationFrame(frame);
 window.__hss = {
   state() {
     const so = seasonOf(G.save.day);
-    const ser = p => ({ name: p.name, stage: p.stage, wateredDays: p.wateredDays, watered: p.watered, vigor: p.vigor, tended: p.tended, sownDay: p.sownDay, sproutedDay: p.sproutedDay, seedlingDay: p.seedlingDay, location: p.location, dirt: p.dirt, dirtCredit: p.dirtCredit, variety: p.variety, health: p.health, dryDays: p.dryDays, memorial: p.memorial, row: p.row, slot: p.slot, chill: p.chill, wintered: p.wintered, history: p.history.slice(), firstSix: p.firstSix, giftName: p.giftName, gardenState: p.gardenState, firstHarvestDay: p.firstHarvestDay, harvestByYear: p.harvestByYear });
+    const ser = p => ({ name: p.name, stage: p.stage, wateredDays: p.wateredDays, watered: p.watered, vigor: p.vigor, tended: p.tended, sownDay: p.sownDay, sproutedDay: p.sproutedDay, seedlingDay: p.seedlingDay, location: p.location, dirt: p.dirt, dirtCredit: p.dirtCredit, variety: p.variety, health: p.health, dryDays: p.dryDays, memorial: p.memorial, row: p.row, slot: p.slot, chill: p.chill, wintered: p.wintered, history: p.history.slice(), firstSix: p.firstSix, giftName: p.giftName, gardenState: p.gardenState, firstHarvestDay: p.firstHarvestDay, harvestByYear: p.harvestByYear, fav: !!p.fav, gone: !!p.gone });
     return {
       mode, day: G.save.day, season: SEASON_NAMES[so.idx], year: so.year, tutorial: G.save.tutorial, seedsLeft: G.save.seedsLeft, tea: G.save.tea,
       compost: G.save.compost, goodDirt: G.save.goodDirt, weeds: JSON.parse(JSON.stringify(G.save.weeds || [])),
@@ -7893,7 +8395,10 @@ window.__hss = {
       tray: JSON.parse(JSON.stringify(G.save.tray)),
       world: { ch: G.save.world.ch, step: G.save.world.step, area, flags: JSON.parse(JSON.stringify(G.save.world.flags)), proj: G.save.world.proj, rainToday: G.save.world.rainToday },
       field: JSON.parse(JSON.stringify(G.save.field)),
-      rows: G.save.cropRows.map(r => ({ yieldRating: r.yieldRating, fruitSet: r.fruitSet, wateredDays: r.wateredDays, poundsByYear: r.poundsByYear, mulched: r.mulched, watered: r.watered, mowed: !!r.mowed })),
+      rows: G.save.cropRows.map(r => ({ yieldRating: r.yieldRating, fruitSet: r.fruitSet, wateredDays: r.wateredDays, poundsByYear: r.poundsByYear, mulched: r.mulched, watered: r.watered, mowed: !!r.mowed, bushCount: r.bushCount || 0, rowHealth: r.rowHealth || 0, stage: r.stage || 0, variety: r.variety, plantedDay: r.plantedDay, history: (r.history || []).slice(), foundingRoll: r.foundingRoll })),
+      company: G.save.company ? JSON.parse(JSON.stringify(G.save.company)) : null,
+      nursery: G.save.nursery ? JSON.parse(JSON.stringify(G.save.nursery)) : null,
+      saveVersion: G.save.v,
       wine: { jar: G.save.wine.jar ? { phase: G.save.wine.jar.phase, days: G.save.wine.jar.days, index: G.save.wine.jar.index, care: G.save.wine.jar.care, batch: G.save.wine.jar.batch } : null, batches: G.save.wine.batches.map(b => ({ n: b.n, verdict: b.verdict, index: b.index, care: b.care })), honey: G.save.wine.honey, pounds: G.save.wine.pounds, poundsByYear: G.save.wine.poundsByYear, shared: G.save.wine.shared },
       promise: G.save.promise, germ: G.save.germ,
       npcs: npcList.map(n => ({ id: n.id, x: n.tx, y: n.ty })),
@@ -7913,7 +8418,7 @@ window.__hss = {
     if (mode === 'dialogue') { dlg = null; mode = 'overworld'; }
   },
   waterAll() { sixPlants().forEach(p => { if (p.stage >= 1 && !p.memorial) waterPlant(p); }); saveGame(); },
-  waterEverything() { for (const p of G.save.plants) if (p.stage >= 1 && !p.memorial) waterPlant(p); for (const r of G.save.cropRows) r.watered = true; if (G.save.tray.n > 0) G.save.tray.watered = true; saveGame(); },
+  waterEverything() { for (const p of G.save.plants) if (p.stage >= 1 && !p.memorial && !p.gone) waterPlant(p); for (const r of G.save.cropRows) r.watered = true; if (G.save.company && !G.save.company.gone && G.save.company.n > 0) G.save.company.watered = true; if (G.save.nursery && G.save.nursery.stock > 0) G.save.nursery.watered = true; if (G.save.tray.n > 0) G.save.tray.watered = true; saveGame(); },
   plantAll() {
     sixPlants().forEach(p => { if (p.stage === 0 && G.save.seedsLeft > 0) { p.stage = 1; if (p.sownDay == null) p.sownDay = G.save.day; G.save.seedsLeft--; dexAdd('SEED', p.variety); } });
     if (G.save.tutorial === 1) G.save.tutorial = 2;
@@ -7974,7 +8479,7 @@ window.__hss = {
   setChapter(ch, step) { G.save.world.ch = ch; G.save.world.step = step || 0; saveGame(); },
   setHealth(name, h) { const p = G.save.plants.find(q => q.name === name); if (p) { p.health = h; if (h === 3) { p.critSince = G.save.day; p.warnedDay = G.save.day; } saveGame(); } },
   debugSave() { return JSON.parse(JSON.stringify(G.save)); },
-  setSave(obj) { G.save = ensureV2(obj); area = AREAS[G.save.world.area] ? G.save.world.area : 'yard'; AW = curArea().w; AH = curArea().h; player.tx = G.save.player.x; player.ty = G.save.player.y; syncPixels(player); layoutNPCs(); saveGame(); },
+  setSave(obj) { G.save = normalizeSave(obj); area = AREAS[G.save.world.area] ? G.save.world.area : 'yard'; AW = curArea().w; AH = curArea().h; player.tx = G.save.player.x; player.ty = G.save.player.y; syncPixels(player); layoutNPCs(); saveGame(); },
   trialState() { return trial ? { foe: trial.foe, pressure: trial.pressure, maxPressure: trial.maxPressure, vigor: trial.vigor, phase: trial.phase, wave: trial.wave || 1, over: trial.over, result: trial.result } : null; },
   setWeeds(list) { G.save.weeds = (list || []).map(w => ({ x: w.x, y: w.y, deep: !!w.deep })); saveGame(); },
   giveCompost(n) { G.save.compost += n; saveGame(); },
