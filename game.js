@@ -122,14 +122,20 @@ const TILES = {};
    never noise. Tile semantics and map geometry are unchanged. */
 function tileHash(x, y, s) { let h = (x * 374761393 + y * 668265263 + (s || 0) * 974634211) >>> 0; h = (h ^ (h >> 13)) >>> 0; h = Math.imul(h, 1274126177) >>> 0; return ((h ^ (h >> 16)) >>> 0) / 4294967295; }
 
-/* ---- grass family: warm mid green, soft tone patches, clusters of
-   three short blades (dark, mid, lit tip) — placed, not sprinkled ---- */
+/* ---- grass family: warm mid green, soft tone patches, one tuft
+   cluster per tile in near-base tones — a quiet surface the cast
+   stands on. (Calmed Nov 27, 2026 on Daniel's playtest verdict:
+   the first overhaul's ground was too busy — three tufts a tile,
+   loose sparkle pixels, and a two-frame sway on top. The tuft is
+   now single and softer, the sparkles are gone, the grass is
+   still. Structured texture remains; the noise does not.) ---- */
 const G_BASE = '#6fbc42', G_LIGHT = '#8ad856', G_MID = '#57a233', G_DARK = '#468c28', G_DEEP = '#38731f';
+const GT_D = '#4e9c31', GT_M = '#63ab3a', GT_L = '#77c24b'; // the tuft's calmer three tones
 function grassTuft(c, x, y, flip) {
-  c.fillStyle = G_DARK; c.fillRect(x, y + 1, 1, 2); c.fillRect(x + 2, y + 1, 1, 2);
-  c.fillStyle = G_MID; c.fillRect(x + 1, y, 1, 3);
-  c.fillStyle = G_LIGHT; c.fillRect(x + 1, y, 1, 1);
-  if (flip) { c.fillStyle = G_DARK; c.fillRect(x + 3, y + 2, 1, 1); }
+  c.fillStyle = GT_D; c.fillRect(x, y + 1, 1, 2); c.fillRect(x + 2, y + 1, 1, 2);
+  c.fillStyle = GT_M; c.fillRect(x + 1, y, 1, 3);
+  c.fillStyle = GT_L; c.fillRect(x + 1, y, 1, 1);
+  if (flip) { c.fillStyle = GT_D; c.fillRect(x + 3, y + 2, 1, 1); }
 }
 function grassTile(seed, feature) {
   return tileCanvas(c => {
@@ -137,22 +143,17 @@ function grassTile(seed, feature) {
     for (let i = 0; i < 2; i++) {
       const px = Math.floor(tileHash(seed, i, 1) * 12), py = Math.floor(tileHash(seed, i, 2) * 12);
       c.fillStyle = i ? G_MID : G_LIGHT;
-      c.globalAlpha = 0.35;
+      c.globalAlpha = 0.22;
       c.fillRect(px, py, 3, 2); c.fillRect(px + 1, py + 2, 2, 1); c.fillRect(px + 1, py - 1, 1, 1);
       c.globalAlpha = 1;
     }
-    for (let i = 0; i < 3; i++) {
-      const px = 1 + Math.floor(tileHash(seed, i, 3) * 11), py = 1 + Math.floor(tileHash(seed, i, 4) * 12);
-      grassTuft(c, px, py, i === 2);
-    }
-    c.fillStyle = G_LIGHT;
-    c.fillRect(Math.floor(tileHash(seed, 7, 5) * 15), Math.floor(tileHash(seed, 7, 6) * 15), 1, 1);
-    c.fillRect(Math.floor(tileHash(seed, 8, 5) * 15), Math.floor(tileHash(seed, 8, 6) * 15), 1, 1);
+    const px = 1 + Math.floor(tileHash(seed, 0, 3) * 11), py = 1 + Math.floor(tileHash(seed, 0, 4) * 12);
+    grassTuft(c, px, py, false);
     if (feature === 'pebble') { c.fillStyle = '#a9b39a'; c.fillRect(11, 12, 2, 1); c.fillStyle = '#8a957c'; c.fillRect(11, 13, 2, 1); }
-    if (feature === 'tuft') { grassTuft(c, 6, 5, false); grassTuft(c, 5, 6, true); c.fillStyle = G_DEEP; c.fillRect(7, 10, 3, 1); }
+    if (feature === 'tuft') { grassTuft(c, 6, 5, false); }
     if (feature === 'mow') {
-      c.globalAlpha = 0.16; c.fillStyle = G_LIGHT; c.fillRect(0, 0, 16, 4); c.fillRect(0, 8, 16, 4);
-      c.fillStyle = G_DARK; c.fillRect(0, 4, 16, 4); c.fillRect(0, 12, 16, 4); c.globalAlpha = 1;
+      c.globalAlpha = 0.10; c.fillStyle = G_LIGHT; c.fillRect(0, 0, 16, 4); c.fillRect(0, 8, 16, 4);
+      c.fillStyle = G_MID; c.fillRect(0, 4, 16, 4); c.fillRect(0, 12, 16, 4); c.globalAlpha = 1;
     }
   });
 }
@@ -180,17 +181,15 @@ TILES.flower2 = flowerTile(73, ['#b07fe8', '#ff9f43', '#3ec6b8']);
 TILES.flower3 = flowerTile(79, ['#5b9bf0', '#ffffff', '#e0483e']);
 TILES.lawn = tileCanvas(c => { // the neighbours' lawn: cooler, striped, immaculate
   for (let x = 0; x < 16; x += 4) { c.fillStyle = '#74c34a'; c.fillRect(x, 0, 4, 16); c.fillStyle = '#68b840'; c.fillRect(x + 2, 0, 2, 16); }
-  c.fillStyle = '#8ad856'; c.fillRect(3, 4, 1, 1); c.fillRect(11, 10, 1, 1); c.fillRect(6, 13, 1, 1);
   c.fillStyle = '#57a233'; c.fillRect(13, 3, 1, 2); c.fillRect(2, 9, 1, 2);
 });
 
 /* ---- ground: sandy path, stepping stones, furrowed soil, porch ---- */
 TILES.path = tileCanvas(c => {
   c.fillStyle = '#ecd28c'; c.fillRect(0, 0, 16, 16);
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 14; i++) {
     const x = Math.floor(tileHash(i, 3, 9) * 16), y = Math.floor(tileHash(i, 4, 9) * 16);
     c.fillStyle = i % 3 ? '#dcbc6e' : '#c9a24f'; c.fillRect(x, y, 1, 1);
-    if (i % 5 === 0) { c.fillStyle = '#f6e3ac'; c.fillRect(x, y, 2, 1); }
   }
   c.fillStyle = '#c9a24f'; c.fillRect(4, 6, 2, 1); c.fillRect(11, 11, 2, 1);
   c.fillStyle = 'rgba(160,120,50,0.35)'; c.fillRect(0, 0, 1, 16); c.fillRect(15, 0, 1, 16);
@@ -5098,13 +5097,12 @@ function renderBerry() {
   for (let ty = y0; ty <= y0 + 9; ty++) for (let tx = x0; tx <= x0 + 10; tx++) {
     if (tx < 0 || ty < 0 || tx >= AW || ty >= AH) continue;
     const ch = mapChar(tx, ty), sx = tx * TILE - camX, sy = ty * TILE - camY;
-    const sway = (Math.floor(perfNow * 1.5) + tx + ty) % 2 === 0;
     let base = TILES.grass;
-    if (ch === 'g') { const h = (tx * 31 + ty * 17) % 9; base = h === 0 ? (sway ? TILES.tuftB : TILES.tuft) : h === 4 ? TILES.grass3 : h === 6 ? TILES.grass4 : h === 7 ? TILES.grass2 : TILES.grass; }
+    if (ch === 'g') { const h = (tx * 31 + ty * 17) % 9; base = h === 0 ? TILES.tuft : h === 4 ? TILES.grass3 : h === 6 ? TILES.grass4 : h === 7 ? TILES.grass2 : TILES.grass; }
     if (winter && SNOW_TILES.grass) base = SNOW_TILES[base === TILES.tuft ? 'tuft' : base === TILES.tuftB ? 'tuftB' : base === TILES.grass3 ? 'grass3' : base === TILES.grass4 ? 'grass4' : base === TILES.grass2 ? 'grass2' : 'grass'] || base;
     ctx.drawImage(base, sx, sy);
     let t = TILES[TILEMAP[ch]];
-    if (ch === 'o') t = sway ? TILES.flowerB : TILES.flower;
+    if (ch === 'o') t = TILES.flower;
     if (winter && SNOW_TILES[TILEMAP[ch]]) t = SNOW_TILES[TILEMAP[ch]];
     if (t && TILEMAP[ch] !== 'grass') ctx.drawImage(t, sx, sy);
     if (ch === 'T') { // soft ground shadow, then the canopy anchored bottom-centre on its tile
@@ -7523,16 +7521,15 @@ function renderOverworld() {
   for (let ty = y0; ty <= y0 + 9; ty++) for (let tx = x0; tx <= x0 + 10; tx++) {
     if (tx < 0 || ty < 0 || tx >= AW || ty >= AH) continue;
     const ch = mapChar(tx, ty), sx = tx * TILE - camX, sy = ty * TILE - camY;
-    // ambient sway: flowers and grass tufts lean with a slow two-frame breeze,
-    // neighbouring tiles out of phase so the yard shimmers instead of pulsing
-    const sway = (Math.floor(perfNow * 1.5) + tx + ty) % 2 === 0;
+    // the ground is still (Nov 27, 2026): the old two-frame tuft/flower
+    // sway made the whole yard shimmer — Daniel's verdict was 'too much'
     const winter = seasonOf(G.save.day).idx === 3;
     let base = TILES.grass; // plain grass tiles get a hashed variety so the lawn isn't flat
-    if (ch === 'g') { const h = (tx * 31 + ty * 17) % 9; base = h === 0 ? (sway ? TILES.tuftB : TILES.tuft) : h === 4 ? TILES.grass3 : h === 6 ? TILES.grass4 : h === 7 ? TILES.grass2 : TILES.grass; }
+    if (ch === 'g') { const h = (tx * 31 + ty * 17) % 9; base = h === 0 ? TILES.tuft : h === 4 ? TILES.grass3 : h === 6 ? TILES.grass4 : h === 7 ? TILES.grass2 : TILES.grass; }
     if (winter && SNOW_TILES.grass) base = SNOW_TILES[base === TILES.tuft ? 'tuft' : base === TILES.tuftB ? 'tuftB' : base === TILES.grass3 ? 'grass3' : base === TILES.grass4 ? 'grass4' : base === TILES.grass2 ? 'grass2' : 'grass'] || base;
     ctx.drawImage(base, sx, sy);
     let t = TILES[TILEMAP[ch]];
-    if (ch === 'o') t = sway ? TILES.flowerB : TILES.flower;
+    if (ch === 'o') t = TILES.flower;
     if (winter && SNOW_TILES[TILEMAP[ch]]) t = SNOW_TILES[TILEMAP[ch]];
     if (t && TILEMAP[ch] !== 'grass') ctx.drawImage(t, sx, sy);
     if (ch === 'T') {
