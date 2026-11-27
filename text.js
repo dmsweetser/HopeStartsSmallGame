@@ -1237,7 +1237,7 @@ const TEXT = {
     // game.js line 4484 · doPlanting
     notYetTheField: "NOT YET. THE FIELD KEEPS ITS OWN CHECKLIST:",
     // game.js line 4496 · doPlanting
-    atTheHeadOf: "AT THE HEAD OF ROW 1, FRANK READS THE GENERAL'S MEMORIAL ALOUD, EVERY WORD, AND SETS A FLAT STONE WHERE THE BOOKEND WOULD HAVE STOOD.",
+    atTheHeadOf: "AT THE HEAD OF ROW 1, FRANK READS THE GENERAL'S LINE IN THE REGISTER ALOUD, EVERY WORD, AND SETS A FLAT STONE WHERE THE BOOKEND WOULD HAVE STOOD.",
     // game.js line 4496 · doPlanting
     constanceHeGuardsThe: "CONSTANCE: HE GUARDS THE ROW ANYWAY. FRANK: HE DOES. HE ALWAYS DID LIKE THE END WITH THE VIEW.",
     // game.js line 4500 · doPlanting
@@ -2442,7 +2442,7 @@ const TEXT = {
     // game.js line 7860 · regPageLines
     markvalEveryGardenEntry: "{markVal}EVERY GARDEN ENTRY FLOURISHING",
     // game.js line 7860 · regPageLines
-    markvalRow1Accounted: "{markVal}THE FAVORITES ACCOUNTED FOR",
+    markvalRow1Accounted: "{markVal}THE FAVORITE ACCOUNTED FOR",
     // game.js line 7860 · regPageLines
     markvalRollCallLength: "{markVal}THE FIELD AT FULL STRENGTH: {length}/120 BUSHES",
     // game.js line 7860 · regPageLines
@@ -2476,7 +2476,7 @@ const TEXT = {
     ],
     // REVISION (Nov 27, 2026) — the register reshaped: Favorites, rows,
     // the Company and the Nursery.
-    favorites: "THE FAVORITES",
+    favorites: "THE FAVORITE",
     theCompanyNursery: "THE COMPANY & THE NURSERY",
     theRows: "THE ROWS",
     rowSummaryLine: "ROW {rn} — {variety}: {n} BUSHES",
@@ -2500,6 +2500,21 @@ const TEXT = {
     rowPlantedWith: "PLANTED WITH: {joinVal}",
     nurseryStockedWith: "STOCKED FROM: {joinVal}",
     companyPottedFrom: "POTTED UP, ONE BY ONE, FROM THE TRAY",
+    // ONE FAVORITE (Nov 27, 2026) — the circle is one: HOPE, and her
+    // line after her. The rest are named, and kept, and written down
+    // all the same; only the Favorite is mourned with a page.
+    demotedLine: "THE REGISTER KEEPS ONE FAVORITE CLOSE. THIS ONE IS NAMED, AND KEPT, AND WRITTEN HERE ALL THE SAME.",
+    goneLine: "{name} IS GONE. IT IS WRITTEN HERE, PLAINLY — A LINE IN THE REGISTER, THE WAY THIS HOUSE KEEPS ITS NEWS.",
+    rowNamedNote: "A NAMED ONE STANDS HERE: {name}",
+    rowNamedNoteMany: "{n} NAMED ONES STAND HERE",
+    // Decision 11-A (Nov 27, 2026) — succession, register-driven: the
+    // memorial page offers the replant; the name goes on, in hope.
+    succPlant: "PLANT {name}",
+    succLine: "SUCCEEDED BY {name} — PLANTED DAY {day}.",
+    succBornLine: "PLANTED IN {name}'S PLACE, FROM THE NURSERY — THE NAME GOES ON, IN HOPE.",
+    succPlanted: "IN THE GROUND: {name}.",
+    succNoStock: "THE NURSERY SHELF IS EMPTY — NOTHING TO PLANT FROM.",
+    succCircleFull: "THE CIRCLE OF ONE STANDS WITH ANOTHER NAME.",
   },
 
   // ======================================================================

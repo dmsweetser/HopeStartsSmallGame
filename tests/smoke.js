@@ -885,23 +885,37 @@ function findChromium() {
   s = await S();
   check('the sale signs chapter 2 shut', s.mode === 'card' && s.world.ch === 3, 'mode=' + s.mode + ' ch=' + s.world.ch);
   await tap('z'); await page.waitForTimeout(300);
-  // mortality (spec 2.8): death only at dawn, only from CRITICAL, never unwarned
+  // mortality (spec 2.8): death only at dawn, only from CRITICAL, never
+  // unwarned. ONE FAVORITE (Nov 27, 2026): the ceremony — memorial page,
+  // husk — is HOPE's alone; a named plant's death is a register line.
   await page.evaluate(() => {
     const sv = __hss.debugSave(); sv.world.ch = 2;
-    const cap = sv.plants.find(p => p.name === 'CAPTAIN'); cap.health = 3; cap.warnedDay = sv.day; cap.dryDays = 4; cap.watered = false;
-    const hope = sv.plants.find(p => p.name === 'HOPE'); hope.health = 3; hope.warnedDay = sv.day; hope.dryDays = 4; hope.watered = true;
+    const cap = sv.plants.find(p => p.name === 'CAPTAIN'); cap.health = 3; cap.warnedDay = sv.day; cap.dryDays = 4; cap.watered = true;
+    const hope = sv.plants.find(p => p.name === 'HOPE'); hope.health = 3; hope.warnedDay = sv.day; hope.dryDays = 4; hope.watered = false;
     __hss.setSave(sv);
   });
   await page.evaluate(() => window.__hss.advanceDay());
   s = await S();
-  check('an unrescued CRITICAL plant dies at dawn', s.plants.find(p => p.name === 'CAPTAIN').memorial === true, '');
-  check('a watered CRITICAL plant climbs back a step', (() => { const h = s.plants.find(p => p.name === 'HOPE'); return h.memorial === false && h.health === 2; })(), '');
+  check('an unrescued CRITICAL Favorite dies at dawn — to a memorial page', s.plants.find(p => p.name === 'HOPE').memorial === true, '');
+  check('a watered CRITICAL plant climbs back a step', (() => { const h = s.plants.find(p => p.name === 'CAPTAIN'); return h.memorial === false && !h.gone && h.health === 2; })(), '');
   const compostBefore = s.compost;
-  await page.evaluate(() => { const p = G.save.plants.find(q => q.name === 'CAPTAIN'); clearHusk(p); });
+  await page.evaluate(() => { const p = G.save.plants.find(q => q.name === 'HOPE'); clearHusk(p); });
   await dismissDialogue(6);
   s = await S();
   check('the husk goes to compost (+2) and the register keeps the name',
-    s.compost === compostBefore + 2 && s.plants.find(p => p.name === 'CAPTAIN').location === 'MEMORIAL', 'compost=' + s.compost);
+    s.compost === compostBefore + 2 && s.plants.find(p => p.name === 'HOPE').location === 'MEMORIAL', 'compost=' + s.compost);
+  // the other tier: CAPTAIN, unrescued at CRITICAL, goes the garden way
+  await page.evaluate(() => {
+    const sv = __hss.debugSave();
+    const cap = sv.plants.find(p => p.name === 'CAPTAIN'); cap.health = 3; cap.warnedDay = sv.day; cap.dryDays = 4; cap.watered = false;
+    __hss.setSave(sv);
+  });
+  await page.evaluate(() => window.__hss.advanceDay());
+  await dismissDialogue(6);
+  s = await S();
+  check('a named plant dies to a register line: gone, unmemorialed, no husk',
+    (() => { const c = s.plants.find(p => p.name === 'CAPTAIN'); return c.gone === true && c.memorial === false; })() &&
+    await page.evaluate(() => { const p = G.save.plants.find(q => q.name === 'CAPTAIN'); return p.husk === false; }), '');
   await page.evaluate(() => window.__hss.openRegister());
   s = await S();
   check('register opens on the list view', s.register.view === 'list', s.register.view);
@@ -912,7 +926,7 @@ function findChromium() {
   await page.evaluate(() => {
     const sv = __hss.debugSave();
     sv.world.ch = 3; sv.world.step = 0; sv.world.area = 'yard';
-    sv.plants.forEach(p => { p.memorial = false; p.health = 0; p.husk = false; if (p.location === 'MEMORIAL') p.location = 'WINDOW'; });
+    sv.plants.forEach(p => { p.memorial = false; p.gone = false; p.health = 0; p.husk = false; if (p.location === 'MEMORIAL') p.location = 'WINDOW'; });
     __hss.setSave(sv);
   });
   await page.evaluate(() => window.__hss.advanceDay());
@@ -1782,25 +1796,32 @@ function findChromium() {
     await page.evaluate(() => window.__hss.harvestRow(5));
     await dismissDialogue(12);
     s = await S();
-    check('first-to-fruit: a Favorite is named at the harvest, no menu asked', s.plants.some(p => p.fav && p.row === 5) && s.rows[4].bushCount === 2 && !!s.world.flags.firstFruitNamed, 'fav5=' + s.plants.filter(p => p.row === 5).map(p => p.name).join(','));
+    check('first-to-fruit: a plant is named at the harvest, no menu asked — and the circle of one is untouched', s.plants.some(p => !p.fav && p.row === 5) && s.rows[4].bushCount === 2 && !!s.world.flags.firstFruitNamed && s.plants.filter(p => p.fav).length <= 1, 'fav5=' + s.plants.filter(p => p.row === 5).map(p => p.name).join(','));
 
-    // the cap binds: at twelve Favorites the same beat names no one
+    // ONE FAVORITE (Nov 27, 2026): a save still carrying the old wide
+    // circle is demoted at load — HOPE keeps the flag; the rest keep
+    // their names, and the register writes the change on their cards
+    await page.evaluate(() => {
+      const sv = __hss.debugSave();
+      sv.plants.forEach(p => { if (p.firstSix || p.giftName) p.fav = true; });
+      const extra = freshPlant('CAPTEST', { variety: 'IRIS', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: 1 });
+      extra.fav = true; sv.plants.push(extra);
+      __hss.setSave(sv);
+    });
+    s = await S();
+    const favsAfterDemotion = s.plants.filter(p => p.fav);
+    check('one Favorite: a wide-circle save loads with HOPE alone flagged', favsAfterDemotion.length === 1 && favsAfterDemotion[0].name === 'HOPE', 'favs=' + favsAfterDemotion.map(p => p.name).join(','));
+    check('one Favorite: the demoted keep their names, and the register writes the change on their cards', s.plants.filter(p => p.firstSix && p.name !== 'HOPE').every(p => p.history.some(h => h.includes('ONE FAVORITE CLOSE'))) && s.plants.some(p => p.name === 'CAPTEST' && !p.fav), '');
+    // and a named beat appoints no one: first-to-fruit in row 6 names a
+    // plant at the harvest, and the flag does not move
     await put(sv => {
       sv.world.ch = 10; sv.world.step = 2; sv.world.area = 'field'; sv.world.flags.firstFruitNamed = false;
       const r = sv.cropRows[5]; r.bushCount = 3; r.stage = 6; r.fruitSet = 80; r.yieldRating = 1; r.plantedDay = 10;
     });
-    await page.evaluate(() => {
-      const sv = __hss.debugSave();
-      let need = 12 - sv.plants.filter(p => p.fav || p.firstSix || p.giftName).length;
-      let i = 0;
-      while (need-- > 0) { const p = freshPlant('CAPTEST' + (i++), { variety: 'IRIS', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: 1 }); p.fav = true; sv.plants.push(p); }
-      __hss.setSave(sv);
-    });
-    const favsAtCap = (await S()).plants.filter(p => p.fav || p.firstSix || p.giftName).length;
     await page.evaluate(() => window.__hss.harvestRow(6));
     await dismissDialogue(12);
     s = await S();
-    check('the cap binds at twelve: the beat passes, no thirteenth Favorite', favsAtCap === 12 && !s.plants.some(p => p.row === 6) && !s.world.flags.firstFruitNamed && s.rows[5].bushCount === 3, 'favs=' + favsAtCap + ' row6=' + s.plants.filter(p => p.row === 6).length);
+    check('one Favorite: the beat names a plant in row 6, the flag stays with HOPE', s.plants.some(p => p.row === 6 && !p.fav) && s.plants.filter(p => p.fav).length === 1 && s.plants.find(p => p.fav).name === 'HOPE' && s.rows[5].bushCount === 2, 'row6=' + s.plants.filter(p => p.row === 6).map(p => p.name).join(','));
 
     // the migration: a v2 save carrying more named plants than the cap —
     // every name accounted for, the memorial verbatim, totals unchanged
@@ -1822,16 +1843,88 @@ function findChromium() {
     await tap('Enter');
     await page.waitForTimeout(400);
     s = await S();
-    const favsM = s.plants.filter(p => p.fav || p.firstSix || p.giftName);
+    const favsM = s.plants.filter(p => p.fav);
     const sixNames = base.plants.filter(p => p.firstSix).map(p => p.name);
-    // Decision 6: the cap binds at migration — Row 1's named fill the
-    // Favorites to twelve, and only the overflow folds to the roll
-    check('migration: the save is v3, the six hold their Favorite standing, the cap holds', s.saveVersion === 3 && favsM.length === 12 && sixNames.length === 6 && sixNames.every(n => favsM.some(p => p.name === n)) && r1names.slice(0, 6).every(n => favsM.some(p => p.name === n)), 'v=' + s.saveVersion + ' favs=' + favsM.length);
+    // Decision 6, under the circle of one: the fold is unchanged — Row
+    // 1's named stand as individuals, the overflow folds to the roll —
+    // and then the one-Favorite enforcement keeps HOPE alone flagged
+    check('migration: the save is v3, and of all the named only HOPE keeps the flag', s.saveVersion === 3 && favsM.length === 1 && favsM[0].name === 'HOPE' && sixNames.length === 6 && sixNames.every(n => s.plants.some(p => p.name === n)) && r1names.slice(0, 6).every(n => s.plants.some(p => p.name === n)), 'v=' + s.saveVersion + ' favs=' + favsM.map(p => p.name).join(','));
     check('migration: Row 1 overflow folds into the founding roll, every name kept', r1names.slice(6).every(n => (s.rows[0].foundingRoll || []).includes(n)) && (s.rows[0].foundingRoll || []).length === 2 && r3names.every(n => (s.rows[2].foundingRoll || []).includes(n)), 'roll1=' + JSON.stringify(s.rows[0].foundingRoll));
     check('migration: folded harvests land in the row pages, wine totals untouched', (s.rows[0].poundsByYear[3] || 0) === (base.cropRows[0].poundsByYear[3] || 0) + 10 && (s.rows[2].poundsByYear[3] || 0) === (base.cropRows[2].poundsByYear[3] || 0) + 20 && JSON.stringify(s.wine.poundsByYear) === wineBefore, 'r1lbs=' + (s.rows[0].poundsByYear[3] || 0));
     check('migration: the memorial survives verbatim, the garden plant keeps its card', await page.evaluate(() => { const sv = __hss.debugSave(); const m = sv.plants.find(p => p.name === 'MIG MEMORIAL'); return !!m && m.memorial === true && m.cause === 'THE LONG DRY' && m.diedDay === 50; }) && s.plants.some(p => p.name === 'MIG GARDEN ONE' && p.location === 'GARDEN'), '');
     check('migration: the v2 original is backed up before it is rewritten', await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('hss-save-v1-v2backup')).v === 2; } catch (e) { return false; } }), '');
     await page.evaluate(b => window.__hss.setSave(b), base);
+  }
+
+  // DECISION 11-A + ONE FAVORITE (Nov 27, 2026): the Favorite dies (by
+  // killPlant — the game's own death path, the one the dawn doctrine
+  // and the trials call), her memorial page offers the replant, and
+  // the successor is the new single Favorite: her place, her name gone
+  // on — SECOND, then THIRD, without end. No stock, no planting.
+  {
+    const base11 = await page.evaluate(() => window.__hss.debugSave());
+    const put11 = async (fn) => {
+      await page.evaluate(src => { const f = eval('(' + src + ')'); const sv = __hss.debugSave(); f(sv); __hss.setSave(sv); }, fn.toString());
+    };
+    const openCardFor = async (name) => {
+      await page.evaluate(n => {
+        window.__hss.openRegister();
+        regView = 'back';
+        regSel = G.save.plants.filter(p => p.memorial).findIndex(p => p.name === n);
+      }, name);
+      await tap('z'); await page.waitForTimeout(250);
+    };
+
+    await put11(sv => {
+      sv.world.ch = 11; sv.world.step = 0; sv.world.area = 'field';
+      if (!sv.nursery) sv.nursery = { stock: 2, stage: 3, wateredDays: 0, watered: false, health: 0, dryDays: 0, history: [], warnedDay: null, chill: 0, wintered: false, fruitSetOk: false };
+      else { sv.nursery.stock = 2; sv.nursery.stage = 3; }
+    });
+    const favHome = await page.evaluate(() => { const p = G.save.plants.find(q => q.name === 'HOPE'); killPlant(p, 'THE LONG DRY'); return { location: p.location, row: p.row, slot: p.slot }; });
+    s = await S();
+    const hopeDead = s.plants.find(p => p.name === 'HOPE');
+    check('succession: the Favorite rests on a memorial page, her place kept', !!hopeDead && hopeDead.memorial === true && hopeDead.fav === true && !!hopeDead.home && hopeDead.home.location === favHome.location && hopeDead.home.row === favHome.row, '');
+
+    // the offer, taken: one stock, her place, her name gone on
+    await openCardFor('HOPE');
+    s = await S();
+    check('succession: the memorial card opens', s.register.view === 'card', s.register.view);
+    await page.screenshot({ path: path.join(SHOTS, 'succession-card.png') });
+    await tap('z'); // PLANT HOPE THE SECOND (card row 0)
+    await page.waitForTimeout(250);
+    s = await S();
+    const second = s.plants.find(p => p.name === 'HOPE THE SECOND');
+    check('succession: HOPE THE SECOND stands as the one Favorite, in HOPE\u2019s place', !!second && second.fav === true && second.memorial === false && s.plants.filter(p => p.fav && !p.memorial).length === 1 && second.location === favHome.location && second.row === favHome.row, second ? second.location + '/' + second.row : 'none');
+    check('succession: one nursery stock paid, the lineage written on both cards', s.nursery.stock === 1 && s.plants.find(p => p.name === 'HOPE').history.some(h => h.includes('SUCCEEDED BY HOPE THE SECOND')) && !!second && second.history.some(h => h.includes('THE NAME GOES ON')), 'stock=' + (s.nursery && s.nursery.stock));
+    check('succession: the succession is in the record', s.plants.find(p => p.name === 'HOPE').succName === 'HOPE THE SECOND', '');
+
+    // the line runs on: THE SECOND rests, THE THIRD is offered
+    await page.evaluate(() => { const p = G.save.plants.find(q => q.name === 'HOPE THE SECOND'); killPlant(p, 'THE LONG DRY'); });
+    await openCardFor('HOPE THE SECOND');
+    await tap('z');
+    await page.waitForTimeout(250);
+    s = await S();
+    check('succession: THE THIRD follows THE SECOND, the flag moving down the line', s.plants.some(p => p.name === 'HOPE THE THIRD' && p.fav && !p.memorial) && s.nursery.stock === 0 && s.plants.find(p => p.name === 'HOPE THE SECOND').succName === 'HOPE THE THIRD', '');
+
+    // no stock: the offer stands, and cannot be taken
+    await page.evaluate(() => { const p = G.save.plants.find(q => q.name === 'HOPE THE THIRD'); killPlant(p, 'THE LONG DRY'); });
+    await openCardFor('HOPE THE THIRD');
+    await tap('z');
+    await page.waitForTimeout(250);
+    s = await S();
+    check('succession: with an empty shelf the offer stands and nothing is planted', !s.plants.some(p => p.name === 'HOPE THE FOURTH') && s.register.view === 'card' && s.nursery.stock === 0, '');
+
+    // an old save, innocent of the new fields, loads and answers
+    await page.evaluate(() => {
+      const sv = __hss.debugSave();
+      sv.plants.forEach(p => { delete p.home; delete p.succName; delete p.succDay; delete p.ofLine; });
+      __hss.setSave(sv);
+      window.__hss.openRegister();
+    });
+    s = await S();
+    check('succession: a save without the new fields loads whole, the fields defaulted', s.mode === 'register' && s.plants.some(p => p.name === 'HOPE THE THIRD' && p.memorial) && await page.evaluate(() => { const sv = __hss.debugSave(); const h = sv.plants.find(p => p.name === 'HOPE'); return !!h && h.succName === null && h.home === null; }), '');
+    await tap('x'); await page.waitForTimeout(200);
+    await page.evaluate(b => window.__hss.setSave(b), base11);
   }
 
   // FULLSCREEN FILL (Daniel, Nov 26, 2026): the stage fills the available

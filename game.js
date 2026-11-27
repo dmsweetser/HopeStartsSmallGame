@@ -4223,7 +4223,7 @@ function doPlanting() {
   // Row 1 is the surviving six, one at a time — and the gift bush at the
   // row's end. The shipped backfill is retired (spec A5): a gap in Row 1
   // is honest, and the marker stone already honours an empty place.
-  const six = sixPlants().filter(p => !p.memorial).sort((a, b) => a.slot - b.slot);
+  const six = sixPlants().filter(p => !p.memorial && !p.gone).sort((a, b) => a.slot - b.slot);
   const general = six.find(p => p.name === 'GENERAL');
   const rowOne = [];
   if (general) { rowOne.push(general); for (const p of six) if (p !== general) rowOne.push(p); }
@@ -4231,7 +4231,7 @@ function doPlanting() {
   const gift = s.plants.find(p => p.giftName && !p.memorial && p.location === 'GREENHOUSE');
   if (gift) rowOne.push(gift);
   const lines = [...TEXT.planting.plantingDayTheAuger];
-  if (!general && sixPlants().some(p => p.name === 'GENERAL' && p.memorial)) {
+  if (!general && sixPlants().some(p => p.name === 'GENERAL' && (p.gone || p.memorial))) {
     w.flags.markerStone = true;
     lines.push(TEXT.planting.atTheHeadOf, TEXT.planting.constanceHeGuardsThe);
   }
@@ -4276,11 +4276,11 @@ function repot() {
   const fed = w.flags.fedNames || [];
   let sixDied = null;
   if (!w.flags.mitAny) {
-    const weak = sixPlants().filter(p => !p.memorial).sort((a, b) => (b.health - a.health) || (a.tended - b.tended))[0];
+    const weak = sixPlants().filter(p => !p.memorial && !p.gone).sort((a, b) => (b.health - a.health) || (a.tended - b.tended))[0];
     if (weak) { weak.health = 3; }
   }
   for (const p of s.plants.filter(q => q.location === 'GREENHOUSE')) {
-    if (p.memorial) continue;
+    if (p.memorial || p.gone) continue;
     if (p.health >= 3) {
       if (fed.includes(p.name)) { p.health = 2; lines.push(F(TEXT.planting.nameWasFedIn, { name: p.name })); }
       else if (p.firstSix && w.flags.mitAny) { p.health = 2; lines.push(F(TEXT.planting.constanceSHandsFind, { name: p.name })); }
@@ -4299,9 +4299,9 @@ function repot() {
     if (!c.history.includes(TEXT.plants.theHardSpring)) c.history.push(TEXT.plants.theHardSpring);
     if (c.n <= 0) { c.n = 0; c.gone = true; }
   }
-  const survivors = s.plants.filter(p => !p.memorial && p.location === 'GREENHOUSE');
+  const survivors = s.plants.filter(p => !p.memorial && !p.gone && p.location === 'GREENHOUSE');
   for (const p of survivors) if (!p.history.includes(TEXT.plants.theHardSpring)) p.history.push(TEXT.plants.theHardSpring);
-  const gift = freshPlant(allocName(s.plants), { variety: 'CHANDLER', stage: 4, location: 'GREENHOUSE', sownDay: s.day, giftName: true, fav: true, history: TEXT.plants.aGiftFromA });
+  const gift = freshPlant(allocName(s.plants), { variety: 'CHANDLER', stage: 4, location: 'GREENHOUSE', sownDay: s.day, giftName: true, history: TEXT.plants.aGiftFromA });
   s.plants.push(gift);
   lines.push(F(TEXT.planting.andBeforeTheFriend, { name: gift.name }));
   lines.push(TEXT.faith.giftThanks);
@@ -4491,7 +4491,7 @@ function strawberryInteract() {
 }
 function butterflyPlant() {
   const s = G.save, w = s.world;
-  const p = freshPlant('LAMPLIGHT', { variety: 'BUTTERFLY', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: 1, giftName: true, fav: true, history: TEXT.plants.opaNamedItIn });
+  const p = freshPlant('LAMPLIGHT', { variety: 'BUTTERFLY', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: 1, giftName: true, history: TEXT.plants.opaNamedItIn });
   s.plants.push(p);
   if (!s.dex.garden.includes(TEXT.plants.butterfly)) s.dex.garden.push(TEXT.plants.butterfly);
   w.flags.butterflyPlanted = true; w.step = 5; saveGame();
@@ -4564,7 +4564,7 @@ TRIAL_OUTCOMES.weedsLongWar = {
 };
 function forsythiaPlant() {
   const s = G.save, w = s.world;
-  const p = freshPlant('VESPER', { variety: 'FORSYTHIA', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: s.day, giftName: true, fav: true, history: TEXT.plants.omaNamedItFrank });
+  const p = freshPlant('VESPER', { variety: 'FORSYTHIA', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: s.day, giftName: true, history: TEXT.plants.omaNamedItFrank });
   s.plants.push(p);
   if (!s.dex.garden.includes(TEXT.plants.forsythia)) s.dex.garden.push(TEXT.plants.forsythia);
   w.flags.forsythiaPlanted = true; w.step = 1; saveGame();
@@ -4585,8 +4585,8 @@ function ch9Dawn(ev) {
     return TEXT.dawns.firstYellow;
   }
   if (w.step === 1 && !w.flags.spectacular) {
-    // the spectacular one is computed over Favorites only (spec A5) —
-    // tended counts exist only in the circle now
+    // the spectacular one is the Favorite, when she stands in a row
+    // (ONE FAVORITE, Nov 27, 2026) — and HOPE was always preferred here
     const living = favPlants().filter(p => p.row);
     const all = s.plants.filter(p => isFav(p) && p.row);
     const mostAll = all.slice().sort((a, b) => b.tended - a.tended)[0];
@@ -5535,6 +5535,7 @@ function freshPlant(name, o) {
     memorial: false, diedDay: null, cause: null, husk: false, firstHarvestDay: null, firstHarvestLbs: null,
     firstSix: false, gardenState: null, giftName: false, fruitSetOk: false,
     fav: false, gone: false, // REVISION (Nov 27, 2026): the two tiers — a Favorite, or a garden plant gone (a register line, not a memorial)
+    home: null, succName: null, succDay: null, ofLine: null, // Decision 11-A: where the Favorite lived, who succeeded her, whose line a successor carries
   }, o);
 }
 /* Old saves stored pots as bare stage ints, then as {stage, waterDays, ...}
@@ -5584,7 +5585,7 @@ let G = null; // game state (serializable part in G.save)
 function newSave() {
   const s = attachPotsAlias({
     v: 3, day: 1, seedsLeft: 6, tea: 3, teaBrewedDay: 0,
-    plants: PLANT_NAMES.map((n, i) => freshPlant(n, { variety: SIX_VARIETY[i], location: 'BENCH', slot: i, firstSix: true, fav: true })),
+    plants: PLANT_NAMES.map((n, i) => freshPlant(n, { variety: SIX_VARIETY[i], location: 'BENCH', slot: i, firstSix: true, fav: n === 'HOPE' })), // ONE FAVORITE (Nov 27, 2026): the founding Favorite is HOPE
     company: null, nursery: null,
     tray: { n: 0, watered: false, sownDay: null, stratDays: 0, ready: false, pottedTotal: 0 },
     dex: { blueberry: [], garden: [], cells: [] },
@@ -5648,9 +5649,45 @@ function ensureV3(s) {
   for (const p of s.plants || []) {
     if (p.fav === undefined) p.fav = false;
     if (p.gone === undefined) p.gone = false;
-    if (!p.memorial && (p.firstSix || p.giftName)) p.fav = true; // the founding six and the gift-named are Favorites by rule
+    if (p.home === undefined) p.home = null;
+    if (p.succName === undefined) p.succName = null;
+    if (p.succDay === undefined) p.succDay = null;
+    if (p.ofLine === undefined) p.ofLine = null;
   }
+  enforceOneFavorite(s);
   return s;
+}
+/* ONE FAVORITE (Nov 27, 2026): the circle is one. A save that still
+   carries the old twelve-wide circle keeps a single Favorite — HOPE if
+   she lives, else her living successor, else the first living founding
+   Favorite; a memorial still awaiting succession outranks a closed
+   line. The rest are demoted to named plants, each with the change
+   written on its own card. Idempotent: once one flag stands, a no-op. */
+function enforceOneFavorite(s) {
+  const plants = s.plants || [];
+  const flagged = plants.filter(p => p.fav);
+  if (!flagged.length) {
+    // a founding repair, silently: HOPE was always meant to be the one
+    const hope = plants.find(p => p.firstSix && p.name === 'HOPE' && !p.memorial && !p.gone);
+    if (hope) hope.fav = true;
+    return;
+  }
+  if (flagged.length === 1) return;
+  const living = flagged.filter(p => !p.memorial && !p.gone);
+  const keeper =
+    living.find(p => p.name === 'HOPE') ||
+    living.find(p => p.ofLine === 'HOPE') ||
+    living.find(p => p.firstSix) ||
+    living[0] ||
+    flagged.find(p => p.memorial && !p.succName && p.ofLine === 'HOPE') ||
+    flagged.find(p => p.memorial && !p.succName) ||
+    flagged.find(p => p.name === 'HOPE') ||
+    flagged[0];
+  for (const p of flagged) {
+    if (p === keeper) continue;
+    p.fav = false;
+    if (!p.memorial && !(p.history || []).includes(TEXT.register.demotedLine)) p.history.push(TEXT.register.demotedLine);
+  }
 }
 /* Save migration v2 -> v3 (spec A6): Favorites are determined by rule —
    the first six, gift-named story plants, and Row 1's living, taken in
@@ -5733,9 +5770,10 @@ function livingPlants() { return G.save.plants.filter(p => !p.memorial && !p.gon
 /* ==================== THE TWO TIERS (REVISION, Nov 27, 2026) ====================
    A plant is a Favorite (individual: name, card, health ladder, memorial)
    or it is counted — in the Company, the Nursery, or a row's bushCount.
-   The game chooses the Favorites, at beats, to a hard cap of twelve. */
-const FAV_CAP = 12;
-function isFav(p) { return !!(p && (p.fav || p.firstSix || p.giftName)); }
+   ONE FAVORITE (Nov 27, 2026): the circle is one — HOPE, and her line
+   after her. Named plants keep their cards; the ceremony is hers alone. */
+const FAV_CAP = 1;
+function isFav(p) { return !!(p && p.fav); }
 function favPlants() { return G.save.plants.filter(p => isFav(p) && !p.memorial && !p.gone); }
 function favCount() { return favPlants().length; }
 function makeFavorite(p) { if (p && !p.memorial) { p.fav = true; } return p; }
@@ -5762,24 +5800,25 @@ function rowStepHarm(row, rn, cause, ev) {
   if (row.rowHealth >= 3) loseRowBush(row, rn, cause, ev);
   else row.rowHealth++;
 }
-/* An event-Favorite is born: one bush splits out of its row's count at
-   the beat that chose it, named from Frank's pools, its card opening
-   with the line that earned it. No menu, ever. */
+/* A named plant is born at a beat: one bush splits out of its row's
+   count, named from Frank's pools, its card opening with the line that
+   earned it. No menu, ever. (ONE FAVORITE: the beat names it; it does
+   not join the circle — the circle is one, and it is HOPE's line.) */
 function splitFavoriteFromRow(rn, kind) {
   const s = G.save, row = s.cropRows[rn - 1];
-  if (!row || (row.bushCount || 0) < 1 || favCount() >= FAV_CAP) return null;
+  if (!row || (row.bushCount || 0) < 1) return null;
   row.bushCount--;
   const linesFor = { frost: TEXT.plants.namedAtTheReckoning, fruit: TEXT.plants.namedAtFirstPicking, alvin: TEXT.plants.namedByAlvin };
   const p = freshPlant(allocName(s.plants), {
     variety: row.variety || 'CHANDLER', stage: (kind === 'fruit' ? 6 : Math.max(4, row.stage || 4)), location: 'ROW' + rn, row: rn,
-    sownDay: row.plantedDay, bushDay: row.plantedDay, plantedDay: s.day, fav: true,
+    sownDay: row.plantedDay, bushDay: row.plantedDay, plantedDay: s.day,
     health: row.rowHealth || 0, wintered: !!row.wintered, chill: row.chill || 0, fruitSetOk: !!row.fruitSetOk,
     history: (linesFor[kind] || []).slice(),
   });
   if (p.stage >= 5) p.blossomDay = s.day;
   if (p.stage >= 6) p.fruitDay = s.day;
   s.plants.push(p);
-  row.history.push(F(TEXT.register.rowFavNote, { name: p.name }));
+  row.history.push(F(TEXT.register.rowNamedNote, { name: p.name }));
   return p;
 }
 function housingOf(p) { return p.row != null ? 'field' : p.location === 'GARDEN' ? 'garden' : 'pot'; }
@@ -6461,14 +6500,17 @@ function feedDirt(p) { // good dirt: +8 Vigor, +1 growth credit, one health step
   saveGame();
 }
 function killPlant(p, cause) {
-  // Decision 3: a garden death (Favorites excepted) is a register line on
-  // the garden page, not a back-page memorial — the full ceremony belongs
-  // to the Favorites alone.
-  if (p.location === 'GARDEN' && !isFav(p)) {
+  if (!p || p.memorial || p.gone) return;
+  // Decision 3, as the ONE FAVORITE ruling (Nov 27, 2026) extends it:
+  // every death but the Favorite's is a register line — the plant is
+  // gone, written plainly on its own card — and the full ceremony (the
+  // back-page memorial, the husk) belongs to the one Favorite alone.
+  if (!isFav(p)) {
     p.health = 4; p.gone = true; p.diedDay = G.save.day; p.cause = (cause || TEXT.plants.itWasNotWatered); p.watered = false;
     saveGame();
     return;
   }
+  p.home = { location: p.location, row: p.row, slot: p.slot }; // Decision 11-A: her place, kept for her successor
   p.health = 4; p.memorial = true; p.diedDay = G.save.day; p.cause = (cause || TEXT.plants.itWasNotWatered); p.husk = true; p.watered = false;
   saveGame();
 }
@@ -7865,7 +7907,7 @@ const LOC_PRETTY = TEXT.register.locPretty;
 function locPretty(loc) { return (LOC_PRETTY[loc] || (loc.startsWith('ROW') ? F(TEXT.misc.fieldReplaceval, { replaceVal: loc.replace("ROW", "ROW ") }) : loc)); }
 function regLocPlants(loc) {
   if (loc === 'FAVORITES') return favPlants();
-  if (loc.startsWith('AZ:')) return G.save.plants.filter(p => p.name.startsWith(loc.slice(3)) && (isFav(p) || p.location === 'GARDEN' || p.memorial)); // the index of THE NAMED (spec A4)
+  if (loc.startsWith('AZ:')) return G.save.plants.filter(p => p.name.startsWith(loc.slice(3))); // the index of THE NAMED (spec A4) — every plant in the book is a named one
   if (loc === 'MEMORIAL') return G.save.plants.filter(p => p.memorial);
   if (loc === 'NURSERY') return G.save.plants.filter(p => p.location === 'GREENHOUSE' && !p.memorial && !p.gone);
   if (loc.startsWith('ROW')) { const r = parseInt(loc.slice(3), 10); return G.save.plants.filter(p => p.row === r && !p.memorial && !p.gone); }
@@ -7890,6 +7932,60 @@ function renamePlantObj(p) {
   if (v == null) return; // blank/cancel keeps the name Frank gave
   v = String(v).trim().toUpperCase().replace(/[^A-Z0-9 .,'&!?-]/g, '').slice(0, 14).trim();
   if (v) { p.name = v; saveGame(); toast(F(TEXT.toasts.renamedV, { v: v })); }
+}
+/* Decision 11-A (Nov 27, 2026): succession, register-driven. The one
+   Favorite's memorial page offers the replant — one nursery stock, her
+   own place, her name with the next ordinal — and the successor is the
+   new single Favorite. The offer stands even when it cannot be taken;
+   the register explains, in its own idiom, why not. */
+const ORDINALS = ['SECOND', 'THIRD', 'FOURTH', 'FIFTH', 'SIXTH', 'SEVENTH', 'EIGHTH', 'NINTH', 'TENTH', 'ELEVENTH', 'TWELFTH', 'THIRTEENTH', 'FOURTEENTH', 'FIFTEENTH', 'SIXTEENTH', 'SEVENTEENTH', 'EIGHTEENTH', 'NINETEENTH', 'TWENTIETH'];
+function successorName(name) {
+  const m = /^(.*) THE ([A-Z]+)$/.exec(name || '');
+  if (m) {
+    const i = ORDINALS.indexOf(m[2]);
+    if (i >= 0 && i < ORDINALS.length - 1) return m[1] + ' THE ' + ORDINALS[i + 1];
+    if (i === ORDINALS.length - 1) return m[1] + ' THE ' + (ORDINALS.length + 2) + 'TH';
+  }
+  return (name || 'PLANT') + ' THE SECOND';
+}
+function regCardOptions(p) {
+  const opts = [];
+  if (p && p.memorial && isFav(p) && !p.succName) {
+    const stock = (G.save.nursery && G.save.nursery.stock) || 0;
+    const blocked = stock < 1 ? 'stock' : (G.save.plants.some(q => q !== p && q.fav && !q.memorial && !q.gone) ? 'cap' : null);
+    opts.push({ kind: 'succ', label: F(TEXT.register.succPlant, { name: successorName(p.name) }), blocked });
+  }
+  opts.push({ kind: 'rename', label: 'RENAME' });
+  opts.push({ kind: 'back', label: 'BACK' });
+  return opts;
+}
+function plantSuccessor(p) {
+  const s = G.save;
+  if (!p || !p.memorial || !isFav(p) || p.succName) return;
+  if (!s.nursery || s.nursery.stock < 1) { toast(TEXT.register.succNoStock); return; }
+  if (s.plants.some(q => q !== p && q.fav && !q.memorial && !q.gone)) { toast(TEXT.register.succCircleFull); return; }
+  s.nursery.stock--;
+  const name = successorName(p.name);
+  const home = p.home || { location: (p.location && p.location !== 'MEMORIAL') ? p.location : 'BENCH', row: p.row, slot: p.slot };
+  if (home.location === 'BENCH' && home.slot == null) {
+    const used = new Set(s.plants.filter(q => !q.memorial && !q.gone && q.location === 'BENCH').map(q => q.slot));
+    home.slot = 0; while (used.has(home.slot)) home.slot++;
+  }
+  const stage = Math.min(3, Math.max(2, s.nursery.stage || 2));
+  const np = freshPlant(name, {
+    variety: p.variety, stage, location: home.location, row: home.row, slot: home.slot,
+    sownDay: s.day, sproutedDay: stage >= 2 ? s.day : null, seedlingDay: stage >= 3 ? s.day : null,
+    plantedDay: s.day, fav: true, ofLine: p.ofLine || p.name,
+    gardenState: home.location === 'GARDEN' ? 'NEW' : null,
+    history: [F(TEXT.register.succBornLine, { name: p.name })],
+  });
+  s.plants.push(np);
+  p.succName = name; p.succDay = s.day;
+  p.history.push(F(TEXT.register.succLine, { name, day: s.day }));
+  // the husk is laid to rest in the register; the place is hers now
+  if (p.husk) { p.husk = false; p.location = 'MEMORIAL'; p.row = null; p.slot = null; }
+  saveGame();
+  toast(F(TEXT.register.succPlanted, { name }));
 }
 function registerUpdate() {
   const locs = regLocationsPresent();
@@ -7935,7 +8031,7 @@ function registerUpdate() {
     if (menuNavHit('down')) regSel = (regSel + 6) % 26;
     if (Input.aHit) {
       const letter = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[regSel];
-      const found = G.save.plants.filter(p => p.name.startsWith(letter) && (isFav(p) || p.location === 'GARDEN' || p.memorial));
+      const found = G.save.plants.filter(p => p.name.startsWith(letter));
       if (found.length) { regLoc = 'AZ:' + letter; regPage = 0; regSel = -1; regView = 'list'; }
     }
   } else if (regView === 'back') {
@@ -7960,9 +8056,16 @@ function registerUpdate() {
     if (Input.bHit || Input.aHit) { regView = 'index'; regSel = 0; return; }
   } else { // card
     if (Input.bHit) { regView = regLoc === 'MEMORIAL' || (G.save.plants[regPlant] && G.save.plants[regPlant].memorial) ? 'back' : 'list'; if (regView === 'list') regSel = 0; return; }
-    if (menuNavHit('up') || menuNavHit('down')) regCardSel = 1 - regCardSel;
+    const p = G.save.plants[regPlant];
+    const opts = regCardOptions(p);
+    if (regCardSel >= opts.length) regCardSel = 0;
+    if (menuNavHit('down')) regCardSel = (regCardSel + 1) % opts.length;
+    if (menuNavHit('up')) regCardSel = (regCardSel + opts.length - 1) % opts.length;
     if (Input.aHit) {
-      if (regCardSel === 0) renamePlantObj(G.save.plants[regPlant]);
+      const o = opts[regCardSel];
+      if (!o) return;
+      if (o.kind === 'succ') plantSuccessor(p);
+      else if (o.kind === 'rename') renamePlantObj(p);
       else { regView = 'list'; regSel = 0; }
     }
   }
@@ -8036,7 +8139,7 @@ function renderRegister() {
     drawText(TEXT.register.nameIndex, 80 - textW(TEXT.register.nameIndex, 2) / 2, 10, '#20242a', 2);
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach((L, i) => {
       const x = 16 + (i % 6) * 22, y = 34 + Math.floor(i / 6) * 16;
-      const has = s.plants.some(p => p.name.startsWith(L) && (isFav(p) || p.location === 'GARDEN' || p.memorial));
+      const has = s.plants.some(p => p.name.startsWith(L));
       if (i === regSel) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(x - 3, y - 3, 12, 12); }
       drawText(L, x, y, has ? '#20242a' : '#b9c0c9', 1);
     });
@@ -8084,15 +8187,18 @@ function renderRegister() {
     drawText(F(TEXT.register.healthV, { v: HEALTH_NAMES[p.health] }), 14, 43, HEALTH_COL[p.health], 1);
     const rows = [F(TEXT.register.sownDayorvalV, { dayOrVal: dayOr(p.sownDay, TEXT.register.notYet), v: (p.sproutedDay ? F(TEXT.register.sproutedDaySproutedday, { sproutedDay: p.sproutedDay }) : "") }), F(TEXT.register.seedlingDayorvalV, { dayOrVal: dayOr(p.seedlingDay, TEXT.register.notYet), v: (p.bushDay ? F(TEXT.register.bushDayBushday, { bushDay: p.bushDay }) : "") }), F(TEXT.register.daysTendedTendedToday, { tended: p.tended, v: (p.stage === 0 ? "-" : (p.watered ? TEXT.register.watered : TEXT.register.thirsty)) })];
     if (p.memorial) rows.push(F(TEXT.register.diedDayDiedday, { diedDay: p.diedDay }), F(TEXT.register.causeV, { v: (p.cause || "") }));
-    if (p.gone) rows.push(F(TEXT.dawn.gardenGoneLine, { name: p.name }));
+    if (p.memorial && p.succName) rows.push(F(TEXT.register.succLine, { name: p.succName, day: p.succDay }));
+    if (p.gone) rows.push(F(p.location === 'GARDEN' ? TEXT.dawn.gardenGoneLine : TEXT.register.goneLine, { name: p.name }));
     const hy = Object.keys(p.harvestByYear || {});
     if (hy.length) rows.push(F(TEXT.register.harvestJoinval, { joinVal: hy.map(y => 'Y' + y + ' ' + p.harvestByYear[y] + 'LB').join(" · ") }));
     (p.history || []).slice(0, 2).forEach(h => rows.push(h));
-    rows.slice(0, 5).forEach((r, i) => drawText(r.slice(0, 36), 14, 54 + i * 9, '#20242a', 1));
-    ['RENAME', 'BACK'].forEach((l, i) => {
-      const y = 114 + i * 11;
+    rows.slice(0, p.memorial ? 6 : 5).forEach((r, i) => drawText(r.slice(0, 36), 14, 54 + i * 9, '#20242a', 1));
+    const cardOpts = regCardOptions(p);
+    const menuY = cardOpts.length > 2 ? 106 : 114, menuStep = cardOpts.length > 2 ? 10 : 11;
+    cardOpts.forEach((o, i) => {
+      const y = menuY + i * menuStep;
       if (i === regCardSel) drawText('▶', 14, y, '#b03030', 1);
-      drawText(l, 22, y, '#20242a', 1);
+      drawText(o.label.slice(0, 30), 22, y, o.blocked ? '#8a8f98' : '#20242a', 1);
     });
     drawPaw(142, 124, '#b09a72');
   }
@@ -8126,8 +8232,10 @@ function regPageLines() {
       F(TEXT.register.rowDetailLine, { stage: STAGE_NAMES[row.stage || 0] || '', health: HEALTH_NAMES[row.rowHealth || 0], rating: row.yieldRating || 1 }),
       F(TEXT.register.rowPoundsLine, { lbs: lifetime, fs: row.fruitSet || 0 }),
     ];
-    if (favs.length === 1) lines.push(F(TEXT.register.rowFavNote, { name: favs[0].name }));
-    else if (favs.length > 1) lines.push(F(TEXT.register.rowFavNoteMany, { n: favs.length }));
+    const favHere = favs.find(p => p.fav), namedHere = favs.filter(p => !p.fav);
+    if (favHere) lines.push(F(TEXT.register.rowFavNote, { name: favHere.name }));
+    if (namedHere.length === 1) lines.push(F(TEXT.register.rowNamedNote, { name: namedHere[0].name }));
+    else if (namedHere.length > 1) lines.push(F(TEXT.register.rowNamedNoteMany, { n: namedHere.length }));
     for (const h of (row.history || []).slice(-6)) lines.push(h);
     return { title: F(TEXT.register.rowSummaryLine, { rn: rn, variety: row.variety || 'CHANDLER', n: (row.bushCount || 0) + favs.length }), lines };
   }
@@ -8173,9 +8281,9 @@ function ltGoals() {
     lovely: s.wine.batches.some(b => b.verdict === TEXT.wine.lovely),
     streak,
     garden: garden.length > 0 && garden.every(p => p.gardenState === 'FLOURISHING'),
-    // Decision 5: THE FAVORITES ACCOUNTED FOR — every field Favorite
-    // (the six and the row-born) carries a first harvest or a memorial
-    rowOne: s.plants.filter(p => isFav(p) && (p.firstSix || p.row != null)).every(p => p.memorial || p.firstHarvestDay != null),
+    // Decision 5, as the circle-of-one ruling restates it: THE FAVORITE
+    // ACCOUNTED FOR — she carries a first harvest, or a memorial page
+    rowOne: (() => { const f = s.plants.find(p => p.fav); return !f || f.memorial || f.firstHarvestDay != null; })(),
     // Decision 5: THE FIELD AT FULL STRENGTH — 120 bushes in the ground
     rollCall: fieldBushes() >= 120,
   };
@@ -8246,7 +8354,7 @@ requestAnimationFrame(frame);
 window.__hss = {
   state() {
     const so = seasonOf(G.save.day);
-    const ser = p => ({ name: p.name, stage: p.stage, wateredDays: p.wateredDays, watered: p.watered, vigor: p.vigor, tended: p.tended, sownDay: p.sownDay, sproutedDay: p.sproutedDay, seedlingDay: p.seedlingDay, location: p.location, dirt: p.dirt, dirtCredit: p.dirtCredit, variety: p.variety, health: p.health, dryDays: p.dryDays, memorial: p.memorial, row: p.row, slot: p.slot, chill: p.chill, wintered: p.wintered, history: p.history.slice(), firstSix: p.firstSix, giftName: p.giftName, gardenState: p.gardenState, firstHarvestDay: p.firstHarvestDay, harvestByYear: p.harvestByYear, fav: !!p.fav, gone: !!p.gone });
+    const ser = p => ({ name: p.name, stage: p.stage, wateredDays: p.wateredDays, watered: p.watered, vigor: p.vigor, tended: p.tended, sownDay: p.sownDay, sproutedDay: p.sproutedDay, seedlingDay: p.seedlingDay, location: p.location, dirt: p.dirt, dirtCredit: p.dirtCredit, variety: p.variety, health: p.health, dryDays: p.dryDays, memorial: p.memorial, row: p.row, slot: p.slot, chill: p.chill, wintered: p.wintered, history: p.history.slice(), firstSix: p.firstSix, giftName: p.giftName, gardenState: p.gardenState, firstHarvestDay: p.firstHarvestDay, harvestByYear: p.harvestByYear, fav: !!p.fav, gone: !!p.gone, succName: p.succName || null, ofLine: p.ofLine || null, home: p.home || null });
     return {
       mode, day: G.save.day, season: SEASON_NAMES[so.idx], year: so.year, tutorial: G.save.tutorial, seedsLeft: G.save.seedsLeft, tea: G.save.tea,
       compost: G.save.compost, goodDirt: G.save.goodDirt, weeds: JSON.parse(JSON.stringify(G.save.weeds || [])),
