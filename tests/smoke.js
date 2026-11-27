@@ -757,11 +757,11 @@ function findChromium() {
   const sitOff = await page.evaluate(() => alvin.sit === false);
   check('sit: moving again clears the sit', sitOff);
 
-  // CHAPTER 2 — SPROUTS: save v2, seasons, the house, the sale, the
+  // CHAPTER 2 — SPROUTS: save v3, seasons, the house, the sale, the
   // potting-up, the frost trial, and the mortality ladder (spec ch. 2).
   const persisted2 = await page.evaluate(() => JSON.parse(localStorage.getItem('hss-save-v1')));
-  check('save file is v2: plants, world, tray, field, wine',
-    persisted2.v === 2 && Array.isArray(persisted2.plants) && persisted2.plants.length === 6 && !!persisted2.world && !!persisted2.tray && !!persisted2.field && !!persisted2.wine,
+  check('save file is v3: plants, world, tray, field, wine',
+    persisted2.v === 3 && Array.isArray(persisted2.plants) && persisted2.plants.length === 6 && !!persisted2.world && !!persisted2.tray && !!persisted2.field && !!persisted2.wine,
     'v=' + persisted2.v);
   await page.evaluate(() => {
     const sv = JSON.parse(localStorage.getItem('hss-save-v1'));
@@ -853,11 +853,12 @@ function findChromium() {
   s = await S();
   check('the sprout flood: tray ready, 40 strong', s.tray.ready === true && s.tray.n === 40 && s.world.step === 7, JSON.stringify(s.tray));
   await page.evaluate(() => { window.__hss.potUp(); window.__hss.potUp(); window.__hss.potUp(); });
-  await dismissDialogue(8);
+  await dismissDialogue(12);
   s = await S();
-  const sproutNames = s.plants.filter(p => !p.firstSix);
-  check('potting-up names every sprout', s.plants.length === 9 && sproutNames.length === 3 && new Set(s.plants.map(p => p.name)).size === 9, s.plants.map(p => p.name).join(','));
-  check('sprouts live at WINDOW, stage 2, varieties named', sproutNames.every(p => p.location === 'WINDOW' && p.stage === 2) && sproutNames.some(p => p.variety === 'ECHO') && sproutNames.some(p => p.variety === 'CHANDLER'), JSON.stringify(sproutNames.map(p => p.variety)));
+  // REVISION (Nov 27, 2026): potting-up makes the Company — names follow
+  // knowledge, and the census is retired (spec A2)
+  check('potting-up makes the Company, not a census', s.plants.length === 6 && s.company && s.company.n === 3 && new Set(s.plants.map(p => p.name)).size === 6, 'plants=' + s.plants.length + ' company=' + (s.company && s.company.n));
+  check('the Company stands at WINDOW, stage 2, varieties mixed', s.company && s.company.loc === 'WINDOW' && s.company.stage === 2 && s.company.vars.ECHO === 2 && s.company.vars.CHANDLER === 1, JSON.stringify(s.company && s.company.vars));
   await page.evaluate(() => window.__hss.waterEverything());
   await page.evaluate(() => window.__hss.advanceDay());
   await dismissDialogue(8);
@@ -865,7 +866,7 @@ function findChromium() {
   await page.evaluate(() => window.__hss.advanceDay());
   s = await S();
   check('the frost trial dawns', s.mode === 'trial' && s.trial && s.trial.foe === 'FROST' && s.trial.maxPressure === 25 && s.trial.maxVigor === 22, JSON.stringify(s.trial && { foe: s.trial.foe, mp: s.trial.maxPressure, mv: s.trial.maxVigor }));
-  check('unblanketed sprouts start the night STRESSED', sproutNames.every(nm => { const p = s.plants.find(q => q.name === nm.name); return p && p.health === 1; }), '');
+  check('unblanketed, the Company starts the night STRESSED', s.company && s.company.health === 1, 'companyHealth=' + (s.company && s.company.health));
   await page.evaluate(() => { trial.pressure = 3; });
   await page.waitForTimeout(1400);
   await tap('z'); await page.waitForTimeout(250);
@@ -876,9 +877,9 @@ function findChromium() {
   await page.evaluate(() => { while (G.save.tray.n > 0) potUp(); });
   await dismissDialogue(8);
   s = await S();
-  check('potting complete: 46 named, germ record, six at the window',
-    s.plants.length === 46 && s.germ && s.germ.sown === 96 && s.germ.potted === 40 && s.pots.every(p => p.location === 'WINDOW') && s.world.step === 8,
-    'plants=' + s.plants.length + ' step=' + s.world.step);
+  check('potting complete: the Company stands 40 strong, germ record, six at the window',
+    s.plants.length === 6 && s.company && s.company.n === 40 && s.germ && s.germ.sown === 96 && s.germ.potted === 40 && s.pots.every(p => p.location === 'WINDOW') && s.world.step === 8,
+    'plants=' + s.plants.length + ' company=' + (s.company && s.company.n) + ' step=' + s.world.step);
   await page.evaluate(() => window.__hss.signSale());
   await dismissDialogue(10);
   s = await S();
@@ -923,7 +924,7 @@ function findChromium() {
   s = await S();
   check('the viewing: Berryhill loads, step 2', s.world.area === 'barnOut' && s.world.step === 2, 'area=' + s.world.area + ' step=' + s.world.step);
   check('the field is on the map, fenced and waiting', await page.evaluate(() => mapChar(13, 12) === 'G' && mapChar(13, 14) === 's' && mapChar(20, 9) === 's'), '');
-  for (let i = 0; i < 2; i++) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(8); }
+  for (let i = 0; i < 2; i++) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(12); }
   s = await S();
   check('the decision: the barn, step 4', s.world.step === 4, 'step=' + s.world.step);
   await page.evaluate(() => window.__hss.chooseLoadOrder('plants'));
@@ -969,7 +970,7 @@ function findChromium() {
   s = await S();
   check('staking day: the square has corners', s.world.flags.staked === true && s.world.step === 1, 'step=' + s.world.step);
   await page.evaluate(() => window.__hss.irisInteract());
-  await dismissDialogue(8);
+  await dismissDialogue(14);
   s = await S();
   check('the irises: three gifts, named on sight, in the garden register', s.plants.filter(p => p.location === 'GARDEN' && p.variety === 'IRIS').length === 3 && s.world.step === 2, 'iris=' + s.plants.filter(p => p.variety === 'IRIS').length);
   await page.evaluate(() => window.__hss.waterEverything());
@@ -986,7 +987,7 @@ function findChromium() {
   await page.evaluate(() => window.__hss.gotoArea('barnOut', 22, 5));
   await page.evaluate(() => { player.dir = 'up'; });
   await tap('z'); await page.waitForTimeout(300);
-  await dismissDialogue(10);
+  await dismissDialogue(14);
   s = await S();
   check('the ordinance: four acres short, goats someday', s.world.step === 3, 'step=' + s.world.step);
   await tap('z'); await page.waitForTimeout(300);
@@ -1053,21 +1054,21 @@ function findChromium() {
   // prep, planting day, and the first night.
   const projReset = () => page.evaluate(() => { const sv = __hss.debugSave(); sv.world.proj = 0; __hss.setSave(sv); });
   await page.evaluate(() => window.__hss.advanceDay()); // crisis dawn 1: no water, vent shut
-  await dismissDialogue(8);
+  await dismissDialogue(12);
   s = await S();
   check('the hard spring, day 1: the glass house slips', s.world.step === 1 && s.plants.some(p => p.location === 'GREENHOUSE' && p.health > 0), 'step=' + s.world.step);
   await page.evaluate(() => { const sv = __hss.debugSave(); sv.field.vent = true; __hss.setSave(sv); });
-  for (let i = 0; i < 2; i++) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(8); }
+  for (let i = 0; i < 2; i++) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(12); }
   s = await S();
   check('the vent holds the line: nobody critical', s.world.step === 3 && !s.plants.some(p => p.location === 'GREENHOUSE' && p.health >= 3), 'step=' + s.world.step);
   await page.evaluate(() => window.__hss.waterEverything());
   await page.evaluate(() => window.__hss.advanceDay());
-  await dismissDialogue(8);
+  await dismissDialogue(12);
   s = await S();
   check('the friend arrives with dirt: repot ready', s.world.step === 4 && s.world.flags.repotReady === true, 'step=' + s.world.step);
   const memorialsBefore = s.plants.filter(p => p.memorial).length;
   await page.evaluate(() => window.__hss.repot());
-  await dismissDialogue(12);
+  await dismissDialogue(20);
   s = await S();
   check('the repotting: everyone held, a gift bush joins', s.world.step === 5 && s.plants.filter(p => p.memorial).length === memorialsBefore && s.plants.some(p => p.giftName) && s.plants.filter(p => !p.memorial && !p.giftName && p.location === 'GREENHOUSE').every(p => p.history.includes('THE HARD SPRING')), 'step=' + s.world.step + ' gift=' + s.plants.some(p => p.giftName));
   await page.evaluate(() => window.__hss.doPlanting());
@@ -1111,11 +1112,13 @@ function findChromium() {
   s = await S();
   check('the gate is satisfied', (await page.evaluate(() => window.__hss.plantingGate())).length === 0 && s.rows.slice(0, 7).every(r => r.mulched), '');
   await page.evaluate(() => window.__hss.doPlanting());
-  await dismissDialogue(12);
+  await dismissDialogue(18);
   s = await S();
   const row1 = s.plants.filter(p => p.row === 1 && !p.memorial);
-  check('planting day: Row 1 stands with the General at its head', s.world.step === 6 && row1.length === 6 && s.world.flags.bookend === 'GENERAL' && s.plants.filter(p => p.firstSix && !p.memorial).every(p => p.row === 1), 'row1=' + row1.length + ' bookend=' + s.world.flags.bookend);
-  check('the company fills rows 2-7', [2, 3, 4, 5, 6, 7].every(rn => s.plants.some(p => p.row === rn && !p.memorial)), '');
+  // REVISION (Nov 27, 2026): Row 1 is the six AND the gift bush at the
+  // end — no backfill (spec A3); the Company fills rows 2–7 by count
+  check('planting day: Row 1 stands with the General at its head', s.world.step === 6 && row1.length === 7 && s.world.flags.bookend === 'GENERAL' && s.plants.filter(p => p.firstSix && !p.memorial).every(p => p.row === 1) && s.plants.some(p => p.giftName && p.row === 1), 'row1=' + row1.length + ' bookend=' + s.world.flags.bookend);
+  check('the company fills rows 2-7', [2, 3, 4, 5, 6, 7].every(rn => s.rows[rn - 1].bushCount > 0) && s.company && s.company.plantedOut && s.company.plantedOut.reduce((a, x) => a + x[1], 0) === [2, 3, 4, 5, 6, 7].reduce((a, rn) => a + s.rows[rn - 1].bushCount, 0), 'rows=' + JSON.stringify(s.rows.slice(1, 7).map(r => r.bushCount)));
   await page.evaluate(() => window.__hss.waterEverything());
   await page.evaluate(() => window.__hss.advanceDay());
   s = await S();
@@ -1135,16 +1138,16 @@ function findChromium() {
   await dismissDialogue(8);
 
   // CHAPTER 7 — THE BARBER: the nursery, the watch, the unknown.
-  await page.evaluate(() => { // three little ones stayed behind on the shelf
+  await page.evaluate(() => { // the nursery: three of the stock stayed behind on the shelf (revision: held by count, not by name)
     const sv = __hss.debugSave();
-    sv.plants.filter(p => !p.memorial && p.row >= 5).slice(0, 3).forEach(p => { p.location = 'GREENHOUSE'; p.row = null; p.stage = 2; });
+    sv.nursery = { stock: 3, stage: 2, wateredDays: 0, watered: false, health: 0, dryDays: 0, warnedDay: -99, chill: 12, wintered: true, fruitSetOk: false, history: [], gone: false };
     __hss.setSave(sv);
   });
   await page.evaluate(() => window.__hss.waterEverything());
   await page.evaluate(() => window.__hss.advanceDay());
   await dismissDialogue(8);
   s = await S();
-  check('the discovery: the smallest, shorn in the night', s.world.step === 1 && s.plants.some(p => p.location === 'GREENHOUSE' && p.history.includes('SHORN IN THE NIGHT')), 'step=' + s.world.step);
+  check('the discovery: one of the stock, shorn in the night', s.world.step === 1 && s.nursery && s.nursery.stock === 2 && s.nursery.history.some(h => h.includes('SHORN IN THE NIGHT')), 'step=' + s.world.step + ' stock=' + (s.nursery && s.nursery.stock));
   check('the gift bush turns first, dark red', s.plants.some(p => p.giftName && p.history.some(h => h.includes('FIRST FALL'))), '');
   await page.evaluate(() => window.__hss.setWatch('NURSERY'));
   await page.evaluate(() => window.__hss.waterEverything());
@@ -1371,8 +1374,11 @@ function findChromium() {
   await page.evaluate(() => window.__hss.tasting());
   const tlines = await page.evaluate(() => window.__hss.dlgLines());
   check("the pastor's verdict beat fires: LOVELY, spoken by the pastor, Constance beside him", tlines.some(l => l.name === 'PASTOR' && /LOVELY/.test(l.text)) && tlines.some(l => l.name === 'CONSTANCE'), 'lines=' + tlines.map(l => l.name || '—').join(','));
-  check('the tasting dialogue seats no Oma: no line names her, no glass is hers', !tlines.some(l => l.name === 'OMA' || /\bOMA\b/.test(l.text)), '');
-  await dismissDialogue(16);
+  // Decision 10 (Nov 27, 2026): Oma's glass is a memorial at the table,
+  // not an attendance — no OMA speaker, and any mention of her is the
+  // glass set out in her memory, never a presence
+  check('the tasting dialogue seats no Oma: she is remembered, not present', !tlines.some(l => l.name === 'OMA') && tlines.every(l => !/\bOMA\b/.test(l.text) || /MEMORY|SET OUT/.test(l.text)), '');
+  await dismissDialogue(22);
   s = await S();
   check('the tasting: the finale lands on the chapter card', s.mode === 'card' && s.world.ch === 11 && s.promise === true, 'mode=' + s.mode + ' ch=' + s.world.ch);
   await tap('z'); await page.waitForTimeout(300);
@@ -1415,12 +1421,19 @@ function findChromium() {
   s = await S();
   check('spring: pruning pays in yield, the tray wakes, the appeal is filed', s.rows[0].yieldRating === 2 && s.tray.ready === true && s.world.flags.goatAppeal === 'filed', 'yield=' + s.rows[0].yieldRating + ' ready=' + s.tray.ready + ' appeal=' + s.world.flags.goatAppeal);
   const plantsBefore = s.plants.length;
+  const stockBefore = s.nursery ? s.nursery.stock : 0;
   await page.evaluate(() => window.__hss.potUpLT());
   await dismissDialogue(6);
   s = await S();
-  check('the pipeline runs forever: twelve more, potted and named', s.plants.length === plantsBefore + 12, 'plants=' + s.plants.length);
-  // usability pass: the register rolls Down onto the next page (15 in the glass house = 3 pages)
-  await page.evaluate(() => { window.__hss.openRegister(); regLoc = 'GREENHOUSE'; regView = 'list'; regSel = 0; regPage = 0; });
+  check('the pipeline runs forever: the nursery stock fills to twelve, no new names', s.plants.length === plantsBefore && s.nursery && s.nursery.stock === 12, 'plants=' + s.plants.length + ' stock=' + (s.nursery && s.nursery.stock) + ' was=' + stockBefore);
+  // usability pass: the register rolls Down onto the next page (the
+  // garden's named few, two pages' worth, stand in for the old census)
+  await page.evaluate(() => {
+    const sv = __hss.debugSave();
+    for (let i = 0; i < 8; i++) sv.plants.push(freshPlant(allocName(sv.plants), { variety: 'IRIS', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: 1 }));
+    __hss.setSave(sv);
+  });
+  await page.evaluate(() => { window.__hss.openRegister(); regLoc = 'GARDEN'; regView = 'list'; regSel = 0; regPage = 0; });
   await page.waitForTimeout(300);
   for (let i = 0; i < 6; i++) await tap('ArrowDown');
   await page.waitForTimeout(200);
@@ -1450,13 +1463,14 @@ function findChromium() {
   await page.screenshot({ path: path.join(SHOTS, 'menu-counters.png') });
   await tap('x');
   await page.waitForTimeout(200);
-  await page.evaluate(() => { const sv = __hss.debugSave(); sv.plants.forEach(p => { if (p.location === 'GREENHOUSE') p.stage = 3; }); __hss.setSave(sv); });
+  await page.evaluate(() => { const sv = __hss.debugSave(); if (sv.nursery) { sv.nursery.stage = 3; sv.nursery.stock = 12; } __hss.setSave(sv); });
   await page.evaluate(() => window.__hss.plantNurseryRow(8));
   await dismissDialogue(6);
+  await page.evaluate(() => { const sv = __hss.debugSave(); if (sv.nursery) sv.nursery.stock = 12; __hss.setSave(sv); });
   await page.evaluate(() => window.__hss.plantNurseryRow(9));
   await dismissDialogue(6);
   s = await S();
-  check('rows 8 and 9 take the nursery stock', s.plants.some(p => p.row === 8) && s.plants.some(p => p.row === 9), '');
+  check('rows 8 and 9 take the nursery stock', s.rows[7].bushCount === 12 && s.rows[8].bushCount === 12, 'r8=' + s.rows[7].bushCount + ' r9=' + s.rows[8].bushCount);
   await page.evaluate(y => window.__hss.setDay(y * 56 + 15), ltYear); // summer, year +1
   await page.evaluate(() => window.__hss.waterEverything());
   await page.evaluate(() => window.__hss.advanceDay());
@@ -1701,8 +1715,123 @@ function findChromium() {
       await page.evaluate(() => window.__hss.tasting());
       const ls = await page.evaluate(() => window.__hss.dlgLines());
       check('tasting at ' + v + ': the pastor and Constance both speak, Oma does not', ls.some(l => l.name === 'PASTOR') && ls.some(l => l.name === 'CONSTANCE') && !ls.some(l => l.name === 'OMA'), 'lines=' + ls.map(l => l.name || '—').join(','));
-      await dismissDialogue(16);
+      await dismissDialogue(20);
     }
+  }
+
+  // THE REVISION (Nov 27, 2026): the two-tier model — the row floor and
+  // its written line, garden deaths as register lines, the Barber by
+  // count, event Favorites named at their beats with no menu, the cap
+  // binding, and the v2→v3 migration (revision-spec Parts A + C).
+  {
+    const base = await page.evaluate(() => window.__hss.debugSave());
+    const put = async (fn) => {
+      await page.evaluate(src => { const f = eval('(' + src + ')'); const sv = __hss.debugSave(); f(sv); __hss.setSave(sv); }, fn.toString());
+    };
+
+    // the row floor: a failing row pays a bush, writes the line, and
+    // never pays its last one
+    await put(sv => {
+      sv.world.ch = 8; sv.world.step = 6; sv.world.area = 'field';
+      const r = sv.cropRows[3]; r.bushCount = 2; r.rowHealth = 3; r.warnedDay = sv.day; r.stage = 4; r.plantedDay = 10; r.watered = false; r.history = [];
+    });
+    await page.evaluate(() => window.__hss.advanceDay());
+    await dismissDialogue(10);
+    s = await S();
+    check('row loss: a failing row pays a bush, and writes it in its own page', s.rows[3].bushCount === 1 && s.rows[3].history.some(h => h.includes('LOST A BUSH')), 'bushes=' + s.rows[3].bushCount + ' hist=' + JSON.stringify(s.rows[3].history));
+    await put(sv => { const r = sv.cropRows[3]; r.rowHealth = 3; r.warnedDay = sv.day; r.watered = false; });
+    await page.evaluate(() => window.__hss.advanceDay());
+    await dismissDialogue(10);
+    s = await S();
+    check('the row floor: the last bush never goes', s.rows[3].bushCount === 1, 'bushes=' + s.rows[3].bushCount);
+
+    // a garden death is a register line, never a back-page memorial
+    const memorialsBefore2 = (await S()).plants.filter(p => p.memorial).length;
+    const irisName = await page.evaluate(() => {
+      const sv = __hss.debugSave();
+      sv.world.ch = 5; sv.world.step = 9; sv.world.area = 'house';
+      const iris = freshPlant('GARDENTEST', { variety: 'IRIS', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: 1 });
+      iris.health = 3; iris.warnedDay = sv.day; iris.watered = false;
+      sv.plants.push(iris);
+      __hss.setSave(sv);
+      return iris.name;
+    });
+    await page.evaluate(() => window.__hss.advanceDay());
+    await dismissDialogue(10);
+    s = await S();
+    const deadIris = s.plants.find(p => p.name === irisName);
+    check('garden death: a register line only — gone, unmemorialed, still on the garden page', !!deadIris && deadIris.gone === true && !deadIris.memorial && s.plants.filter(p => p.memorial).length === memorialsBefore2, 'iris=' + JSON.stringify(deadIris && { gone: deadIris.gone, memorial: deadIris.memorial }));
+
+    // the Barber takes nursery stock by count; no plant record changes
+    const plantCountBefore = (await S()).plants.length;
+    await put(sv => {
+      sv.world.ch = 7; sv.world.step = 0; sv.world.area = 'field'; sv.world.flags.watch = null;
+      sv.nursery = { stock: 5, stage: 2, wateredDays: 0, watered: false, health: 0, dryDays: 0, warnedDay: -99, chill: 0, wintered: false, fruitSetOk: false, history: [], gone: false };
+    });
+    await page.evaluate(() => window.__hss.advanceDay());
+    await dismissDialogue(10);
+    s = await S();
+    check('the Barber costs stock by count: five becomes four, no name is touched', s.world.step === 1 && s.nursery && s.nursery.stock === 4 && s.nursery.history.some(h => h.includes('SHORN')) && s.plants.length === plantCountBefore, 'stock=' + (s.nursery && s.nursery.stock) + ' plants=' + s.plants.length);
+
+    // an event Favorite is named at its beat, with no menu: the
+    // first-to-fruit at the chapter 10 harvest
+    await put(sv => {
+      sv.world.ch = 10; sv.world.step = 2; sv.world.area = 'field'; sv.world.flags.firstFruitNamed = false;
+      const r = sv.cropRows[4]; r.bushCount = 3; r.stage = 6; r.fruitSet = 80; r.yieldRating = 1; r.plantedDay = 10;
+    });
+    await page.evaluate(() => window.__hss.harvestRow(5));
+    await dismissDialogue(12);
+    s = await S();
+    check('first-to-fruit: a Favorite is named at the harvest, no menu asked', s.plants.some(p => p.fav && p.row === 5) && s.rows[4].bushCount === 2 && !!s.world.flags.firstFruitNamed, 'fav5=' + s.plants.filter(p => p.row === 5).map(p => p.name).join(','));
+
+    // the cap binds: at twelve Favorites the same beat names no one
+    await put(sv => {
+      sv.world.ch = 10; sv.world.step = 2; sv.world.area = 'field'; sv.world.flags.firstFruitNamed = false;
+      const r = sv.cropRows[5]; r.bushCount = 3; r.stage = 6; r.fruitSet = 80; r.yieldRating = 1; r.plantedDay = 10;
+    });
+    await page.evaluate(() => {
+      const sv = __hss.debugSave();
+      let need = 12 - sv.plants.filter(p => p.fav || p.firstSix || p.giftName).length;
+      let i = 0;
+      while (need-- > 0) { const p = freshPlant('CAPTEST' + (i++), { variety: 'IRIS', stage: 4, location: 'GARDEN', gardenState: 'NEW', sownDay: 1 }); p.fav = true; sv.plants.push(p); }
+      __hss.setSave(sv);
+    });
+    const favsAtCap = (await S()).plants.filter(p => p.fav || p.firstSix || p.giftName).length;
+    await page.evaluate(() => window.__hss.harvestRow(6));
+    await dismissDialogue(12);
+    s = await S();
+    check('the cap binds at twelve: the beat passes, no thirteenth Favorite', favsAtCap === 12 && !s.plants.some(p => p.row === 6) && !s.world.flags.firstFruitNamed && s.rows[5].bushCount === 3, 'favs=' + favsAtCap + ' row6=' + s.plants.filter(p => p.row === 6).length);
+
+    // the migration: a v2 save carrying more named plants than the cap —
+    // every name accounted for, the memorial verbatim, totals unchanged
+    const wineBefore = JSON.stringify(base.wine.poundsByYear);
+    const mkP = (name, extra) => Object.assign({ name, variety: 'ECHO', stage: 6, location: 'ROW 1', row: 1, health: 0, wateredDays: 9, watered: true, chill: 12, wintered: true, fruitSetOk: true, history: [], harvestByYear: { 3: 5 }, plantedDay: 100, sownDay: 90, firstSix: false, giftName: false, memorial: false }, extra || {});
+    const v2 = JSON.parse(JSON.stringify(base));
+    v2.v = 2; delete v2.company; delete v2.nursery;
+    const r1names = ['MIG ALPHA', 'MIG BRAVO', 'MIG CHARLIE', 'MIG DELTA', 'MIG ECHO2', 'MIG FOXTROT', 'MIG GOLF', 'MIG HOTEL'];
+    const r3names = ['MIG INDIA', 'MIG JULIET', 'MIG KILO', 'MIG LIMA'];
+    r1names.forEach(n => v2.plants.push(mkP(n)));
+    r3names.forEach(n => v2.plants.push(mkP(n, { row: 3, location: 'ROW 3' })));
+    v2.plants.push(mkP('MIG GARDEN ONE', { location: 'GARDEN', row: null, gardenState: 'NEW', harvestByYear: {} }));
+    v2.plants.push(mkP('MIG MEMORIAL', { location: 'FIELD', row: 2, memorial: true, diedDay: 50, cause: 'THE LONG DRY', harvestByYear: {} }));
+    await page.evaluate(v => localStorage.setItem('hss-save-v1', JSON.stringify(v)), v2);
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+    await page.waitForTimeout(300);
+    await tap('ArrowDown'); // CONTINUE
+    await tap('Enter');
+    await page.waitForTimeout(400);
+    s = await S();
+    const favsM = s.plants.filter(p => p.fav || p.firstSix || p.giftName);
+    const sixNames = base.plants.filter(p => p.firstSix).map(p => p.name);
+    // Decision 6: the cap binds at migration — Row 1's named fill the
+    // Favorites to twelve, and only the overflow folds to the roll
+    check('migration: the save is v3, the six hold their Favorite standing, the cap holds', s.saveVersion === 3 && favsM.length === 12 && sixNames.length === 6 && sixNames.every(n => favsM.some(p => p.name === n)) && r1names.slice(0, 6).every(n => favsM.some(p => p.name === n)), 'v=' + s.saveVersion + ' favs=' + favsM.length);
+    check('migration: Row 1 overflow folds into the founding roll, every name kept', r1names.slice(6).every(n => (s.rows[0].foundingRoll || []).includes(n)) && (s.rows[0].foundingRoll || []).length === 2 && r3names.every(n => (s.rows[2].foundingRoll || []).includes(n)), 'roll1=' + JSON.stringify(s.rows[0].foundingRoll));
+    check('migration: folded harvests land in the row pages, wine totals untouched', (s.rows[0].poundsByYear[3] || 0) === (base.cropRows[0].poundsByYear[3] || 0) + 10 && (s.rows[2].poundsByYear[3] || 0) === (base.cropRows[2].poundsByYear[3] || 0) + 20 && JSON.stringify(s.wine.poundsByYear) === wineBefore, 'r1lbs=' + (s.rows[0].poundsByYear[3] || 0));
+    check('migration: the memorial survives verbatim, the garden plant keeps its card', await page.evaluate(() => { const sv = __hss.debugSave(); const m = sv.plants.find(p => p.name === 'MIG MEMORIAL'); return !!m && m.memorial === true && m.cause === 'THE LONG DRY' && m.diedDay === 50; }) && s.plants.some(p => p.name === 'MIG GARDEN ONE' && p.location === 'GARDEN'), '');
+    check('migration: the v2 original is backed up before it is rewritten', await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('hss-save-v1-v2backup')).v === 2; } catch (e) { return false; } }), '');
+    await page.evaluate(b => window.__hss.setSave(b), base);
   }
 
   // FULLSCREEN FILL (Daniel, Nov 26, 2026): the stage fills the available
