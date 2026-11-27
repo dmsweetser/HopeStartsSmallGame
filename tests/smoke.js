@@ -153,8 +153,8 @@ function findChromium() {
   check('theme schedules notes', s.theme.scheduled > 12, 'scheduled=' + s.theme.scheduled);
   await page.screenshot({ path: path.join(SHOTS, 'title-theme.png') });
 
-  // CONTROLS from the title menu (no save yet: NEW GAME / CHAPTERS / CONTROLS)
-  await tap('ArrowDown'); await tap('ArrowDown');
+  // CONTROLS from the title menu (no save yet: NEW GAME / CHAPTERS / TIME TRAVEL / CONTROLS)
+  await tap('ArrowDown'); await tap('ArrowDown'); await tap('ArrowDown');
   await tap('Enter');
   await page.waitForTimeout(300);
   s = await S();
@@ -170,7 +170,7 @@ function findChromium() {
   await page.waitForTimeout(200);
   s = await S();
   check('controls B returns to title', s.mode === 'title', s.mode);
-  await tap('ArrowUp'); await tap('ArrowUp'); // reselect NEW GAME
+  await tap('ArrowUp'); await tap('ArrowUp'); await tap('ArrowUp'); // reselect NEW GAME
 
   // New Game -> intro
   await tap('Enter');
@@ -597,7 +597,7 @@ function findChromium() {
   await page.waitForTimeout(300);
   s = await S();
   check('back on title for the music setting', s.mode === 'title', s.mode);
-  await tap('ArrowDown'); await tap('ArrowDown'); await tap('ArrowDown'); // CONTROLS
+  await tap('ArrowDown'); await tap('ArrowDown'); await tap('ArrowDown'); await tap('ArrowDown'); // CONTROLS
   await tap('Enter');
   await page.waitForTimeout(250);
   await tap('ArrowDown'); // MUSIC row
@@ -619,7 +619,7 @@ function findChromium() {
   await page.waitForTimeout(300);
   s = await S();
   check('music OFF survives a reload', s.settings.music === false, JSON.stringify(s.settings));
-  await tap('ArrowDown'); await tap('ArrowDown'); await tap('ArrowDown'); // CONTROLS
+  await tap('ArrowDown'); await tap('ArrowDown'); await tap('ArrowDown'); await tap('ArrowDown'); // CONTROLS
   await tap('Enter');
   await page.waitForTimeout(250);
   await tap('ArrowDown'); await tap('ArrowRight'); // MUSIC back ON
@@ -2180,6 +2180,335 @@ function findChromium() {
       m.btnMenu.top <= 24 && m.btnMenu.right <= m.iw,
       'canvasH=' + Math.round(m.canvas.bottom - m.canvas.top) + ' canvasTop=' + Math.round(m.canvas.top) + ' stickRight=' + Math.round(m.stick.right) + ' canvasLeft=' + Math.round(m.canvas.left));
   }
+
+  // TIME TRAVEL (Nov 27, 2026): the title slider to any morning of the
+  // perfect run. Built through the real title screen, ridden through
+  // the real confirm, then a spread of landings is installed and each
+  // is played out to its chapter's end by the suite's usual means —
+  // proving every landing is a state the game itself produced, with
+  // every named plant alive and HOPE the Favorite.
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+  await page.waitForTimeout(400);
+  const stash0 = await page.evaluate(() => localStorage.getItem('hss-save-v1'));
+  check('time travel: a save is on file for the title menu', !!stash0, '');
+  for (let i = 0; i < 3; i++) await tap('ArrowDown'); // NEW GAME -> CONTINUE -> CHAPTERS -> TIME TRAVEL
+  await tap('z');
+  await page.waitForTimeout(300);
+  s = await S();
+  check('time travel opens from the title menu', s.mode === 'travel', s.mode);
+  await page.waitForFunction(() => window.__hss.ttState().built, null, { timeout: 30000 });
+  const tt1 = await page.evaluate(() => window.__hss.ttState());
+  const meta1 = await page.evaluate(() => window.__hss.ttMeta());
+  check('the canonical timeline builds clean', tt1.error === null && tt1.count > 100, 'count=' + tt1.count + ' err=' + tt1.error);
+  check('the timeline spans chapter 1 to the Long Tending', meta1[0].ch === 1 && meta1[meta1.length - 1].ch === 11, 'first=' + JSON.stringify(meta1[0]) + ' last=' + JSON.stringify(meta1[meta1.length - 1]));
+  await page.screenshot({ path: path.join(SHOTS, 'travel.png') });
+  check('building the years leaves the player\u2019s save untouched', (await page.evaluate(() => localStorage.getItem('hss-save-v1'))) === stash0, '');
+  await tap('x'); // back out: nothing was replaced
+  await page.waitForTimeout(300);
+  check('backing out costs the player nothing', (await page.evaluate(() => localStorage.getItem('hss-save-v1'))) === stash0, '');
+  // determinism: a second build, from nothing, lands on the same years
+  const meta2 = await page.evaluate(() => { window.__hss.ttReset(); window.__hss.ttBuildSync(); return window.__hss.ttMeta(); });
+  check('the perfect run is deterministic: two builds, the same mornings', JSON.stringify(meta2) === JSON.stringify(meta1), 'n=' + meta2.length);
+  // ride the real screen: hop back one chapter, confirm, travel.
+  // (Reload first: ttBuildSync leaves the machine in the overworld,
+  // as any state-borrowing hook does — the ride starts from the title.)
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+  await page.waitForTimeout(400);
+  for (let i = 0; i < 3; i++) await tap('ArrowDown');
+  await tap('z');
+  await page.waitForFunction(() => window.__hss.ttState().built, null, { timeout: 30000 });
+  await tap('ArrowUp'); // chapter hop: Long Tending -> chapter 10's first morning
+  await page.waitForTimeout(200);
+  // a synthetic tap under load can drop or double a nav edge; walk the
+  // slider onto chapter 10's first morning by hops, as a player would
+  let rideIdx = -1;
+  for (let i = 0; i < 4; i++) {
+    rideIdx = await page.evaluate(() => window.__hss.ttState().sel);
+    const m = meta1[rideIdx];
+    if (m && m.ch === 10 && (rideIdx === 0 || meta1[rideIdx - 1].ch !== 10)) break;
+    await tap(m && m.ch < 10 ? 'ArrowDown' : 'ArrowUp');
+    await page.waitForTimeout(200);
+  }
+  const rideMeta = meta1[rideIdx];
+  check('the slider hops to chapter 10\u2019s first morning', rideMeta && rideMeta.ch === 10, JSON.stringify(rideMeta));
+  await tap('z');
+  await page.waitForTimeout(200);
+  check('the confirm step warns before anything is replaced', (await page.evaluate(() => window.__hss.ttState().confirm)) === true, '');
+  await page.screenshot({ path: path.join(SHOTS, 'travel-confirm.png') });
+  await tap('z');
+  await page.waitForFunction(() => window.__hss.state().mode === 'overworld', null, { timeout: 6000 });
+  s = await S();
+  check('the jump lands on the chosen morning, autosaved', s.day === rideMeta.day && s.world.ch === 10 && s.world.step === rideMeta.step, 'day=' + s.day + ' ch=' + s.world.ch + ' step=' + s.world.step);
+  check('the traveled state replaced the save on disk', (await page.evaluate(() => JSON.parse(localStorage.getItem('hss-save-v1')).day)) === rideMeta.day, '');
+
+  const winTrialNow = async () => {
+    for (let w = 0; w < 3; w++) {
+      const st = await S();
+      if (st.mode !== 'trial') return;
+      await page.evaluate(() => { trial.pressure = 3; });
+      await page.waitForTimeout(1400);
+      await tap('z'); await page.waitForTimeout(250);
+      await tap('z'); await page.waitForTimeout(1600);
+      await dismissDialogue(10);
+    }
+  };
+  const dayPass = async () => {
+    await page.evaluate(() => window.__hss.waterEverything());
+    await page.evaluate(() => window.__hss.advanceDay());
+    await dismissDialogue(5);
+    await winTrialNow();
+  };
+  const checkLanding = async (idx, label) => {
+    const ok = await page.evaluate(i => window.__hss.ttLand(i), idx);
+    await page.waitForTimeout(250);
+    const st = await S();
+    const m = meta1[idx];
+    const dead = st.plants.filter(p => p.memorial || p.gone);
+    const favs = st.plants.filter(p => p.fav && !p.memorial && !p.gone).map(p => p.name);
+    check(label + ': lands on its morning', ok && st.mode === 'overworld' && st.day === m.day && st.world.ch === m.ch && st.world.step === m.step, 'day=' + st.day + ' ch=' + st.world.ch + ' step=' + st.world.step);
+    check(label + ': every named plant alive, HOPE the Favorite', dead.length === 0 && favs.length === 1 && favs[0] === 'HOPE', 'dead=' + dead.map(p => p.name).join(',') + ' favs=' + favs.join(','));
+    return st;
+  };
+  const finishChapter = async (ch) => {
+    // Play the landed chapter out to its card by the suite's usual
+    // means. Returns true when the next chapter has begun.
+    for (let it = 0; it < 160; it++) {
+      let st = await S();
+      if (st.world.ch > ch) { if (st.mode === 'card') { await tap('z'); await page.waitForTimeout(300); await dismissDialogue(8); } return true; }
+      if (st.mode === 'card') { await tap('z'); await page.waitForTimeout(300); await dismissDialogue(8); st = await S(); if (st.world.ch > ch) return true; continue; }
+      if (st.mode === 'trial') { await winTrialNow(); continue; }
+      if (st.mode === 'dialogue') { await dismissDialogue(6); continue; }
+      const step = st.world.step, fl = st.world.flags;
+      if (ch === 1) {
+        if (st.pots.some(p => p.stage === 0)) { await page.evaluate(() => window.__hss.plantAll()); continue; }
+        if (st.deerPresent && !st.deerBeaten) { await page.evaluate(() => window.__hss.startTrial()); await winTrialNow(); continue; }
+        await page.evaluate(() => window.__hss.waterAll()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(6); continue;
+      }
+      if (ch === 2) {
+        if (step === 1 && !fl.carried) {
+          await page.evaluate(() => window.__hss.fridgeSeeds());
+          await page.evaluate(() => { window.__hss.gotoArea('house', 10, 11); const n = npcList.find(q => q.id === 'jeremiah'); if (n) npcTalk(n); });
+          await dismissDialogue(8); continue;
+        }
+        if (step === 5) { await page.evaluate(() => window.__hss.storageTrip()); await dismissDialogue(6); await dayPass(); continue; }
+        if (step === 7 && fl.frostDone) { await page.evaluate(() => { while (G.save.tray.n > 0) potUp(); }); await dismissDialogue(10); continue; }
+        if (step === 8) { await page.evaluate(() => window.__hss.signSale()); await dismissDialogue(12); continue; }
+        await dayPass(); continue;
+      }
+      if (ch === 3) {
+        if (step === 1) { await page.evaluate(() => window.__hss.gotoArea('barnOut', 2, 1)); await dismissDialogue(8); continue; }
+        if (step === 4) { await page.evaluate(() => window.__hss.chooseLoadOrder('plants')); await dismissDialogue(8); continue; }
+        if (step === 6 && (fl.buildStep || 0) < 3) { await page.evaluate(() => window.__hss.buildGreenhouse()); await dismissDialogue(8); await dayPass(); continue; }
+        if (step === 7) { await page.evaluate(() => { let g = 0; while (G.save.plants.some(p => p.location === 'OFFICE' && !p.memorial) && g++ < 12) carryPlants(); }); await dismissDialogue(8); continue; }
+        await dayPass(); continue;
+      }
+      if (ch === 4) {
+        if (step === 0) { await page.evaluate(() => window.__hss.stakeField()); await dismissDialogue(8); continue; }
+        if (step === 1) { await page.evaluate(() => window.__hss.irisInteract()); await dismissDialogue(14); continue; }
+        if (step === 2 && fl.scoutsDone) { await page.evaluate(() => window.__hss.gotoArea('barnOut', 22, 5)); await page.evaluate(() => { player.dir = 'up'; }); await tap('z'); await page.waitForTimeout(300); await dismissDialogue(14); continue; }
+        if (step === 3 && !fl.fenceNotes) { await page.evaluate(() => window.__hss.gotoArea('barnOut', 22, 5)); await page.evaluate(() => { player.dir = 'up'; }); await tap('z'); await page.waitForTimeout(300); await dismissDialogue(10); continue; }
+        await dayPass(); continue;
+      }
+      if (ch === 5) {
+        if (step === 0 && fl.stairsDay == null) {
+          await page.evaluate(() => window.__hss.gotoArea('barnIn', 14, 6)); await page.evaluate(() => { player.dir = 'up'; });
+          await tap('z'); await page.waitForTimeout(300); await dismissDialogue(10); continue;
+        }
+        if (step === 1 || step === 2) { await page.evaluate(() => { for (let i = 0; i < 12; i++) patchInteract(); }); await dismissDialogue(12); continue; }
+        if (step === 4) {
+          await page.evaluate(() => window.__hss.gotoArea('oma', 5, 5)); await page.evaluate(() => { player.dir = 'up'; });
+          await tap('z'); await page.waitForTimeout(300); await dismissDialogue(14); continue;
+        }
+        await dayPass(); continue;
+      }
+      if (ch === 6) {
+        if (step <= 2 && !st.field.vent) {
+          await page.evaluate(() => { const rows = AREAS.green.rows; outer: for (let y = 0; y < rows.length; y++) for (let x = 0; x < rows[y].length; x++) if (rows[y][x] === 'h') { setArea('green', x, y + 1); player.dir = 'up'; interact(); if (dlg && dlg.choice) endDlg(1); break outer; } });
+          await dismissDialogue(6); continue;
+        }
+        if (step === 4 && fl.repotReady) { await page.evaluate(() => window.__hss.repot()); await dismissDialogue(12); continue; }
+        if (step === 5) {
+          const gate = await page.evaluate(() => plantingGate());
+          if (!gate.length) { await page.evaluate(() => window.__hss.doPlanting()); await dismissDialogue(10); continue; }
+          await page.evaluate(() => {
+            const s = G.save, w = s.world, f = w.flags;
+            const freeProj = () => { const sv = __hss.debugSave(); sv.world.proj = 0; __hss.setSave(sv); };
+            if (!f.pipeFound) { freeProj(); digPipe(); }
+            else if (!s.field.pipe) { turnValve(); turnValve(); }
+            else if (s.field.tarp.some(t => t === 4)) { freeProj(); patchTarp(s.field.tarp.indexOf(4)); }
+            else if (s.field.tarp.some(t => t === 0)) { freeProj(); layTarp(s.field.tarp.indexOf(0)); }
+            else if (s.field.tarp.some(t => t === 2)) { freeProj(); moveTarp(s.field.tarp.indexOf(2)); }
+            else if (s.field.fenceSeg.some(x => !x)) { freeProj(); buildFenceSeg(s.field.fenceSeg.findIndex(x => !x)); }
+            else if (s.cropRows.slice(0, 7).some(r => !r.mulched) && s.field.mulch >= 3) { freeProj(); mulchRow(s.cropRows.findIndex(r => !r.mulched) + 1); }
+            else if (s.cropRows.slice(0, 7).some(r => !r.mulched) && !f.mulchComing) orderMulch();
+          });
+          await dismissDialogue(6);
+          await dayPass(); continue;
+        }
+        await dayPass(); continue;
+      }
+      if (ch === 7) {
+        if (step === 1) { await page.evaluate(() => window.__hss.setWatch('NURSERY')); await dayPass(); continue; }
+        await dayPass(); continue;
+      }
+      if (ch === 8) {
+        if (step === 1 && fl.momDay === st.day && !fl.momDone) {
+          await page.evaluate(() => window.__hss.gotoArea('barnOut', 10, 7)); await page.evaluate(() => { player.dir = 'up'; });
+          for (let i = 0; i < 10; i++) { await tap('z'); await page.waitForTimeout(350); await tap('z'); await page.waitForTimeout(350); await dismissDialogue(4); }
+          continue;
+        }
+        if (step === 2) {
+          for (let i = 0; i < 3; i++) { await page.evaluate(() => window.__hss.proudWeed()); await dismissDialogue(4); }
+          await page.evaluate(() => window.__hss.burnPile()); await dismissDialogue(8); continue;
+        }
+        if (step === 3) { for (let i = 0; i < 4; i++) { await page.evaluate(() => window.__hss.strawberry()); await dismissDialogue(4); } continue; }
+        if (step === 4 && !fl.butterflyPlanted) {
+          if (!fl.butterflyReady) {
+            await page.evaluate(() => window.__hss.gotoArea('oma', 5, 5)); await page.evaluate(() => { player.dir = 'up'; });
+            await tap('z'); await page.waitForTimeout(300); await dismissDialogue(8);
+          } else { await page.evaluate(() => window.__hss.butterfly()); await dismissDialogue(8); }
+          continue;
+        }
+        if (step === 5) {
+          for (let sec = 0; sec < 6; sec++) {
+            let g = 0;
+            while ((await S()).field.weedLv[sec] > 0 && g++ < 4) {
+              await page.evaluate(() => { const sv = __hss.debugSave(); sv.world.proj = 0; __hss.setSave(sv); });
+              await page.evaluate(x => window.__hss.pullWeeds(x), sec);
+              await dismissDialogue(3);
+            }
+          }
+          await dayPass(); continue;
+        }
+        await dayPass(); continue;
+      }
+      if (ch === 9) {
+        if (step === 0) {
+          if (!fl.forsythiaReady) {
+            await page.evaluate(() => window.__hss.gotoArea('oma', 5, 5)); await page.evaluate(() => { player.dir = 'up'; });
+            await tap('z'); await page.waitForTimeout(300); await dismissDialogue(8);
+          } else { await page.evaluate(() => window.__hss.forsythia()); await dismissDialogue(8); }
+          continue;
+        }
+        if (step === 2) {
+          if ((fl.frostNight || 0) === 0) await page.evaluate(() => window.__hss.setFrostWatch(1));
+          else if ((fl.frostNight || 0) === 1) await page.evaluate(() => window.__hss.setFrostWatch(2));
+          await dayPass(); continue;
+        }
+        await dayPass(); continue;
+      }
+      if (ch === 10) {
+        const ferment = async () => {
+          for (let i = 0; i < 45; i++) {
+            const j = (await S()).wine.jar;
+            if (!j || j.phase === 'done') break;
+            if (j.phase === 'open') await page.evaluate(() => window.__hss.swishJar());
+            else await page.evaluate(() => window.__hss.sealCheck());
+            await dismissDialogue(3);
+            await page.evaluate(() => window.__hss.waterEverything());
+            await page.evaluate(() => window.__hss.advanceDay());
+            await dismissDialogue(4);
+          }
+        };
+        if (step === 0) { await page.evaluate(() => window.__hss.startBatchOne()); await dismissDialogue(8); continue; }
+        if (step === 1 || step === 4) {
+          await ferment();
+          await page.evaluate(() => window.__hss.bottleJar()); await dismissDialogue(10); continue;
+        }
+        if (step === 2) {
+          const ripe = st.plants.some(p => p.row && p.stage === 6);
+          if (!ripe) { await dayPass(); continue; }
+          for (const rn of [1, 2, 3, 4, 5, 6, 7]) {
+            await page.evaluate(() => { const sv = __hss.debugSave(); sv.world.proj = 0; __hss.setSave(sv); });
+            await page.evaluate(r => window.__hss.harvestRow(r), rn);
+            await dismissDialogue(10);
+          }
+          await dayPass(); continue;
+        }
+        if (step === 3) { await page.evaluate(() => window.__hss.startBatchTwo(0.65)); await dismissDialogue(8); continue; }
+        if (step === 5) { await page.evaluate(() => window.__hss.tasting()); await dismissDialogue(24); continue; }
+        await dayPass(); continue;
+      }
+      return false;
+    }
+    return false;
+  };
+  const findSnap = (ch, step) => meta1.findIndex(m => m.ch === ch && (step == null || m.step === step));
+
+  // chapter 1, the very first morning
+  let idx = findSnap(1, 0);
+  await checkLanding(idx, 'travel ch.1 first morning');
+  check('travel ch.1 plays out to its card', await finishChapter(1), '');
+
+  // chapter 2, the frost watch (mid-chapter)
+  idx = findSnap(2, 7);
+  await checkLanding(idx, 'travel ch.2 frost watch');
+  check('travel ch.2 plays out to its card', await finishChapter(2), '');
+
+  // chapter 3, first morning (a boundary)
+  idx = findSnap(3, 1);
+  await checkLanding(idx, 'travel ch.3 first morning');
+  check('travel ch.3 plays out to its card', await finishChapter(3), '');
+
+  // chapter 4, first morning (a boundary)
+  idx = findSnap(4, 0);
+  await checkLanding(idx, 'travel ch.4 first morning');
+  check('travel ch.4 plays out to its card', await finishChapter(4), '');
+
+  // chapter 5, step 1 — the morning the old game could not leave:
+  // the patch must answer on foot, with no save edits (the fix)
+  idx = findSnap(5, 1);
+  await checkLanding(idx, 'travel ch.5 make-ready morning');
+  await page.evaluate(() => window.__hss.gotoArea('barnOut', 23, 8));
+  await page.evaluate(() => { player.dir = 'up'; });
+  await tap('z'); await page.waitForTimeout(300);
+  await dismissDialogue(6);
+  s = await S();
+  check('on foot at step 1, the patch answers: making ready becomes clearing', s.world.step === 2 && s.world.flags.patchWeeds === true, 'step=' + s.world.step);
+  check('travel ch.5 plays out to its card', await finishChapter(5), '');
+
+  // chapter 6, the field-prep morning: the crisis already weathered
+  idx = findSnap(6, 5);
+  s = await checkLanding(idx, 'travel ch.6 field prep');
+  check('the crisis toll is the story\u2019s: the Company stands 26, a gift bush in the glass, the vent open',
+    s.company && s.company.n === 26 && s.plants.some(p => p.giftName && p.location === 'GREENHOUSE') && s.field.vent === true,
+    'company=' + (s.company && s.company.n) + ' vent=' + s.field.vent);
+  check('travel ch.6 plays out to its card', await finishChapter(6), '');
+
+  // chapter 7, first morning (a boundary)
+  idx = findSnap(7, 0);
+  await checkLanding(idx, 'travel ch.7 first morning');
+  check('travel ch.7 plays out to its card', await finishChapter(7), '');
+
+  // chapter 8, the clear week (late chapter)
+  idx = findSnap(8, 5);
+  await checkLanding(idx, 'travel ch.8 clear week');
+  check('travel ch.8 plays out to its card', await finishChapter(8), '');
+
+  // chapter 9, first morning (a boundary)
+  idx = findSnap(9, 0);
+  await checkLanding(idx, 'travel ch.9 first morning');
+  check('travel ch.9 plays out to its card', await finishChapter(9), '');
+
+  // chapter 10, batch two already fermenting at the lesson ratio
+  idx = findSnap(10, 4);
+  s = await checkLanding(idx, 'travel ch.10 second ferment');
+  check('batch one is in the register of bottles as TART, batch two at 0.65',
+    s.wine.batches.length === 1 && s.wine.batches[0].verdict === 'TART' && s.wine.jar && Math.abs(s.wine.jar.index - 0.65) < 0.001,
+    'batches=' + JSON.stringify(s.wine.batches) + ' jar=' + JSON.stringify(s.wine.jar));
+  check('travel ch.10 plays out to the Long Tending', await finishChapter(10), '');
+
+  // the Long Tending itself: the journey's end, playable onward
+  idx = meta1.length - 1;
+  s = await checkLanding(idx, 'travel the Long Tending');
+  check('the Long Tending keeps its goals and its stand', s.world.ch === 11 && !!(await page.evaluate(() => window.__hss.ltGoals())), 'ch=' + s.world.ch);
+  await page.evaluate(() => window.__hss.shareStand());
+  await dismissDialogue(4);
+  s = await S();
+  check('the farm stand shares the surplus from a traveled-to garden', s.wine.shared > 0, 'shared=' + s.wine.shared);
+  await page.screenshot({ path: path.join(SHOTS, 'travel-landing.png') });
 
   await browser.close();
   if (ownServer) server.close();

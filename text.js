@@ -2941,6 +2941,27 @@ const TEXT = {
   },
 
   // ======================================================================
+  // TIME TRAVEL (Nov 27, 2026): the title screen's slider to any point
+  // of the perfect run. Plain words, like everything else here.
+  // ======================================================================
+  travel: {
+    title: "TIME TRAVEL",
+    note: [
+      "THE PERFECT RUN, AS THE STORY GOES:",
+      "EVERY TRIAL WON, EVERY PLANT TENDED.",
+      "NOT YOUR GARDEN AS YOU LEFT IT.",
+    ],
+    remembering: "REMEMBERING THE YEARS…",
+    couldNot: "THE YEARS WOULD NOT COME. TRY AGAIN.",
+    travelHere: "TRAVEL HERE?",
+    replaced: "YOUR CURRENT GARDEN IS REPLACED.",
+    choose: "◀ ▶ CHOOSE · A: TRAVEL",
+    dayOfChapter: "DAY {n} OF THE CHAPTER",
+    firstMorning: "THE FIRST MORNING",
+    arrived: "THE GARDEN, AS IT SHOULD BE.",
+  },
+
+  // ======================================================================
   // THE CONTROLS SCREEN
   // ======================================================================
   controls: {

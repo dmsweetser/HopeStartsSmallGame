@@ -3804,7 +3804,7 @@ function barnInteract(f) {
     }
     return say(TEXT.barn.theFieldGateFirst);
   }
-  if (w.ch === 5 && w.step >= 2 && !w.flags.patchCleared && f.x >= 23 && f.x <= 24 && f.y >= 6 && f.y <= 7) return patchInteract();
+  if (w.ch === 5 && w.step >= 1 && !w.flags.patchCleared && f.x >= 23 && f.x <= 24 && f.y >= 6 && f.y <= 7) return patchInteract();
   if (w.ch === 8 && (w.step || 0) >= 2 && !w.flags.proudBurned && f.x === 24 && f.y === 11) return proudWeedInteract();
   if (w.ch >= 8 && f.x === 4 && f.y === 10) return burnPileInteract();
   if (w.ch >= 8 && (w.step || 0) >= 3 && !w.flags.strawDone && ((f.x === 4 || f.x === 5) && f.y === 5)) return strawberryInteract();
@@ -4015,6 +4015,11 @@ function irisInteract() {
 }
 function patchInteract() {
   const s = G.save, w = s.world;
+  // "OMA IS COMING. MAKE READY." (step 1) is the patch work beginning:
+  // starting it is what moves the chapter to CLEAR THE PATCH (step 2).
+  // Until Nov 27, 2026 nothing in the game made this step turn — the
+  // patch only answered at step 2, and no road led there.
+  if (w.ch === 5 && (w.step || 0) < 2) { w.step = 2; saveGame(); }
   if (!w.flags.patchWeeds) {
     w.flags.patchWeeds = true; w.flags.patchPulls = 0; saveGame();
     return say(TEXT.patch.behindTheGoodShed);
@@ -5202,7 +5207,7 @@ function renderBerry() {
     ctx.fillStyle = '#57b84a'; ctx.fillRect(ix + 3, iy + 8, 4, 2); ctx.fillRect(ix + 19, iy + 8, 4, 2); ctx.fillRect(ix + 8, iy + 9, 3, 2); ctx.fillRect(ix + 24, iy + 9, 3, 2); // lit leaf blades
     ctx.fillStyle = '#7a5aa0'; ctx.fillRect(ix + 4, iy + 3, 3, 5); ctx.fillStyle = '#9a7cc0'; ctx.fillRect(ix + 4, iy + 3, 3, 1); ctx.fillStyle = '#e8e2d2'; ctx.fillRect(ix + 20, iy + 3, 3, 5); ctx.fillStyle = '#ffd94a'; ctx.fillRect(ix + 12, iy + 4, 3, 4); ctx.fillStyle = '#fff3b0'; ctx.fillRect(ix + 12, iy + 4, 3, 1);
   }
-  if (G.save.world.ch === 5 && (G.save.world.step || 0) >= 2 && !G.save.world.flags.patchCleared) { // the bramble patch
+  if (G.save.world.ch === 5 && (G.save.world.step || 0) >= 1 && !G.save.world.flags.patchCleared) { // the bramble patch
     const bx = 23 * TILE - camX, by = 6 * TILE - camY;
     ctx.fillStyle = '#2e4a26'; ctx.fillRect(bx + 1, by + 4, 30, 26);
     ctx.fillStyle = '#3f7a2e'; for (let i = 0; i < 6; i++) ctx.fillRect(bx + 3 + i * 5, by + 2 + (i % 3) * 3, 3, 8);
@@ -5622,7 +5627,7 @@ function newSave() {
     constanceLine: 0,
     weeds: [], compost: 0, goodDirt: 0, weedLineSeen: false, cornerLineSeen: false,
     world: { ch: 1, step: 0, flags: {}, area: 'yard', proj: 0, projDay: 1, lastSeason: 0, rainToday: false, jeremiahDay: 0, omaReqDay: 0, watchRow: null, alvinDown: false },
-    cropRows: [], field: { tarp: [0, 0, 0, 0, 0], tarpDay: [0, 0, 0, 0, 0], fence: 0, protoNet: false, protoWire: false, pipe: false, irrigation: false, mulch: 0, weedLv: [0, 0, 0, 0, 0, 0], vent: false, heater: false },
+    cropRows: [], field: { tarp: [0, 0, 0, 0, 0], tarpDay: [0, 0, 0, 0, 0], fence: 0, fenceSeg: [0, 0, 0, 0], fenceIrr: [0, 0, 0, 0], protoNet: false, protoWire: false, pipe: false, irrigation: false, mulch: 0, weedLv: [0, 0, 0, 0, 0, 0], vent: false, heater: false },
     wine: { jar: null, batches: [], honey: 6, pounds: 0, poundsByYear: {}, shared: 0 },
     germ: null, promise: false,
     player: { x: 10, y: 6, dir: 'down' },
@@ -7307,7 +7312,7 @@ function trialSnapshot() {
 /* ============================== RENDER: TITLE / CHAPTERS ============================== */
 let titleConfirm = false;
 function hasSaveFile() { return !!loadSave(); }
-function titleLabels() { return hasSaveFile() ? ['NEW GAME', 'CONTINUE', 'CHAPTERS', 'CONTROLS'] : ['NEW GAME', 'CHAPTERS', 'CONTROLS']; }
+function titleLabels() { return hasSaveFile() ? ['NEW GAME', 'CONTINUE', 'CHAPTERS', 'TIME TRAVEL', 'CONTROLS'] : ['NEW GAME', 'CHAPTERS', 'TIME TRAVEL', 'CONTROLS']; }
 function titleUpdate() {
   const items = titleLabels().length;
   if (titleConfirm) {
@@ -7322,6 +7327,7 @@ function titleUpdate() {
     if (pick === 'NEW GAME') { if (hasSaveFile()) titleConfirm = true; else startNewGame(); }
     else if (pick === 'CONTINUE') continueGame();
     else if (pick === 'CHAPTERS') { mode = 'chapters'; }
+    else if (pick === 'TIME TRAVEL') openTravel();
     else if (pick === TEXT.controls.controls) openControls('title');
   }
 }
@@ -7401,12 +7407,13 @@ function renderTitle() {
   ctx.fillStyle = '#3f6a45'; ctx.fillRect(10, 126, 2, 2); ctx.fillRect(148, 104, 2, 2);
   // the plaque casts a soft shadow, and wears a fine inner frame line.
   // The whole title composition rides four units higher than it first
-  // did, and the menu pitch is seven, not eight: with a save present
-  // the list runs four deep (NEW GAME / CONTINUE / CHAPTERS /
-  // CONTROLS), and at the old pitch the fourth row fell into the strip
-  // the HTML book plaques overlay at the screen's foot — CONTROLS hid
-  // behind them outright on Daniel's phone (Nov 27, 2026). The menu
-  // now ends at y=130 of 144, clear of the plaques at every size.
+  // did: with a save present the list now runs five deep (NEW GAME /
+  // CONTINUE / CHAPTERS / TIME TRAVEL / CONTROLS — TIME TRAVEL added
+  // Nov 27, 2026), so the pitch is six and the list starts at y=101.
+  // The last row still ends at y=130 of 144, clear of the strip the
+  // HTML book plaques overlay at the screen's foot — at the old pitch
+  // the fourth row fell into that strip and CONTROLS hid behind the
+  // plaques outright on Daniel's phone (Nov 27, 2026).
   ctx.fillStyle = 'rgba(10,20,13,0.5)'; ctx.fillRect(17, 63, 132, 34);
   ctx.fillStyle = '#14251a'; ctx.fillRect(14, 60, 132, 34);
   ctx.fillStyle = '#ffd94a'; ctx.fillRect(14, 60, 132, 1); ctx.fillRect(14, 93, 132, 1); ctx.fillRect(14, 60, 1, 34); ctx.fillRect(145, 60, 1, 34);
@@ -7420,8 +7427,8 @@ function renderTitle() {
   ctx.fillStyle = '#ffd94a'; // two short gold rules flank the chapter line
   ctx.fillRect(80 - chW / 2 - 11, 99, 6, 1); ctx.fillRect(80 + chW / 2 + 5, 99, 6, 1);
   titleLabels().forEach((l, i) => {
-    const y = 103 + i * 7;
-    if (i === titleSel) { ctx.fillStyle = 'rgba(10,20,13,0.45)'; ctx.fillRect(38, y - 1, 80, 7); } // the chosen row sits on a soft plate
+    const y = 101 + i * 6;
+    if (i === titleSel) { ctx.fillStyle = 'rgba(10,20,13,0.45)'; ctx.fillRect(38, y - 1, 80, 6); } // the chosen row sits on a soft plate
     if (i === titleSel) drawText('▶', 42, y, TEXT.screens.ffd94a, 1);
     drawText(l, 50, y, i === titleSel ? '#ffffff' : '#9fc79f', 1);
   });
@@ -8487,6 +8494,8 @@ function update(dt) {
   switch (mode) {
     case 'title': titleUpdate(); break;
     case 'chapters': chaptersUpdate(); break;
+    case 'travel': travelUpdate(dt); break;
+    case 'travelgo': travelGoUpdate(dt); break;
     case 'overworld': overworldUpdate(dt); break;
     case 'dialogue': dlgUpdate(dt); break;
     case 'trial': trialUpdate(dt); break;
@@ -8506,6 +8515,8 @@ function render() {
   switch (mode) {
     case 'title': renderTitle(); break;
     case 'chapters': renderChapters(); break;
+    case 'travel': renderTravel(); break;
+    case 'travelgo': renderTravelGo(); break;
     case 'overworld': case 'dialogue': renderOverworld(); if (mode === 'dialogue' && dlg) drawDlg(); break;
     case 'trial': renderTrial(); break;
     case 'card': renderCard(); break;
@@ -8533,6 +8544,450 @@ saveGame = function () { if (G && G.save) { G.save.player = { x: player.tx, y: p
 G = { save: newSave() };
 buildSnow();
 requestAnimationFrame(frame);
+
+/* ============================== TIME TRAVEL ==============================
+   Daniel (Nov 27, 2026): "Add a time travel slider that fast forwards
+   the game with perfect progression to any point. It won't preserve
+   user particulars." A TIME TRAVEL entry on the title menu opens a
+   slider spanning the whole campaign; the landing is the canonical
+   PERFECT run at that point — every earlier objective complete, every
+   trial won, every named plant alive and thriving, HOPE the Favorite,
+   the story's beats as written (the first wine still tart) — and it
+   replaces the player's garden wholesale, as the confirm step warns.
+
+   Mechanism: deterministic simulation through the game's own logic.
+   The canonical run is played from a fresh start by scripted perfect
+   decisions (tend everything daily, win every trial, take every
+   objective the day it opens), one dawn at a time, and the save is
+   snapshotted at every clean morning. A landing is therefore coherent
+   by construction: it is a state the game itself produced, so the
+   chapter it lands in can always be played out from it. The build
+   runs chunked across frames behind the travel screen's montage, in a
+   borrowed G.save; the player's real save is restored after every
+   chunk, so backing out costs nothing — only the confirmed jump
+   replaces their garden. The timeline is cached in memory only (a
+   few hundred mornings is far too much for localStorage). */
+let ttTimeline = null;   // [{day, ch, step, json}] — one per canonical morning
+let ttBuild = null;      // {json, snaps, day, done, error, n} while building
+let ttStash = null;      // the player's raw save string, held during a build
+let ttSel = 0, ttConfirm = false, ttGo = null, ttDrag = false, ttHold = 0;
+const TT_X0 = 14, TT_X1 = 146, TT_Y = 88;
+
+function ttFlush() {
+  // Resolve every transient state the way a perfect player would:
+  // every conversation read to its end (choice A), every trial won,
+  // every chapter card turned. Loops because each resolution can open
+  // the next (a won trial speaks; a turned card opens a chapter).
+  let g = 0;
+  while (g++ < 800) {
+    if (trial) { trial.result = 'win'; endTrial(); continue; }
+    if (mode === 'card') { mode = 'overworld'; chapterCardDone(cardChapter); continue; }
+    if (dlg) { endDlg(0); continue; }
+    break;
+  }
+  if (mode === 'dialogue') mode = 'overworld';
+}
+function ttWater() { // __hss.waterEverything's tending, inlined for the sim
+  const s = G.save;
+  for (const p of s.plants) if (p.stage >= 1 && !p.memorial && !p.gone) waterPlant(p);
+  for (const r of s.cropRows) r.watered = true;
+  if (s.company && !s.company.gone && s.company.n > 0) s.company.watered = true;
+  if (s.nursery && s.nursery.stock > 0) s.nursery.watered = true;
+  if (s.tray.n > 0) s.tray.watered = true;
+}
+function ttTalk(id) {
+  // Find an NPC wherever the game's own layout puts them today and
+  // talk, the way walking up and pressing A would.
+  const spots = { yard: [11, 6], house: [10, 11], barnOut: [13, 5], barnIn: [14, 6], oma: [10, 5], green: [6, 7] };
+  for (const a of ['yard', 'house', 'barnOut', 'barnIn', 'oma', 'green']) {
+    setArea(a, spots[a][0], spots[a][1]); ttFlush();
+    const npc = npcList.find(n => n.id === id);
+    if (npc) { npcTalk(npc); ttFlush(); return true; }
+  }
+  return false;
+}
+function ttStairs() { // ch.5: face the barn stairs and choose BUILD
+  setArea('barnIn', 14, 6); player.dir = 'up'; syncPixels(player);
+  interact(); ttFlush();
+}
+function ttShed() { // ch.4: face the good shed and read what is there
+  setArea('barnOut', 22, 5); player.dir = 'up'; syncPixels(player);
+  interact(); ttFlush();
+}
+function ttVentOpen() {
+  // ch.6: the greenhouse stove dialogue — B is the vent. With the vent
+  // open the crisis dawns cannot slip a plant (ch6Dawn returns per
+  // plant) and mitigation is certain, so the perfect run opens it on
+  // the first morning and never shuts it.
+  const rows = AREAS.green.rows;
+  for (let y = 0; y < rows.length; y++) for (let x = 0; x < rows[y].length; x++) {
+    if (rows[y][x] === 'h') {
+      setArea('green', x, y + 1); player.dir = 'up'; syncPixels(player);
+      interact();
+      if (dlg && dlg.choice) endDlg(1); // OPEN/CLOSE THE VENT
+      ttFlush();
+      return;
+    }
+  }
+}
+function ttPullWeeds() { // ch.8: spend the day's leftover projects on weeds
+  const s = G.save, w = s.world;
+  let g = 0;
+  while (w.proj < 3 && g++ < 6) {
+    const sec = s.field.weedLv.findIndex(v => v > 0);
+    if (sec < 0) break;
+    const before = w.proj, lv = s.field.weedLv[sec];
+    pullWeeds(sec); ttFlush();
+    if (w.proj === before && s.field.weedLv[sec] === lv) break; // refused; do not spin
+  }
+}
+function ttFieldPrep() { // ch.6, step 5: the planting gate, one day at a time
+  const s = G.save, w = s.world, f = w.flags;
+  if (!f.pipeFound) { digPipe(); ttFlush(); }
+  else if (!s.field.pipe) { turnValve(); ttFlush(); turnValve(); ttFlush(); }
+  let g = 0;
+  while (w.proj < 3 && g++ < 8) {
+    const before = w.proj;
+    if (s.field.tarp.some(t => t === 4)) patchTarp(s.field.tarp.indexOf(4));
+    else if (s.field.tarp.some(t => t === 0)) layTarp(s.field.tarp.indexOf(0));
+    else if (s.field.tarp.some(t => t === 2)) moveTarp(s.field.tarp.indexOf(2));
+    else if (s.field.fenceSeg.some(x => !x)) buildFenceSeg(s.field.fenceSeg.findIndex(x => !x));
+    else if (s.cropRows.slice(0, 7).some(r => !r.mulched) && s.field.mulch >= 3) mulchRow(s.cropRows.findIndex(r => !r.mulched) + 1);
+    else break;
+    ttFlush();
+    if (w.proj === before) break;
+  }
+  if (s.cropRows.slice(0, 7).some(r => !r.mulched) && s.field.mulch < 3 && !f.mulchComing) { orderMulch(); ttFlush(); }
+  if (plantingGate().length === 0) { doPlanting(); ttFlush(); }
+}
+function ttAct() {
+  // One day of scripted perfect decisions for the chapter in progress.
+  // Everything here is the game's own function, the call a player's
+  // button press would reach; dawns and dialogues do the rest.
+  const s = G.save, w = s.world, f = w.flags;
+  switch (w.ch) {
+    case 1: {
+      for (const p of sixPlants()) if (p.stage === 0 && s.seedsLeft > 0) { potInteract(p); ttFlush(); }
+      for (const p of sixPlants()) if (p.stage >= 1 && !p.watered) { potInteract(p); ttFlush(); }
+      if (s.deerPresent && !s.deerBeaten && sixPlants().some(p => p.stage >= 2)) { startTrial(); ttFlush(); }
+      break;
+    }
+    case 2: {
+      if (w.step === 1) {
+        if (!f.fridgeTray) { fridgeSeeds(); ttFlush(); }
+        if (!f.carried) ttTalk('jeremiah');
+      }
+      else if (w.step === 5) { storageTrip(); ttFlush(); }
+      else if (w.step === 7 && f.frostDone) { let g = 0; while (w.step === 7 && g++ < 45) { potUp(); ttFlush(); } }
+      else if (w.step === 8) { signSale(); ttFlush(); }
+      break;
+    }
+    case 3: {
+      if (w.step === 1) { setArea('barnOut', 2, 1); ttFlush(); }
+      else if (w.step === 4) { chooseLoadOrder('plants'); ttFlush(); }
+      else if (w.step === 6 && (f.buildStep || 0) < 3) { buildGreenhouse(); ttFlush(); }
+      else if (w.step === 7) { let g = 0; while (w.step === 7 && g++ < 12) { carryPlants(); ttFlush(); } }
+      break;
+    }
+    case 4: {
+      if (w.step === 0) { stakeField(); ttFlush(); }
+      else if (w.step === 1) { irisInteract(); ttFlush(); }
+      else if (w.step === 2 && f.scoutsDone) ttShed();
+      else if (w.step === 3 && !f.fenceNotes) ttShed();
+      break;
+    }
+    case 5: {
+      if (w.step === 0 && f.stairsDay == null) ttStairs();
+      else if (w.step === 1 || w.step === 2) { let g = 0; while (w.step < 3 && g++ < 14) { patchInteract(); ttFlush(); } }
+      else if (w.step === 4 && !s.promise) ttTalk('oma');
+      break;
+    }
+    case 6: {
+      if (w.step <= 2 && !s.field.vent) ttVentOpen();
+      else if (w.step === 4 && f.repotReady) { repot(); ttFlush(); }
+      else if (w.step === 5) ttFieldPrep();
+      break;
+    }
+    case 7: {
+      if (w.step === 1) w.watchRow = 'NURSERY'; // the barn-door watch, set for the night
+      break;
+    }
+    case 8: {
+      if (w.step === 1 && f.momDay === s.day) { let g = 0; while (!f.momDone && g++ < 12) { if (!ttTalk('mom')) break; } }
+      else if (w.step === 2) {
+        proudWeedInteract(); ttFlush(); proudWeedInteract(); ttFlush(); proudWeedInteract(); ttFlush();
+        if (f.proudChopped) { burnPileInteract(); ttFlush(); }
+      }
+      else if (w.step === 3) { let g = 0; while (w.step === 3 && g++ < 5) { strawberryInteract(); ttFlush(); } }
+      else if (w.step === 4 && !f.butterflyPlanted) {
+        if (!f.butterflyReady) ttTalk('oma');
+        if (f.butterflyReady) { butterflyPlant(); ttFlush(); }
+      }
+      ttPullWeeds();
+      break;
+    }
+    case 9: {
+      if (w.step === 0) {
+        if (!f.forsythiaReady) ttTalk('oma');
+        if (f.forsythiaReady && !f.forsythiaPlanted) { forsythiaPlant(); ttFlush(); }
+      }
+      else if (w.step === 2) {
+        // the campaign's own watch: rows 1 and 2 on the first two
+        // nights, the third night left to providence (fruitSet 90/90/50)
+        if ((f.frostNight || 0) === 0) f.watchTonight = 1;
+        else if ((f.frostNight || 0) === 1) f.watchTonight = 2;
+        else delete f.watchTonight;
+        saveGame();
+      }
+      break;
+    }
+    case 10: {
+      const j = s.wine.jar, yr = seasonOf(s.day).year;
+      if (w.step === 0 && !j) { startBatchOne(); ttFlush(); }
+      else if ((w.step === 1 || w.step === 4) && j) {
+        if (j.phase === 'open') { swishJar(); ttFlush(); }
+        else if (j.phase === 'sealed') { sealCheck(); ttFlush(); }
+        else if (j.phase === 'done') { bottleJar(); ttFlush(); }
+      }
+      else if (w.step === 2) {
+        for (let rn = 1; rn <= 7; rn++) {
+          const row = s.cropRows[rn - 1];
+          if (row.harvestedYear === yr || row.fruitFell === yr) continue;
+          if (w.proj >= 3) break;
+          harvestRow(rn); ttFlush();
+        }
+      }
+      else if (w.step === 3 && !j) { startBatchTwo(0.65); ttFlush(); } // the lesson ratio: LOVELY, as written
+      else if (w.step === 5) { tasting(); ttFlush(); }
+      break;
+    }
+  }
+}
+function ttSimDay() {
+  // One canonical day: snapshot the clean morning, act, tend, dawn.
+  const s = G.save, w = s.world;
+  ttFlush();
+  if (dlg || trial || mode === 'card') throw new Error('the morning of day ' + s.day + ' would not come clean');
+  ttBuild.snaps.push({ day: s.day, ch: w.ch, step: w.step || 0, json: JSON.stringify(s) });
+  if (w.ch === 11) { ttBuild.done = true; return; } // the Long Tending's first morning is the journey's end
+  if (++ttBuild.n > 1500) throw new Error('the years ran long at chapter ' + w.ch + ', step ' + w.step + ', day ' + s.day);
+  const chBefore = w.ch;
+  ttAct();
+  // A chapter that ends inside its own day (the promise kept, the
+  // tasting held) hands the rest of that day to the next chapter, as
+  // it does for a player: ch.6 must get its first afternoon, or its
+  // first crisis dawn falls before the vent was ever opened.
+  if (w.ch !== chBefore) ttAct();
+  ttWater();
+  dawn();
+  ttFlush();
+  ttBuild.day = G.save.day;
+}
+function ttSimInit() {
+  G.save = newSave();
+  area = 'yard'; AW = AREAS.yard.w; AH = AREAS.yard.h; npcList = [];
+  player.tx = 11; player.ty = 6; syncPixels(player);
+  alvin.tx = 10; alvin.ty = 7; syncPixels(alvin);
+  mode = 'overworld'; dlg = null; trial = null;
+  startIntro();
+  ttFlush();
+}
+function ttRestorePlayer() {
+  // Hand the machine back exactly as the player left it: their save in
+  // localStorage and in G.save, their Frank where they left him.
+  try {
+    if (ttStash) localStorage.setItem(SAVE_KEY, ttStash); else localStorage.removeItem(SAVE_KEY);
+  } catch (e) {}
+  let raw = null;
+  try { raw = ttStash ? JSON.parse(ttStash) : null; } catch (e) {}
+  G.save = raw ? normalizeSave(raw) : newSave();
+  area = AREAS[G.save.world.area] ? G.save.world.area : 'yard';
+  AW = curArea().w; AH = curArea().h;
+  player.tx = G.save.player.x; player.ty = G.save.player.y; player.dir = G.save.player.dir || 'down'; syncPixels(player);
+  alvin.tx = G.save.player.x; alvin.ty = Math.min(AH - 1, G.save.player.y + 1); syncPixels(alvin);
+  layoutNPCs();
+  dlg = null; trial = null;
+  toastT = 0; // a toast the sim raised (potting up, in its world) is not the player's to read
+}
+function ttBuildChunk(budgetMs) {
+  const t0 = performance.now();
+  if (ttBuild.json == null) ttSimInit();
+  else {
+    G.save = normalizeSave(JSON.parse(ttBuild.json));
+    area = AREAS[G.save.world.area] ? G.save.world.area : 'yard';
+    AW = curArea().w; AH = curArea().h;
+    player.tx = G.save.player.x; player.ty = G.save.player.y; syncPixels(player);
+    layoutNPCs();
+  }
+  mode = 'overworld'; dlg = null; trial = null;
+  try {
+    while (!ttBuild.done && performance.now() - t0 < budgetMs) ttSimDay();
+  } catch (e) { ttBuild.error = String((e && (e.stack || e.message)) || e); ttBuild.done = true; }
+  ttBuild.json = JSON.stringify(G.save);
+  ttBuild.day = G.save.day;
+  if (ttBuild.done && !ttBuild.error) {
+    ttTimeline = ttBuild.snaps;
+    // aim the slider at the player's own chapter (the stash is their save)
+    let cur = 1;
+    try { if (ttStash) cur = (JSON.parse(ttStash).world || {}).ch || 1; } catch (e) { /* keep 1 */ }
+    const i = ttTimeline.findIndex(snp => snp.ch >= cur);
+    ttSel = i >= 0 ? i : ttTimeline.length - 1;
+  }
+  ttRestorePlayer();
+}
+function ttInstall(idx) {
+  const snap = ttTimeline && ttTimeline[idx];
+  if (!snap) return false;
+  const sv = normalizeSave(JSON.parse(snap.json));
+  G.save = sv;
+  area = AREAS[sv.world.area] ? sv.world.area : 'yard';
+  AW = curArea().w; AH = curArea().h;
+  player.tx = sv.player.x; player.ty = sv.player.y; player.dir = sv.player.dir || 'down'; syncPixels(player);
+  alvin.tx = sv.player.x; alvin.ty = Math.min(AH - 1, sv.player.y + 1); syncPixels(alvin);
+  layoutNPCs();
+  dlg = null; trial = null;
+  mode = 'overworld';
+  saveGame();
+  toast(TEXT.travel.arrived);
+  return true;
+}
+function openTravel() {
+  mode = 'travel'; ttConfirm = false;
+  if (!ttTimeline && !ttBuild) {
+    try { ttStash = localStorage.getItem(SAVE_KEY); } catch (e) { ttStash = null; }
+    ttBuild = { json: null, snaps: [], day: 1, done: false, error: null, n: 0 };
+  }
+  if (ttTimeline) { // open the slider at the player's own chapter
+    let cur = 1;
+    try { const raw = localStorage.getItem(SAVE_KEY); if (raw) cur = (JSON.parse(raw).world || {}).ch || 1; } catch (e) {}
+    const i = ttTimeline.findIndex(snp => snp.ch >= cur);
+    ttSel = i >= 0 ? i : 0;
+  }
+}
+function ttReadout(snp) {
+  const so = seasonOf(snp.day);
+  const first = ttTimeline.find(x => x.ch === snp.ch);
+  const title = snp.ch === 11 ? TEXT.cards.theLongTending : 'CHAPTER ' + snp.ch + ' · ' + CHAPTER_INFO[snp.ch].name;
+  const when = snp.ch === 11 ? TEXT.travel.firstMorning : F(TEXT.travel.dayOfChapter, { n: snp.day - first.day + 1 });
+  return { title, line: SEASON_NAMES[so.idx] + ', YEAR ' + so.year + ' · ' + when };
+}
+function travelUpdate(dt) {
+  if (ttBuild && !ttBuild.done) {
+    ttBuildChunk(18);
+    mode = 'travel'; // the chunk borrows the machine (the sim lives in overworld mode); hand it back
+    return;
+  }
+  if (!ttTimeline) { if (Input.bHit) mode = 'title'; return; }
+  if (ttConfirm) {
+    if (Input.aHit) { ttGo = { idx: ttSel, t: 0 }; mode = 'travelgo'; }
+    if (Input.bHit) ttConfirm = false;
+    return;
+  }
+  if (Input.dir.x === 0) ttHold = 0;
+  else {
+    if (navPrev.x === 0) { ttSel += Input.dir.x; ttHold = 0; }
+    else { ttHold += dt; while (ttHold >= 0.09) { ttSel += Input.dir.x; ttHold -= 0.09; } }
+    ttSel = Math.max(0, Math.min(ttTimeline.length - 1, ttSel));
+  }
+  if (menuNavHit('down')) { // hop to the next chapter's first morning
+    const i = ttTimeline.findIndex((snp, j) => j > ttSel && snp.ch !== ttTimeline[ttSel].ch);
+    if (i >= 0) ttSel = i;
+  }
+  if (menuNavHit('up')) { // hop back a chapter
+    let i = ttSel;
+    const ch = ttTimeline[ttSel].ch;
+    while (i > 0 && ttTimeline[i - 1].ch === ch) i--;
+    if (i === ttSel && i > 0) { const c2 = ttTimeline[i - 1].ch; while (i > 0 && ttTimeline[i - 1].ch === c2) i--; }
+    ttSel = i;
+  }
+  if (Input.aHit) ttConfirm = true;
+  if (Input.bHit) mode = 'title';
+}
+function travelGoUpdate(dt) {
+  if (!ttGo) { mode = 'title'; return; }
+  ttGo.t += dt;
+  if (ttGo.t >= 1.6) { const idx = ttGo.idx; ttGo = null; ttInstall(idx); }
+}
+function renderTravel() {
+  ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
+  drawText(TEXT.travel.title, 80 - textW(TEXT.travel.title, 2) / 2, 8, '#ffffff', 2);
+  drawText(TEXT.screens.bBack, 126, 8, '#9fc79f', 1);
+  if (!ttTimeline) {
+    // the fast-forward montage, while the years are built: the day
+    // counter spins and the seasons flash past
+    const d = ttBuild ? ttBuild.day : 1, so = seasonOf(d);
+    drawText(TEXT.travel.remembering, 80 - textW(TEXT.travel.remembering, 1) / 2, 44, '#9fc79f', 1);
+    const dl = 'DAY ' + d;
+    drawText(dl, 80 - textW(dl, 2) / 2, 62, '#ffd94a', 2);
+    const sl = SEASON_NAMES[so.idx] + ', YEAR ' + so.year;
+    drawText(sl, 80 - textW(sl, 1) / 2, 84, '#cfe8cf', 1);
+    if (ttBuild && ttBuild.error) drawText(TEXT.travel.couldNot, 80 - textW(TEXT.travel.couldNot, 1) / 2, 110, '#e08a8a', 1);
+    ctx.fillStyle = '#ffd94a';
+    ctx.fillRect(0, 0, VW, 1); ctx.fillRect(0, VH - 1, VW, 1); ctx.fillRect(0, 0, 1, VH); ctx.fillRect(VW - 1, 0, 1, VH);
+    return;
+  }
+  const snp = ttTimeline[ttSel], ro = ttReadout(snp);
+  const ttNote = TEXT.travel.note;
+  ttNote.forEach((l, i) => drawText(l, 80 - textW(l, 1) / 2, 30 + i * 7, '#9fc79f', 1));
+  drawText(ro.title, 80 - textW(ro.title, 1) / 2, 56, '#ffffff', 1);
+  drawText(ro.line, 80 - textW(ro.line, 1) / 2, 65, '#cfe8cf', 1);
+  ctx.fillStyle = '#3f6a45'; ctx.fillRect(TT_X0, TT_Y, TT_X1 - TT_X0, 2);
+  for (let i = 0; i < ttTimeline.length; i++) {
+    if (i === 0 || ttTimeline[i].ch !== ttTimeline[i - 1].ch) {
+      const x = TT_X0 + (TT_X1 - TT_X0) * i / (ttTimeline.length - 1);
+      ctx.fillStyle = '#9fc79f'; ctx.fillRect(Math.round(x), TT_Y - 2, 1, 6);
+    }
+  }
+  const kx = TT_X0 + (TT_X1 - TT_X0) * ttSel / (ttTimeline.length - 1);
+  ctx.fillStyle = '#ffd94a'; ctx.fillRect(Math.round(kx) - 2, TT_Y - 4, 5, 10);
+  ctx.fillStyle = '#20242a'; ctx.fillRect(Math.round(kx), TT_Y - 1, 1, 4);
+  drawText(TEXT.travel.choose, 80 - textW(TEXT.travel.choose, 1) / 2, 108, '#9fc79f', 1);
+  ctx.fillStyle = '#ffd94a';
+  ctx.fillRect(0, 0, VW, 1); ctx.fillRect(0, VH - 1, VW, 1); ctx.fillRect(0, 0, 1, VH); ctx.fillRect(VW - 1, 0, 1, VH);
+  if (ttConfirm) {
+    drawBox(48, 34);
+    drawText(TEXT.travel.travelHere, 80 - textW(TEXT.travel.travelHere, 1) / 2, 54, '#20242a', 1);
+    drawText(TEXT.travel.replaced, 80 - textW(TEXT.travel.replaced, 1) / 2, 63, '#20242a', 1);
+    drawText(TEXT.screens.aYesBNo, 80 - textW(TEXT.screens.aYesBNo, 1) / 2, 74, '#b03030', 1);
+  }
+}
+function renderTravelGo() {
+  ctx.fillStyle = '#1d3a26'; ctx.fillRect(0, 0, VW, VH);
+  if (ttGo && ttTimeline) {
+    const target = ttTimeline[ttGo.idx];
+    const p = Math.min(1, ttGo.t / 1.6), e = 1 - (1 - p) * (1 - p);
+    const d = Math.max(1, Math.round(1 + (target.day - 1) * e));
+    const so = seasonOf(d);
+    const dl = 'DAY ' + d;
+    drawText(dl, 80 - textW(dl, 2) / 2, 52, '#ffd94a', 2);
+    const sl = SEASON_NAMES[so.idx] + ', YEAR ' + so.year;
+    drawText(sl, 80 - textW(sl, 1) / 2, 74, '#cfe8cf', 1);
+    const ro = ttReadout(target);
+    drawText(ro.title, 80 - textW(ro.title, 1) / 2, 96, '#9fc79f', 1);
+  }
+  ctx.fillStyle = '#ffd94a';
+  ctx.fillRect(0, 0, VW, 1); ctx.fillRect(0, VH - 1, VW, 1); ctx.fillRect(0, 0, 1, VH); ctx.fillRect(VW - 1, 0, 1, VH);
+}
+(function () { // the slider answers a thumb as well as the arrows
+  const cvs = document.getElementById('game');
+  const toSel = e => {
+    const r = cvs.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * VW, y = (e.clientY - r.top) / r.height * VH;
+    if (Math.abs(y - (TT_Y + 1)) > 10) return false;
+    ttSel = Math.max(0, Math.min(ttTimeline.length - 1, Math.round((x - TT_X0) / (TT_X1 - TT_X0) * (ttTimeline.length - 1))));
+    return true;
+  };
+  cvs.addEventListener('pointerdown', e => {
+    if (mode === 'travel' && ttTimeline && !ttConfirm && toSel(e)) {
+      ttDrag = true;
+      try { cvs.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+  });
+  cvs.addEventListener('pointermove', e => { if (ttDrag && mode === 'travel') toSel(e); });
+  const end = () => { ttDrag = false; };
+  cvs.addEventListener('pointerup', end);
+  cvs.addEventListener('pointercancel', end);
+})();
 
 /* ============================== TEST HOOK ============================== */
 window.__hss = {
@@ -8634,6 +9089,19 @@ window.__hss = {
   debugSave() { return JSON.parse(JSON.stringify(G.save)); },
   setSave(obj) { G.save = normalizeSave(obj); area = AREAS[G.save.world.area] ? G.save.world.area : 'yard'; AW = curArea().w; AH = curArea().h; player.tx = G.save.player.x; player.ty = G.save.player.y; syncPixels(player); layoutNPCs(); saveGame(); },
   trialState() { return trial ? { foe: trial.foe, pressure: trial.pressure, maxPressure: trial.maxPressure, vigor: trial.vigor, phase: trial.phase, wave: trial.wave || 1, over: trial.over, result: trial.result } : null; },
+  ttState() { return { built: !!ttTimeline, building: !!ttBuild && !ttBuild.done, error: ttBuild ? ttBuild.error : null, count: ttTimeline ? ttTimeline.length : (ttBuild ? ttBuild.snaps.length : 0), buildDay: ttBuild ? ttBuild.day : null, sel: ttSel, confirm: ttConfirm }; },
+  ttMeta() { return ttTimeline ? ttTimeline.map(snp => ({ day: snp.day, ch: snp.ch, step: snp.step })) : []; },
+  ttBuildSync() {
+    if (!ttTimeline) {
+      if (!ttBuild) { try { ttStash = localStorage.getItem(SAVE_KEY); } catch (e) { ttStash = null; } ttBuild = { json: null, snaps: [], day: 1, done: false, error: null, n: 0 }; }
+      let g = 0;
+      while (!ttBuild.done && g++ < 400) ttBuildChunk(250);
+    }
+    return !!ttTimeline;
+  },
+  ttLand(i) { return ttTimeline ? ttInstall(i) : false; },
+  ttReset() { ttTimeline = null; ttBuild = null; ttStash = null; ttSel = 0; ttConfirm = false; ttGo = null; },
+  ttSize() { return ttTimeline ? ttTimeline.reduce((a, snp) => a + snp.json.length, 0) : 0; },
   setWeeds(list) { G.save.weeds = (list || []).map(w => ({ x: w.x, y: w.y, deep: !!w.deep })); saveGame(); },
   giveCompost(n) { G.save.compost += n; saveGame(); },
   giveDirt(n) { G.save.goodDirt += n; saveGame(); },
