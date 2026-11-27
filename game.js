@@ -3765,7 +3765,18 @@ let AW = MAP_W, AH = MAP_H;
 let npcList = []; // runtime NPCs in the current area: {id,tx,ty,dir,set,name}
 function curArea() { return AREAS[area]; }
 function mapChar(x, y) { const a = curArea(); if (x < 0 || y < 0 || x >= a.w || y >= a.h) return 'f'; return a.rows[y][x]; }
-function isSolid(x, y) { const a = curArea(); return (a.solid || SOLID).has(mapChar(x, y)); }
+function isSolid(x, y) {
+  const a = curArea();
+  if ((a.solid || SOLID).has(mapChar(x, y))) return true;
+  // Two interiors DRAW props onto floor tiles; a drawing Frank can
+  // walk through is a lie (Daniel, Nov 26, 2026: he walked under the
+  // moving boxes in the town house). Solid exactly while drawn:
+  const s = G.save, w = s && s.world;
+  if (!w) return false;
+  if (area === 'house' && w.ch === 2 && w.step >= 5 && (w.flags.trips || 0) < 3 && y === 10 && x >= 15 && x <= 17) return true; // the moving boxes
+  if (area === 'barnIn' && s.wine && s.wine.jar && x === 9 && y === 2) return true; // the fermenting jar on the counter
+  return false;
+}
 function setArea(name, tx, ty) {
   area = name; const a = curArea(); AW = a.w; AH = a.h;
   if (name === 'oma' && G.save && G.save.world.flags.alvinDown) { alvin.tx = 3; alvin.ty = 5; syncPixels(alvin); }

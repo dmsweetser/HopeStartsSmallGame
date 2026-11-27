@@ -776,6 +776,14 @@ function findChromium() {
   for (let i = 0; i < 3; i++) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(8); }
   s = await S();
   check('three houses fail, the verdict lands: step 5', s.world.step === 5, 'step=' + s.world.step);
+  // the moving boxes stand drawn in the corner — and solid (Daniel,
+  // Nov 26, 2026: Frank could walk under them). Facing them still
+  // offers the van (the trips below run through that interact's own
+  // machinery); standing IN them must be impossible.
+  await page.evaluate(() => window.__hss.gotoArea('house', 16, 9));
+  await page.keyboard.down('ArrowDown'); await page.waitForTimeout(120); await page.keyboard.up('ArrowDown'); await page.waitForTimeout(250);
+  s = await S();
+  check('the moving boxes are solid: Frank cannot walk into them', s.player.x === 16 && s.player.y === 9, 'pos=' + s.player.x + ',' + s.player.y);
   for (let i = 0; i < 3; i++) { await page.evaluate(() => window.__hss.storageTrip()); await dismissDialogue(6); if (i < 2) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(6); } }
   s = await S();
   check('the great emptying: step 6', s.world.step === 6, 'step=' + s.world.step);
@@ -1257,6 +1265,12 @@ function findChromium() {
   await dismissDialogue(8);
   s = await S();
   check('batch one: the rehearsal, a dash of honey (0.10)', s.world.step === 1 && s.wine.jar && s.wine.jar.batch === 1 && Math.abs(s.wine.jar.index - 0.1) < 0.001, 'step=' + s.world.step);
+  // the fermenting jar is drawn on the counter — and solid, like the
+  // moving boxes: a drawn prop Frank can walk through is a lie
+  await page.evaluate(() => window.__hss.gotoArea('barnIn', 9, 3));
+  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(120); await page.keyboard.up('ArrowUp'); await page.waitForTimeout(250);
+  s = await S();
+  check('the fermenting jar is solid: Frank cannot walk into it', s.player.x === 9 && s.player.y === 3, 'pos=' + s.player.x + ',' + s.player.y);
   await ferment();
   s = await S();
   check('the jar finishes its long patience', s.wine.jar && s.wine.jar.phase === 'done', 'jar=' + JSON.stringify(s.wine.jar));
