@@ -5401,8 +5401,8 @@ function drawAreaProps() {
       if (p.location !== 'OFFICE' || p.memorial) continue;
       if (p.slot != null && p.slot < 6) {
         const sx = (2 + p.slot) * TILE - camX, sy = 1 * TILE - camY;
-        ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], sx, sy - 3, 14, 14);
-        if (p.watered) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(sx + 11, sy - 6, 2, 3); }
+        ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], sx, sy - 1, 14, 14);
+        if (p.watered) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(sx + 11, sy - 4, 2, 3); }
       }
     }
     const comp = s2.plants.filter(p => p.location === 'OFFICE' && !p.memorial && (p.slot == null || p.slot >= 6));
@@ -5418,9 +5418,9 @@ function drawAreaProps() {
     gp.slice(0, 20).forEach((p, i) => {
       const north = i < 10;
       const sx = (1 + (i % 10)) * TILE - camX, sy = (north ? 1 : 5) * TILE - camY;
-      ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], sx + 1, sy - 4, 13, 13);
-      if (p.watered) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(sx + 11, sy - 7, 2, 3); }
-      if (p.health >= 2) { ctx.fillStyle = '#e0483e'; ctx.fillRect(sx + 12, sy + 6, 3, 3); }
+      ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], sx + 1, sy - 1, 13, 13);
+      if (p.watered) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(sx + 11, sy - 4, 2, 3); }
+      if (p.health >= 2) { ctx.fillStyle = '#e0483e'; ctx.fillRect(sx + 12, sy + 9, 3, 3); }
     });
     return;
   }
@@ -5438,13 +5438,18 @@ function drawAreaProps() {
   }
   if (area !== 'house') return;
   const s = G.save;
-  // plants on the window shelf, in their slots; the tray at the west end
+  // plants on the window shelf, in their slots; the tray at the west end.
+  // Anchoring rule for every placed-plant display (Daniel, Nov 26, 2026:
+  // the shelf sprouts floated): a pot reads as SITTING when its bowl's
+  // underside overlaps the surface's top edge — the narrow foot alone
+  // touching leaves it hovering on a point. Shelf/bench pots draw low
+  // enough for the bowl to meet the board.
   for (const p of s.plants) {
     if (p.location !== 'WINDOW' || p.memorial) continue;
     const sx = (2 + (p.slot || 0)) * TILE - camX, sy = 1 * TILE - camY;
-    ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], sx, sy - 3, 14, 14);
-    if (p.watered) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(sx + 11, sy - 6, 2, 3); }
-    if (p.husk) { ctx.fillStyle = '#5a5148'; ctx.fillRect(sx + 3, sy, 8, 3); }
+    ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], sx, sy - 1, 14, 14);
+    if (p.watered) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(sx + 11, sy - 4, 2, 3); }
+    if (p.husk) { ctx.fillStyle = '#5a5148'; ctx.fillRect(sx + 3, sy + 2, 8, 3); }
   }
   if (s.tray.n > 0 || s.world.flags.fridgeTray) {
     const sx = 1 * TILE - camX, sy = 1 * TILE - camY;
