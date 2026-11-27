@@ -3745,7 +3745,14 @@ const GREEN_MAP = [
   'HzzzzzzzzzzH',
   'HHHHHHDHHHHH',
 ];
-const IN_SOLID = new Set(['H', 'a', 'r', 'k', 'h', 'e', 'x', 'm', 'f', 'j']);
+/* 'x' (the stairs) is deliberately NOT solid here: the barn's stairs
+   tile is its exit (EXITS.barnIn), and a solid exit tile can never be
+   stood on — which soft-locked the barn interior until Nov 26, 2026
+   (the stairs' facing dialogue was flavour-only and transported no
+   one). Only barnIn has an 'x' among these areas; the town house
+   keeps its own solid set, stairs included, since its stairs are
+   flavour and lead nowhere. */
+const IN_SOLID = new Set(['H', 'a', 'r', 'k', 'h', 'e', 'm', 'f', 'j']);
 const AREAS = {
   yard: { rows: MAP, w: MAP_W, h: MAP_H, name: 'DEERBROOK' },
   house: { rows: HOUSE_MAP, w: 20, h: 13, name: 'THE HOUSE', solid: HOUSE_SOLID },
@@ -6092,7 +6099,7 @@ function overworldUpdate(dt) {
   }
   if (stepped) {
     const ex = exitsFor(area).find(e => e.x === player.tx && e.y === player.ty);
-    if (ex && DELIBERATE_EXITS.has(area)) { toast('THE DOOR — PRESS A TO STEP THROUGH'); }
+    if (ex && DELIBERATE_EXITS.has(area)) { toast(mapChar(player.tx, player.ty) === 'x' ? 'THE STAIRS — PRESS A TO USE THEM' : 'THE DOOR — PRESS A TO STEP THROUGH'); }
     else if (ex) { setArea(ex.to, ex.tx, ex.ty); return; }
     player.stepAlt = !player.stepAlt;
     if (dx0 && dy0) diagX = !diagX;
@@ -6142,8 +6149,21 @@ function interact() {
   // Deliberate interior doors: standing on an interior exit tile, A is
   // the way out — walking onto the tile alone never leaves (see EXITS).
   if (DELIBERATE_EXITS.has(area)) {
+    // While the barn stairs are being BUILT (ch5 step 0), the stairs
+    // tile is a work site, not an exit: A on or facing it is the build
+    // dialogue. Once they stand, the tile is the way out like any door.
+    const stairsBuildLive = area === 'barnIn' && s.world.ch === 5 && s.world.step === 0 && !s.world.flags.stairsBuilt;
     const ex = exitsFor(area).find(e => e.x === player.tx && e.y === player.ty);
-    if (ex) { setArea(ex.to, ex.tx, ex.ty); return; }
+    if (ex) {
+      if (stairsBuildLive) return barnInInteract({ x: ex.x, y: ex.y });
+      setArea(ex.to, ex.tx, ex.ty); return;
+    }
+    // Facing the exit tile works too — the barn's stairs are naturally
+    // used from the tile below them.
+    if (!stairsBuildLive) {
+      const fx = exitsFor(area).find(e => e.x === f.x && e.y === f.y);
+      if (fx) { setArea(fx.to, fx.tx, fx.ty); return; }
+    }
   }
   const npc = npcList.find(n => n.tx === f.x && n.ty === f.y);
   if (npc) return npcTalk(npc);

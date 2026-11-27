@@ -1406,6 +1406,68 @@ function findChromium() {
   s = await S();
   check('the goats come home by appeal, in the fullness of forms', s.world.flags.goats === true, 'appeal=' + s.world.flags.goatAppeal);
 
+  // EVERY INTERIOR HAS A WAY OUT (regression: the barn soft-lock,
+  // Nov 26, 2026 — the barn's exit tile was a SOLID 'x' stairs tile
+  // whose facing dialogue was flavour-only, so the barn interior had
+  // no exit at all; Daniel found it free-roaming, and a save made
+  // inside the barn was trapped with him). Each interior is entered
+  // and EXITED through its real door machinery here; the town house's
+  // door is covered by the deliberate-door checks in chapter 2.
+  // Movement is real held keys: a 120ms hold STARTS one step, and a
+  // started step commits and completes on its own (the engine does
+  // not abandon a step mid-tile), so 120ms + settle = exactly one tile.
+  const holdKey = async (key, ms) => { await page.keyboard.down(key); await page.waitForTimeout(ms); await page.keyboard.up(key); await page.waitForTimeout(120); };
+  const stepOnto = async (x, y) => {
+    const st = await S(); const dx = x - st.player.x, dy = y - st.player.y;
+    await holdKey(dx === 1 ? 'ArrowRight' : dx === -1 ? 'ArrowLeft' : dy === 1 ? 'ArrowDown' : 'ArrowUp', 120);
+  };
+  // the barn, stairs built: facing the stairs from the landing exits
+  await page.evaluate(() => window.__hss.gotoArea('barnIn', 14, 6));
+  await holdKey('ArrowUp', 30); // a breath of a press: turns him to the stairs
+  s = await S();
+  check('barn exit (facing): Frank turns to the stairs from the landing', s.world.area === 'barnIn' && s.player.dir === 'up', JSON.stringify(s.player));
+  await tap('z'); await page.waitForTimeout(300);
+  s = await S();
+  check("barn exit (facing): A on the stairs climbs down to Oma's", s.world.area === 'oma' && s.player.x === 10 && s.player.y === 5, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+  // Oma's, both ways: the stairs back up, and the door out
+  await stepOnto(10, 6);
+  s = await S();
+  check('downstairs: stepping on the stairs tile does not climb by itself', s.world.area === 'oma' && s.player.x === 10 && s.player.y === 6, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+  await tap('z'); await page.waitForTimeout(300);
+  s = await S();
+  check('downstairs exit: A on the stairs climbs back to the barn', s.world.area === 'barnIn' && s.player.x === 14 && s.player.y === 6, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+  await page.evaluate(() => window.__hss.gotoArea('oma', 6, 6));
+  await stepOnto(6, 7);
+  await tap('z'); await page.waitForTimeout(300);
+  s = await S();
+  check('downstairs exit: A on the door steps out to the farm', s.world.area === 'barnOut' && s.player.x === 18 && s.player.y === 5, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+  // the barn before the stairs: the same tile leads out to the farm,
+  // and a save trapped inside is freed by the fix (same area, same tile)
+  {
+    const base = await page.evaluate(() => window.__hss.debugSave());
+    const sv = JSON.parse(JSON.stringify(base)); sv.world.flags.stairsBuilt = false;
+    await page.evaluate(s2 => window.__hss.setSave(s2), sv);
+    await page.evaluate(() => window.__hss.gotoArea('barnIn', 14, 6));
+    await stepOnto(14, 5);
+    s = await S();
+    check('barn: stepping on the stairs tile does not leave by itself', s.world.area === 'barnIn' && s.player.x === 14 && s.player.y === 5, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+    await tap('z'); await page.waitForTimeout(300);
+    s = await S();
+    check('barn exit (no stairs yet): A on the stairs tile steps out to the farm', s.world.area === 'barnOut' && s.player.x === 13 && s.player.y === 5, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+    await page.evaluate(s2 => window.__hss.setSave(s2), base);
+  }
+  // the greenhouse: in through the farm door (a step-on road), out by A
+  await page.evaluate(() => window.__hss.gotoArea('barnOut', 20, 12));
+  await stepOnto(20, 11);
+  s = await S();
+  check('greenhouse: the farm door tile carries Frank in', s.world.area === 'green' && s.player.x === 6 && s.player.y === 7, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+  await stepOnto(6, 8);
+  s = await S();
+  check('greenhouse: stepping on the door tile does not leave by itself', s.world.area === 'green' && s.player.x === 6 && s.player.y === 8, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+  await tap('z'); await page.waitForTimeout(300);
+  s = await S();
+  check('greenhouse exit: A on the door steps back out to the farm', s.world.area === 'barnOut', 'area=' + s.world.area);
+
   // a save written in the oldest formats still loads: pots as a bare stage
   // int and as {stage, waterDays} objects both migrate to named plants
   await page.evaluate(() => {
