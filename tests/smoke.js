@@ -773,6 +773,23 @@ function findChromium() {
   await page.evaluate(() => window.__hss.advanceDay());
   s = await S();
   check('fridge + the carry -> step 2', s.world.step === 2, 'step=' + s.world.step);
+  // WINTER STAGING (Daniel, Nov 26, 2026): deep winter at the old
+  // house — no child, and above all no baby in a stroller, stands in
+  // the yard in the snow; the children are in the house. (A setDay
+  // excursion and back: setDay fires no dawns, the timeline is
+  // untouched.)
+  {
+    const fallDay = s.day;
+    await page.evaluate(n => window.__hss.setDay(n), 45);
+    await page.evaluate(() => window.__hss.gotoArea('yard', 11, 8));
+    s = await S();
+    check('winter at the old house: the yard holds no children in the snow', s.season === 'WINTER' && !s.npcs.some(n => n.id === 'lily' || n.id === 'zoey' || n.id === 'jeremiah'), 'npcs=' + s.npcs.map(n => n.id).join(','));
+    await page.evaluate(() => window.__hss.gotoArea('house', 10, 6));
+    s = await S();
+    check('winter at the old house: the children are in, the stroller by their mother', s.npcs.some(n => n.id === 'lily') && s.npcs.some(n => n.id === 'zoey') && s.npcs.some(n => n.id === 'jeremiah'), 'npcs=' + s.npcs.map(n => n.id).join(','));
+    await page.evaluate(n => window.__hss.setDay(n), fallDay);
+    await page.evaluate(() => window.__hss.gotoArea('yard', 11, 8));
+  }
   for (let i = 0; i < 3; i++) { await page.evaluate(() => window.__hss.waterEverything()); await page.evaluate(() => window.__hss.advanceDay()); await dismissDialogue(8); }
   s = await S();
   check('three houses fail, the verdict lands: step 5', s.world.step === 5, 'step=' + s.world.step);

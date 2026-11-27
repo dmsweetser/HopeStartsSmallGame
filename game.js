@@ -3666,7 +3666,7 @@ function snowify(img, alpha) {
 const SNOW_TILES = {};
 let SNOW_TREE = null;
 function buildSnow() {
-  for (const k of ['grass', 'grass2', 'grass3', 'grass4', 'tuft', 'tuftB', 'flower', 'flowerB', 'flower2', 'flower3', 'path', 'pathStone', 'soil']) if (TILES[k]) SNOW_TILES[k] = snowify(TILES[k], 0.66);
+  for (const k of ['grass', 'grass2', 'grass3', 'grass4', 'tuft', 'tuftB', 'flower', 'flowerB', 'flower2', 'flower3', 'path', 'pathStone', 'soil', 'bedA', 'bedB', 'fenceBloom']) if (TILES[k]) SNOW_TILES[k] = snowify(TILES[k], 0.66);
   SNOW_TREE = snowify(TREE, 0.45);
 }
 const TILEMAP = { n: 'lawn', f: 'fenceV', v: 'fenceVine', H: 'fenceH', F: 'fenceBloom', G: 'gate', R: 'roof', c: 'chimney', W: 'wall', E: 'wallBase', i: 'window', D: 'door', g: 'grass', u: 'grass2', o: 'flower', O: 'flower2', Q: 'flower3', p: 'path', j: 'pathStone', P: 'porch', B: 'bench', C: 'compost', T: 'grass', s: 'soil', S: 'soilSprout', U: 'bush', b: 'birdbath', M: 'mailbox', K: 'crate', w: 'can', A: 'bedA', Y: 'bedB' };
@@ -3834,17 +3834,24 @@ const NPC_SETS = {
 function npcsFor(a) {
   const s = G.save, w = s.world, list = [];
   if (!s || w.ch < 2) return list;
+  // Winter staging (Daniel, Nov 26, 2026): the season skip was
+  // season-blind — the children, and the baby in her stroller, stood
+  // in the yard in deep snow as if it were summer. In winter the
+  // children are IN the house; nobody parks a baby in the snow.
+  const winterNow = seasonOf(s.day).idx === 3;
   if (a === 'yard' && w.ch === 2) {
-    if (w.step >= 1) list.push({ id: 'jeremiah', tx: 14, ty: 12, dir: 'left', set: 'jeremiah', name: 'JEREMIAH' });
-    if (w.step >= 2) {
-      list.push({ id: 'zoey', tx: 6, ty: 13, dir: 'down', set: 'zoey', name: 'ZOEY' });
-      list.push({ id: 'lily', tx: 12, ty: 6, dir: 'down', set: 'lily', name: 'LILY' });
+    if (!winterNow) {
+      if (w.step >= 1) list.push({ id: 'jeremiah', tx: 14, ty: 12, dir: 'left', set: 'jeremiah', name: 'JEREMIAH' });
+      if (w.step >= 2) {
+        list.push({ id: 'zoey', tx: 6, ty: 13, dir: 'down', set: 'zoey', name: 'ZOEY' });
+        list.push({ id: 'lily', tx: 12, ty: 6, dir: 'down', set: 'lily', name: 'LILY' });
+      }
     }
   }
   if (w.ch === 8 && w.flags.momDay === s.day && a === 'barnOut') list.push({ id: 'mom', tx: 10, ty: 6, dir: 'down', set: 'mom', name: 'MOM' });
   if (w.ch >= 5) {
     if (a === 'oma') list.push({ id: 'oma', tx: 5, ty: 4, dir: 'down', set: 'oma', name: 'OMA' });
-    if (a === 'barnOut' && hashDay(s.day) % 3 === 0) list.push({ id: 'oma', tx: 16, ty: 6, dir: 'down', set: 'oma', name: 'OMA' });
+    if (a === 'barnOut' && hashDay(s.day) % 3 === 0 && !winterNow) list.push({ id: 'oma', tx: 16, ty: 6, dir: 'down', set: 'oma', name: 'OMA' });
     if (a === 'barnIn' && w.ch === 5) list.push({ id: 'constance', tx: 4, ty: 3, dir: 'down', set: 'constance', name: 'CONSTANCE' });
     if (a === 'barnIn' && w.ch === 10 && w.step === 5) { // the tasting: the pastor at the table, Constance beside Frank — as the book has it
       list.push({ id: 'pastor', tx: 7, ty: 4, dir: 'right', set: 'pastor', name: 'PASTOR' });
@@ -3852,13 +3859,17 @@ function npcsFor(a) {
     }
   }
   if (w.ch === 3) {
-    if (a === 'barnOut') {
+    if (a === 'barnOut' && !winterNow) {
       list.push({ id: 'zoey', tx: 5, ty: 9, dir: 'down', set: 'zoey', name: 'ZOEY' });
       list.push({ id: 'lily', tx: 6, ty: 9, dir: 'down', set: 'lily', name: 'LILY' });
     }
     if (a === 'barnIn') {
       list.push({ id: 'constance', tx: 4, ty: 3, dir: 'down', set: 'constance', name: 'CONSTANCE' });
       if (w.step === 7) list.push({ id: 'jeremiah', tx: 9, ty: 3, dir: 'down', set: 'jeremiah', name: 'JEREMIAH' });
+      if (winterNow) { // the children keep to the barn office in the cold
+        list.push({ id: 'zoey', tx: 6, ty: 3, dir: 'down', set: 'zoey', name: 'ZOEY' });
+        list.push({ id: 'lily', tx: 8, ty: 3, dir: 'down', set: 'lily', name: 'LILY' });
+      }
     }
     if (a === 'green' && w.step >= 8) list.push({ id: 'jeremiah', tx: 5, ty: 4, dir: 'down', set: 'jeremiah', name: 'JEREMIAH' });
   }
@@ -3866,6 +3877,13 @@ function npcsFor(a) {
     list.push({ id: 'constance', tx: 5, ty: 4, dir: 'down', set: 'constance', name: 'CONSTANCE' });
     if (w.step === 1) list.push({ id: 'jeremiah', tx: 8, ty: 3, dir: 'down', set: 'jeremiah', name: 'JEREMIAH' });
     if (w.flags.omaVisit) list.push({ id: 'oma', tx: 11, ty: 4, dir: 'down', set: 'oma', name: 'OMA' });
+    if (winterNow) { // the children, in from the snow — the stroller by their mother
+      if (w.step >= 2) {
+        list.push({ id: 'jeremiah', tx: 8, ty: 3, dir: 'down', set: 'jeremiah', name: 'JEREMIAH' });
+        list.push({ id: 'zoey', tx: 10, ty: 3, dir: 'down', set: 'zoey', name: 'ZOEY' });
+        list.push({ id: 'lily', tx: 13, ty: 3, dir: 'down', set: 'lily', name: 'LILY' });
+      }
+    }
   }
   return list;
 }
@@ -7289,6 +7307,22 @@ function renderOverworld() {
       ctx.fillStyle = '#a8dcff'; ctx.fillRect(sx + 12, sy - 4 + bob, 1, 1);
     }
   });
+
+  // winter: the bench wears a cold frame (Daniel, Nov 26, 2026 — the
+  // tender pots sat out in the snow as if it were summer). The six
+  // stay on the bench, as the story has them until spring, but
+  // visibly sheltered: a glass lean-to over them, snow on its roof.
+  if (seasonOf(G.save.day).idx === 3 && sixPlants().some(p => p.location === 'BENCH' && !p.memorial)) {
+    const fx = 9 * TILE - camX, fy = 10 * TILE - camY, fw = 6 * TILE;
+    ctx.fillStyle = '#5e4c36';
+    ctx.fillRect(fx + 1, fy - 7, 3, 19); ctx.fillRect(fx + fw - 4, fy - 7, 3, 19); // posts
+    ctx.fillRect(fx, fy - 8, fw, 3); // top rail
+    ctx.fillStyle = 'rgba(207,228,247,0.25)';
+    ctx.fillRect(fx + 2, fy - 5, fw - 4, 16); // the pane, over the pots
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillRect(fx, fy - 10, fw, 2); // snow on the roof
+    ctx.fillRect(fx + 8, fy - 11, 18, 1); ctx.fillRect(fx + fw - 30, fy - 11, 20, 1);
+  }
 
   // entities sorted by y — each stands on a soft contact shadow
   const contactShadow = (px, py) => {
