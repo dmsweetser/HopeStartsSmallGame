@@ -1499,6 +1499,129 @@ function findChromium() {
   s = await S();
   check('greenhouse exit: A on the door steps back out to the farm', s.world.area === 'barnOut', 'area=' + s.world.area);
 
+  // THE BARN, ON FOOT (regression: the ch5 soft-lock, Nov 27, 2026 —
+  // Daniel walked into the barn and could not get out, while the audit
+  // above was green. Two blind spots conspired: the checks above run in
+  // a late-game save, where the ch5 stair-build exemption is inactive,
+  // and the suite's own ch5 passage teleports in and advances the day
+  // by hook from inside. In ch5 step 0 the build claimed EVERY A press
+  // on the stairs — the barn's only exit — while the build finishes at
+  // a dawn reachable only by resting outside: a permanent trap. So:
+  // enter through the barn door dialogue and leave on foot, in the
+  // states a player actually passes through. No teleports inside.)
+  const baseBarn = await page.evaluate(() => window.__hss.debugSave());
+  // A turn tap can start a committed step, and an A press that lands
+  // while Frank is still moving is eaten — so every A press below is
+  // preceded by a settle (three equal still reads span a full step),
+  // and facing is established by real steps, never by timed taps.
+  const settle = async () => {
+    let prev = await S(), eq = 0;
+    for (let i = 0; i < 40 && eq < 2; i++) {
+      await page.waitForTimeout(100);
+      const cur = await S();
+      if (cur.mode === 'overworld' && cur.player.x === prev.player.x && cur.player.y === prev.player.y) eq++; else eq = 0;
+      prev = cur;
+    }
+    return prev;
+  };
+  const walkTo = async (x, y) => {
+    for (let i = 0; i < 24; i++) {
+      const st = await S();
+      if (st.player.x === x && st.player.y === y) { await settle(); return true; }
+      if (st.mode !== 'overworld') return false;
+      const dx = x - st.player.x, dy = y - st.player.y;
+      await holdKey(Math.abs(dx) >= Math.abs(dy) && dx ? (dx > 0 ? 'ArrowRight' : 'ArrowLeft') : (dy > 0 ? 'ArrowDown' : 'ArrowUp'), 120);
+    }
+    const st = await S(); return st.player.x === x && st.player.y === y;
+  };
+  const faceUpAt = async (x, y) => { await walkTo(x, y + 1); await walkTo(x, y); }; // last step is upward: dir is 'up', guaranteed
+  const barnScenario = async (mut) => {
+    const sv = JSON.parse(JSON.stringify(baseBarn));
+    mut(sv);
+    sv.world.area = 'barnOut'; sv.player.x = 13; sv.player.y = 6;
+    await page.evaluate(s2 => window.__hss.setSave(s2), sv);
+    await page.evaluate(() => window.__hss.gotoArea('barnOut', 13, 6));
+    await page.waitForTimeout(150);
+    await dismissDialogue(10);
+  };
+  const enterBarnOnFoot = async () => {
+    await faceUpAt(13, 5); // stand before the barn door, facing it
+    await tap('z'); await page.waitForTimeout(250); // the door dialogue
+    await tap('z'); await page.waitForTimeout(150); // complete the line
+    await tap('x'); await page.waitForTimeout(300); // B: GO INSIDE
+    await settle();
+    return (await S()).world.area === 'barnIn';
+  };
+  // ch4, before the stairs: in through the door, out by facing the stairs
+  await barnScenario(sv => { sv.world.ch = 4; sv.world.step = 0; sv.world.flags.stairsBuilt = false; });
+  check('barn on foot (ch4): the door dialogue lets Frank in', await enterBarnOnFoot());
+  await faceUpAt(14, 6); // the landing, facing the stairs
+  await tap('z'); await page.waitForTimeout(300); await settle();
+  s = await S();
+  check('barn on foot (ch4): facing the stairs, A steps out to the farm', s.world.area === 'barnOut' && s.player.x === 13 && s.player.y === 5, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+  // ch5 step 0, project not started: facing the stairs is the work site,
+  // and the standing press on the stairs is still the way out
+  await barnScenario(sv => { sv.world.ch = 5; sv.world.step = 0; sv.world.flags.stairsBuilt = false; delete sv.world.flags.stairsDay; });
+  check('barn on foot (ch5 build): the door dialogue lets Frank in', await enterBarnOnFoot());
+  await faceUpAt(14, 6);
+  await tap('z'); await page.waitForTimeout(300);
+  s = await S();
+  check('barn on foot (ch5 build): facing the stairs opens the stair project', s.mode === 'dialogue' && s.world.flags.stairsDay == null, 'mode=' + s.mode + ' stairsDay=' + s.world.flags.stairsDay);
+  await tap('z'); await page.waitForTimeout(150); // complete the line
+  await tap('x'); await page.waitForTimeout(300); // B: NOT YET
+  await settle();
+  s = await S();
+  check('barn on foot (ch5 build): NOT YET leaves the project unstarted', s.mode === 'overworld' && s.world.area === 'barnIn' && s.world.flags.stairsDay == null, 'mode=' + s.mode + ' stairsDay=' + s.world.flags.stairsDay);
+  await walkTo(14, 5); // stand on the stairs themselves
+  await tap('z'); await page.waitForTimeout(300); await settle();
+  s = await S();
+  check('barn on foot (ch5 build): standing on the stairs, A still steps out', s.world.area === 'barnOut' && s.player.x === 13 && s.player.y === 5, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+  // ch5 step 0, the whole player path: build, out, rest, back in, down
+  await barnScenario(sv => { sv.world.ch = 5; sv.world.step = 0; sv.world.flags.stairsBuilt = false; delete sv.world.flags.stairsDay; });
+  check('barn on foot (ch5 build): the door dialogue lets Frank in (build run)', await enterBarnOnFoot());
+  await faceUpAt(14, 6);
+  await tap('z'); await page.waitForTimeout(300); // the stair project
+  await tap('z'); await page.waitForTimeout(150); // complete the line
+  await tap('z'); await page.waitForTimeout(300); // A: BUILD THE STAIRS
+  await dismissDialogue(10);
+  s = await S();
+  check('barn on foot (ch5 build): the project starts from the landing', s.world.flags.stairsDay != null && s.world.area === 'barnIn', 'stairsDay=' + s.world.flags.stairsDay + ' area=' + s.world.area);
+  await walkTo(14, 5);
+  await tap('z'); await page.waitForTimeout(300); await settle();
+  s = await S();
+  check('barn on foot (ch5 build): half-built stairs still let Frank out', s.world.area === 'barnOut', 'area=' + s.world.area);
+  await faceUpAt(13, 5); // before the barn door, facing it, from outside
+  await tap('z'); await page.waitForTimeout(250); // the door dialogue
+  await tap('z'); await page.waitForTimeout(150); // complete the line
+  await tap('z'); await page.waitForTimeout(1200); // A: REST — the night passes
+  await dismissDialogue(20);
+  await settle();
+  s = await S();
+  check('barn on foot (ch5 build): a night outside finishes the stairs', s.world.flags.stairsBuilt === true && s.world.step === 1, 'built=' + s.world.flags.stairsBuilt + ' step=' + s.world.step);
+  check('barn on foot (ch5 built): the door dialogue lets Frank back in', await enterBarnOnFoot());
+  await faceUpAt(14, 6);
+  await tap('z'); await page.waitForTimeout(300); await settle();
+  s = await S();
+  check("barn on foot (ch5 built): the stairs climb down to Oma's", s.world.area === 'oma' && s.player.x === 10 && s.player.y === 5, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+  await walkTo(6, 6);
+  await walkTo(6, 7); // the downstairs door tile
+  await tap('z'); await page.waitForTimeout(300); await settle();
+  s = await S();
+  check('barn on foot (ch5 built): the downstairs door steps out to the farm', s.world.area === 'barnOut' && s.player.x === 18 && s.player.y === 5, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+  // the Long Tending: the same round trip, years on
+  await barnScenario(sv => { sv.world.ch = 11; sv.world.step = 0; sv.world.flags.stairsBuilt = true; });
+  check('barn on foot (long tending): the door dialogue lets Frank in', await enterBarnOnFoot());
+  await faceUpAt(14, 6);
+  await tap('z'); await page.waitForTimeout(300); await settle();
+  s = await S();
+  check("barn on foot (long tending): the stairs climb down to Oma's", s.world.area === 'oma', 'area=' + s.world.area);
+  await walkTo(6, 6);
+  await walkTo(6, 7);
+  await tap('z'); await page.waitForTimeout(300); await settle();
+  s = await S();
+  check('barn on foot (long tending): the downstairs door steps out to the farm', s.world.area === 'barnOut', 'area=' + s.world.area);
+  await page.evaluate(s2 => window.__hss.setSave(s2), baseBarn);
+
   // a save written in the oldest formats still loads: pots as a bare stage
   // int and as {stage, waterDays} objects both migrate to named plants
   await page.evaluate(() => {

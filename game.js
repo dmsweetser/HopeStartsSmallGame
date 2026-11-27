@@ -6183,17 +6183,21 @@ function interact() {
   // Deliberate interior doors: standing on an interior exit tile, A is
   // the way out — walking onto the tile alone never leaves (see EXITS).
   if (DELIBERATE_EXITS.has(area)) {
-    // While the barn stairs are being BUILT (ch5 step 0), the stairs
-    // tile is a work site, not an exit: A on or facing it is the build
-    // dialogue. Once they stand, the tile is the way out like any door.
-    const stairsBuildLive = area === 'barnIn' && s.world.ch === 5 && s.world.step === 0 && !s.world.flags.stairsBuilt;
+    // Standing on the exit tile, A is the way out — NO exceptions. The
+    // ch5 stair build once claimed this press too (facing AND standing),
+    // and since the stairs are the barn's only exit while the build
+    // finishes at a dawn reachable only by resting OUTSIDE, walking
+    // into the barn in ch5 step 0 was a soft-lock (Daniel, Nov 27,
+    // 2026 — the exit audit missed it: it ran in a late-game save, and
+    // the suite's ch5 passage advances the day by hook from inside).
     const ex = exitsFor(area).find(e => e.x === player.tx && e.y === player.ty);
-    if (ex) {
-      if (stairsBuildLive) return barnInInteract({ x: ex.x, y: ex.y });
-      setArea(ex.to, ex.tx, ex.ty); return;
-    }
+    if (ex) { setArea(ex.to, ex.tx, ex.ty); return; }
     // Facing the exit tile works too — the barn's stairs are naturally
-    // used from the tile below them.
+    // used from the tile below them. EXCEPT while those stairs are
+    // being BUILT (ch5 step 0): facing them is the work site, so A
+    // falls through to the build dialogue (barnInInteract 'x'), and
+    // the way out is the standing press above, like any door.
+    const stairsBuildLive = area === 'barnIn' && s.world.ch === 5 && s.world.step === 0 && !s.world.flags.stairsBuilt;
     if (!stairsBuildLive) {
       const fx = exitsFor(area).find(e => e.x === f.x && e.y === f.y);
       if (fx) { setArea(fx.to, fx.tx, fx.ty); return; }
