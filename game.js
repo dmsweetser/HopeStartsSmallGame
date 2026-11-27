@@ -114,194 +114,254 @@ function dither(c, x, y, w, h, colA, colB) { // checkerboard dither fill
 const GRASS = '#58b93e', GRASS_D = '#3f9433', GRASS_L = '#7ed957';
 const SHADOW = '#357a2a'; // the one cast-shadow tone for everything standing on grass
 const TILES = {};
-TILES.grass = tileCanvas(c => {
-  c.fillStyle = GRASS; c.fillRect(0, 0, 16, 16); c.fillStyle = GRASS_D;
-  c.fillRect(2, 3, 1, 2); c.fillRect(3, 4, 1, 1); c.fillRect(11, 2, 1, 2); c.fillRect(12, 3, 1, 1);
-  c.fillRect(6, 10, 1, 2); c.fillRect(7, 11, 1, 1); c.fillRect(13, 12, 1, 2); c.fillRect(14, 13, 1, 1);
-  c.fillStyle = GRASS_L;
-  c.fillRect(8, 6, 1, 1); c.fillRect(4, 13, 1, 1); c.fillRect(14, 7, 1, 1); c.fillRect(1, 8, 1, 1);
-});
-TILES.grass2 = tileCanvas(c => {
-  c.fillStyle = GRASS; c.fillRect(0, 0, 16, 16); c.fillStyle = GRASS_L;
-  c.fillRect(4, 6, 1, 2); c.fillRect(5, 7, 1, 1); c.fillRect(10, 11, 1, 2); c.fillRect(9, 12, 1, 1);
-  c.fillRect(2, 1, 1, 1); c.fillRect(13, 9, 1, 1); c.fillRect(7, 14, 1, 1);
-  c.fillStyle = GRASS_D; c.fillRect(13, 4, 2, 1); c.fillRect(1, 13, 2, 1); c.fillRect(8, 3, 1, 1);
-});
-TILES.grass4 = tileCanvas(c => { // a mowed, dithered patch: checker flecks of light and dark
-  c.fillStyle = GRASS; c.fillRect(0, 0, 16, 16);
-  for (let y = 0; y < 16; y += 2) for (let x = 0; x < 16; x += 2) {
-    c.fillStyle = ((x + y) % 4 === 0) ? GRASS_L : GRASS_D;
-    if ((x * 7 + y * 13) % 5 !== 0) c.fillRect(x + (y % 4 === 0 ? 0 : 1), y, 1, 1);
-  }
-  c.fillStyle = GRASS_D; c.fillRect(5, 9, 1, 2); c.fillRect(12, 4, 1, 2);
-});
-TILES.flower = tileCanvas(c => {
-  c.drawImage(TILES.grass, 0, 0);
-  const dots = [[3, 3, '#ff5d8f'], [11, 6, '#ffd94a'], [6, 12, '#ff5d8f'], [13, 13, '#ffffff']];
-  for (const [x, y, col] of dots) { c.fillStyle = col; c.fillRect(x, y, 2, 2); c.fillStyle = '#fff6b0'; c.fillRect(x, y, 1, 1); }
-});
-TILES.lawn = tileCanvas(c => { // neighbours' striped lawn, seen over the fence
-  c.fillStyle = '#6fce54'; c.fillRect(0, 0, 16, 16);
-  c.fillStyle = '#5cba45'; c.fillRect(0, 0, 4, 16); c.fillRect(8, 0, 4, 16);
-});
-TILES.path = tileCanvas(c => {
-  c.fillStyle = '#ecd28a'; c.fillRect(0, 0, 16, 16);
-  c.fillStyle = '#c4a355'; c.fillRect(0, 0, 1, 16); c.fillRect(15, 0, 1, 16); // stone edging
-  c.fillStyle = '#a8843f'; c.fillRect(1, 3, 1, 2); c.fillRect(1, 11, 1, 2); c.fillRect(14, 6, 1, 2); c.fillRect(14, 13, 1, 2);
-  c.fillStyle = '#d9b96a';
-  c.fillRect(3, 2, 2, 1); c.fillRect(9, 5, 3, 1); c.fillRect(4, 9, 2, 1); c.fillRect(11, 12, 2, 1); c.fillRect(6, 14, 3, 1);
-  c.fillStyle = '#c4a355'; c.fillRect(12, 2, 1, 1); c.fillRect(2, 12, 1, 1);
-});
-TILES.grass3 = tileCanvas(c => {
-  c.fillStyle = GRASS; c.fillRect(0, 0, 16, 16); c.fillStyle = GRASS_D;
-  c.fillRect(1, 1, 1, 2); c.fillRect(2, 2, 1, 1); c.fillRect(8, 5, 1, 2); c.fillRect(9, 6, 1, 1);
-  c.fillRect(14, 9, 1, 2); c.fillRect(15, 10, 1, 1); c.fillRect(4, 13, 1, 2); c.fillRect(5, 14, 1, 1);
-  c.fillStyle = GRASS_L; c.fillRect(11, 1, 1, 2); c.fillRect(6, 8, 1, 1);
-  c.fillStyle = '#9aa38f'; c.fillRect(12, 13, 2, 1); // a pebble
-});
-TILES.tuft = tileCanvas(c => {
-  c.drawImage(TILES.grass, 0, 0); c.fillStyle = GRASS_D;
-  c.fillRect(6, 5, 1, 4); c.fillRect(8, 4, 1, 5); c.fillRect(10, 5, 1, 4); c.fillRect(7, 7, 3, 1);
-  c.fillStyle = GRASS_L; c.fillRect(8, 4, 1, 1); c.fillRect(6, 5, 1, 1); c.fillRect(10, 5, 1, 1);
-});
-TILES.soil = tileCanvas(c => {
-  c.fillStyle = '#8a5a30'; c.fillRect(0, 0, 16, 16); c.fillStyle = '#6f4520';
-  c.fillRect(0, 3, 16, 1); c.fillRect(0, 8, 16, 1); c.fillRect(0, 13, 16, 1);
-  c.fillStyle = '#a5713d'; c.fillRect(3, 1, 2, 1); c.fillRect(10, 6, 2, 1); c.fillRect(5, 11, 2, 1);
+/* ================= ART OVERHAUL (Nov 27, 2026) =================
+   GBA-era restyle, ported from the approved sample lab
+   (hidden_files/art-sample/art.js): structured tuft-cluster grass in
+   five tones, shaded buildings, soft ground shadows, dark outlines.
+   Texture is placed by a deterministic per-tile hash — structured,
+   never noise. Tile semantics and map geometry are unchanged. */
+function tileHash(x, y, s) { let h = (x * 374761393 + y * 668265263 + (s || 0) * 974634211) >>> 0; h = (h ^ (h >> 13)) >>> 0; h = Math.imul(h, 1274126177) >>> 0; return ((h ^ (h >> 16)) >>> 0) / 4294967295; }
+
+/* ---- grass family: warm mid green, soft tone patches, clusters of
+   three short blades (dark, mid, lit tip) — placed, not sprinkled ---- */
+const G_BASE = '#6fbc42', G_LIGHT = '#8ad856', G_MID = '#57a233', G_DARK = '#468c28', G_DEEP = '#38731f';
+function grassTuft(c, x, y, flip) {
+  c.fillStyle = G_DARK; c.fillRect(x, y + 1, 1, 2); c.fillRect(x + 2, y + 1, 1, 2);
+  c.fillStyle = G_MID; c.fillRect(x + 1, y, 1, 3);
+  c.fillStyle = G_LIGHT; c.fillRect(x + 1, y, 1, 1);
+  if (flip) { c.fillStyle = G_DARK; c.fillRect(x + 3, y + 2, 1, 1); }
+}
+function grassTile(seed, feature) {
+  return tileCanvas(c => {
+    c.fillStyle = G_BASE; c.fillRect(0, 0, 16, 16);
+    for (let i = 0; i < 2; i++) {
+      const px = Math.floor(tileHash(seed, i, 1) * 12), py = Math.floor(tileHash(seed, i, 2) * 12);
+      c.fillStyle = i ? G_MID : G_LIGHT;
+      c.globalAlpha = 0.35;
+      c.fillRect(px, py, 3, 2); c.fillRect(px + 1, py + 2, 2, 1); c.fillRect(px + 1, py - 1, 1, 1);
+      c.globalAlpha = 1;
+    }
+    for (let i = 0; i < 3; i++) {
+      const px = 1 + Math.floor(tileHash(seed, i, 3) * 11), py = 1 + Math.floor(tileHash(seed, i, 4) * 12);
+      grassTuft(c, px, py, i === 2);
+    }
+    c.fillStyle = G_LIGHT;
+    c.fillRect(Math.floor(tileHash(seed, 7, 5) * 15), Math.floor(tileHash(seed, 7, 6) * 15), 1, 1);
+    c.fillRect(Math.floor(tileHash(seed, 8, 5) * 15), Math.floor(tileHash(seed, 8, 6) * 15), 1, 1);
+    if (feature === 'pebble') { c.fillStyle = '#a9b39a'; c.fillRect(11, 12, 2, 1); c.fillStyle = '#8a957c'; c.fillRect(11, 13, 2, 1); }
+    if (feature === 'tuft') { grassTuft(c, 6, 5, false); grassTuft(c, 5, 6, true); c.fillStyle = G_DEEP; c.fillRect(7, 10, 3, 1); }
+    if (feature === 'mow') {
+      c.globalAlpha = 0.16; c.fillStyle = G_LIGHT; c.fillRect(0, 0, 16, 4); c.fillRect(0, 8, 16, 4);
+      c.fillStyle = G_DARK; c.fillRect(0, 4, 16, 4); c.fillRect(0, 12, 16, 4); c.globalAlpha = 1;
+    }
+  });
+}
+TILES.grass = grassTile(11);
+TILES.grass2 = grassTile(23);
+TILES.grass3 = grassTile(37, 'pebble');
+TILES.grass4 = grassTile(41, 'mow');
+TILES.tuft = grassTile(53, 'tuft');
+TILES.tuftB = grassTile(59, 'tuft');
+function flowerTile(seed, cols) {
+  const g = grassTile(seed);
+  return tileCanvas(c => {
+    c.drawImage(g, 0, 0);
+    const pos = [[3, 4], [11, 6], [6, 12], [13, 11]];
+    pos.forEach(([x, y], i) => {
+      c.fillStyle = G_DEEP; c.fillRect(x, y + 2, 1, 1);
+      c.fillStyle = cols[i % cols.length]; c.fillRect(x - 1, y, 2, 2); c.fillRect(x, y - 1, 1, 1);
+      c.fillStyle = '#fff3b0'; c.fillRect(x, y, 1, 1);
+    });
+  });
+}
+TILES.flower = flowerTile(67, ['#ff6b9d', '#ffd94a', '#ffffff']);
+TILES.flowerB = flowerTile(71, ['#ff6b9d', '#ffd94a', '#ffffff']);
+TILES.flower2 = flowerTile(73, ['#b07fe8', '#ff9f43', '#3ec6b8']);
+TILES.flower3 = flowerTile(79, ['#5b9bf0', '#ffffff', '#e0483e']);
+TILES.lawn = tileCanvas(c => { // the neighbours' lawn: cooler, striped, immaculate
+  for (let x = 0; x < 16; x += 4) { c.fillStyle = '#74c34a'; c.fillRect(x, 0, 4, 16); c.fillStyle = '#68b840'; c.fillRect(x + 2, 0, 2, 16); }
+  c.fillStyle = '#8ad856'; c.fillRect(3, 4, 1, 1); c.fillRect(11, 10, 1, 1); c.fillRect(6, 13, 1, 1);
+  c.fillStyle = '#57a233'; c.fillRect(13, 3, 1, 2); c.fillRect(2, 9, 1, 2);
 });
 
-const FW = '#f4f4f0', FS = '#c9ced4', FK = '#20242a';
-TILES.fenceH = tileCanvas(c => {
-  c.drawImage(TILES.grass, 0, 0);
-  c.fillStyle = SHADOW; c.fillRect(0, 13, 16, 3); // ground shadow under the fence
-  c.fillStyle = FW; c.fillRect(0, 6, 16, 2); c.fillRect(0, 11, 16, 2); // rails
-  c.fillStyle = FS; c.fillRect(0, 7, 16, 1); c.fillRect(0, 12, 16, 1);
-  for (const x of [1, 6, 12]) { // pointed pickets with a shaded edge and nails
-    c.fillStyle = FW; c.fillRect(x + 1, 2, 1, 1); c.fillRect(x, 3, 3, 12);
-    c.fillStyle = FS; c.fillRect(x + 2, 3, 1, 12);
-    c.fillStyle = FK; c.fillRect(x + 1, 6, 1, 1); c.fillRect(x + 1, 11, 1, 1);
+/* ---- ground: sandy path, stepping stones, furrowed soil, porch ---- */
+TILES.path = tileCanvas(c => {
+  c.fillStyle = '#ecd28c'; c.fillRect(0, 0, 16, 16);
+  for (let i = 0; i < 26; i++) {
+    const x = Math.floor(tileHash(i, 3, 9) * 16), y = Math.floor(tileHash(i, 4, 9) * 16);
+    c.fillStyle = i % 3 ? '#dcbc6e' : '#c9a24f'; c.fillRect(x, y, 1, 1);
+    if (i % 5 === 0) { c.fillStyle = '#f6e3ac'; c.fillRect(x, y, 2, 1); }
+  }
+  c.fillStyle = '#c9a24f'; c.fillRect(4, 6, 2, 1); c.fillRect(11, 11, 2, 1);
+  c.fillStyle = 'rgba(160,120,50,0.35)'; c.fillRect(0, 0, 1, 16); c.fillRect(15, 0, 1, 16);
+});
+TILES.pathStone = tileCanvas(c => {
+  c.drawImage(TILES.path, 0, 0);
+  const stone = (x, y) => {
+    c.fillStyle = '#b9bfc7'; c.fillRect(x, y, 6, 5);
+    c.fillStyle = '#dde3ea'; c.fillRect(x, y, 6, 1); c.fillRect(x, y, 1, 5);
+    c.fillStyle = '#8f959e'; c.fillRect(x, y + 4, 6, 1); c.fillRect(x + 5, y, 1, 4);
+    c.fillStyle = '#cdd3db'; c.fillRect(x + 2, y + 2, 2, 1);
+  };
+  stone(2, 2); stone(8, 9);
+});
+TILES.soil = tileCanvas(c => {
+  c.fillStyle = '#8a5a30'; c.fillRect(0, 0, 16, 16);
+  for (let r = 0; r < 4; r++) { const y = r * 4; c.fillStyle = '#a5713d'; c.fillRect(0, y, 16, 2); c.fillStyle = '#6f4520'; c.fillRect(0, y + 3, 16, 1); }
+  for (let i = 0; i < 8; i++) { const x = Math.floor(tileHash(i, i * 3 + 1, 7) * 14), y = Math.floor(tileHash(i, 9, 7) * 15); c.fillStyle = '#bd8a4f'; c.fillRect(x, y, 2, 1); }
+});
+TILES.soilSprout = tileCanvas(c => {
+  c.drawImage(TILES.soil, 0, 0);
+  for (const [x, y] of [[3, 1], [8, 1], [13, 1], [5, 6], [11, 6], [3, 11], [9, 11], [14, 11]]) {
+    c.fillStyle = '#2f7a24'; c.fillRect(x, y + 1, 1, 2);
+    c.fillStyle = '#57a233'; c.fillRect(x - 1, y, 1, 1); c.fillRect(x + 1, y, 1, 1);
+    c.fillStyle = '#7ed957'; c.fillRect(x, y - 1, 1, 1);
   }
 });
-TILES.fenceV = tileCanvas(c => {
-  c.drawImage(TILES.grass, 0, 0);
-  c.fillStyle = SHADOW; c.fillRect(10, 0, 6, 16); // ground shadow
-  c.fillStyle = FW; c.fillRect(4, 2, 2, 12); c.fillRect(11, 2, 2, 12); // side rails
-  c.fillStyle = FW; c.fillRect(6, 1, 5, 14);
-  c.fillStyle = FS; c.fillRect(9, 1, 2, 14);
-  c.fillStyle = FK; c.fillRect(8, 0, 2, 1);
-});
-TILES.gate = tileCanvas(c => {
-  c.fillStyle = '#a5713d'; c.fillRect(1, 2, 14, 13);
-  c.fillStyle = '#8a5a30'; c.fillRect(1, 6, 14, 1); c.fillRect(1, 11, 14, 1);
-  c.fillStyle = '#6f4520'; c.fillRect(7, 2, 2, 13);
-  c.fillStyle = FK; c.fillRect(12, 8, 2, 2);
-});
-TILES.roof = tileCanvas(c => { // shingles: fine bands, a bright ridge line at
-  // the top and a deep eave shadow at the bottom, so the row reads as a roof
-  c.fillStyle = '#3f7fd8'; c.fillRect(0, 0, 16, 16);
-  c.fillStyle = '#7fb2e8'; c.fillRect(0, 0, 16, 1); // ridge highlight
-  for (let b = 0; b < 4; b++) {
-    const y = 1 + b * 3;
-    c.fillStyle = '#5b9bf0'; c.fillRect(0, y, 16, 1);
-    c.fillStyle = '#2a5aa8'; c.fillRect(0, y + 2, 16, 1);
-    const off = (b % 2) * 4;
-    c.fillStyle = '#2a5aa8';
-    for (let x = off; x < 16; x += 8) c.fillRect(x, y, 1, 2);
+TILES.porch = tileCanvas(c => {
+  c.fillStyle = '#b0824a'; c.fillRect(0, 0, 16, 16);
+  for (let y = 0; y < 16; y += 4) {
+    c.fillStyle = '#c99a5f'; c.fillRect(0, y, 16, 1);
+    c.fillStyle = '#8a5f30'; c.fillRect(0, y + 3, 16, 1);
+    c.fillStyle = '#a5713d'; c.fillRect(2 + (y * 3) % 9, y + 1, 4, 1);
+    c.fillStyle = '#6f4520'; c.fillRect(3, y + 1, 1, 1); c.fillRect(13, y + 2, 1, 1);
   }
-  c.fillStyle = '#1e4478'; c.fillRect(0, 13, 16, 2); // eave shadow
-  c.fillStyle = '#e8edf2'; c.fillRect(0, 15, 16, 1); // gutter line
+  c.fillStyle = '#b03030'; c.fillRect(5, 6, 6, 4); // the welcome mat
+  c.fillStyle = '#d94f4f'; c.fillRect(5, 6, 6, 1); c.fillStyle = '#7e1f1f'; c.fillRect(5, 9, 6, 1); c.fillRect(6, 7, 4, 1);
+});
+
+/* ---- the house: shingled roof, sided walls, stone foundation ---- */
+TILES.roof = tileCanvas(c => {
+  c.fillStyle = '#3d74d6'; c.fillRect(0, 0, 16, 16);
+  for (let r = 0; r < 5; r++) {
+    const y = r * 3;
+    c.fillStyle = '#5b90e8'; c.fillRect(0, y, 16, 1);
+    c.fillStyle = '#2a529e'; c.fillRect(0, y + 2, 16, 1);
+    c.fillStyle = '#2a529e';
+    for (let x = (r % 2) * 4; x < 16; x += 8) c.fillRect(x, y, 1, 2);
+  }
+  c.fillStyle = '#8fb8f5'; c.fillRect(0, 0, 16, 1); // ridge light
+  c.fillStyle = '#1e3a6e'; c.fillRect(0, 14, 16, 2); // eave shadow
+  c.fillStyle = '#eef3f8'; c.fillRect(0, 15, 16, 1); // gutter
 });
 TILES.chimney = tileCanvas(c => {
   c.drawImage(TILES.roof, 0, 0);
-  c.fillStyle = '#e8edf2'; c.fillRect(2, 1, 2, 2); c.fillRect(4, 0, 2, 2); // smoke puffs
-  c.fillStyle = '#8a8f96'; c.fillRect(5, 3, 7, 2); // concrete cap
-  c.fillStyle = '#b0552f'; c.fillRect(6, 5, 5, 11); // brick stack
-  c.fillStyle = '#d97b4a'; c.fillRect(6, 5, 1, 11);
-  c.fillStyle = '#8a3d20'; c.fillRect(10, 5, 1, 11); c.fillRect(6, 8, 5, 1); c.fillRect(6, 12, 5, 1);
+  c.fillStyle = '#9aa0a8'; c.fillRect(5, 2, 7, 2); c.fillStyle = '#c3c9d1'; c.fillRect(5, 2, 7, 1);
+  c.fillStyle = '#b85c38'; c.fillRect(6, 4, 5, 12);
+  c.fillStyle = '#d97b4a'; c.fillRect(6, 4, 1, 12);
+  c.fillStyle = '#8a3d20'; c.fillRect(10, 4, 1, 12); c.fillRect(6, 7, 5, 1); c.fillRect(6, 11, 5, 1);
+  c.fillStyle = '#e8edf2'; c.fillRect(2, 0, 2, 2); c.fillRect(12, 1, 2, 1); // wisp of smoke, still
 });
-TILES.wall = tileCanvas(c => { // horizontal siding: lit top, shadow line under each plank
-  c.fillStyle = '#8fc1f0'; c.fillRect(0, 0, 16, 16);
+TILES.wall = tileCanvas(c => {
+  c.fillStyle = '#9cc4ee'; c.fillRect(0, 0, 16, 16);
   for (let y = 0; y < 16; y += 4) {
-    c.fillStyle = '#a8d0f7'; c.fillRect(0, y, 16, 1);
-    c.fillStyle = '#5b93d6'; c.fillRect(0, y + 3, 16, 1);
+    c.fillStyle = '#c4e0fa'; c.fillRect(0, y, 16, 1);
+    c.fillStyle = '#6f9fd8'; c.fillRect(0, y + 3, 16, 1);
   }
-  c.fillStyle = '#7fb2e8'; c.fillRect(7, 1, 1, 2); c.fillRect(12, 5, 1, 2); c.fillRect(3, 9, 1, 2); c.fillRect(9, 13, 1, 2);
+  c.fillStyle = '#aed2f5'; c.fillRect(7, 1, 1, 2); c.fillRect(12, 9, 1, 2); c.fillRect(3, 13, 1, 2);
 });
-TILES.wallBase = tileCanvas(c => { // bottom wall row: siding over a stone foundation
+TILES.wallBase = tileCanvas(c => {
   c.drawImage(TILES.wall, 0, 0);
-  c.fillStyle = '#8a8f96'; c.fillRect(0, 10, 16, 6);
-  c.fillStyle = '#a8adb5'; c.fillRect(0, 10, 16, 1); c.fillRect(2, 11, 5, 2); c.fillRect(10, 13, 5, 2);
-  c.fillStyle = '#6f747c'; c.fillRect(0, 12, 16, 1); c.fillRect(0, 15, 16, 1);
-  c.fillRect(7, 10, 1, 2); c.fillRect(3, 13, 1, 2); c.fillRect(12, 10, 1, 2); c.fillRect(8, 13, 1, 2);
-  c.fillStyle = SHADOW; c.fillRect(0, 15, 16, 1);
+  c.fillStyle = '#878d95'; c.fillRect(0, 10, 16, 6);
+  c.fillStyle = '#aab0b8'; c.fillRect(1, 11, 5, 3); c.fillRect(8, 11, 6, 3);
+  c.fillStyle = '#767c84'; c.fillRect(1, 14, 5, 1); c.fillRect(8, 14, 6, 1); c.fillRect(6, 11, 1, 4); c.fillRect(14, 11, 1, 4);
+  c.fillStyle = '#5f646c'; c.fillRect(0, 10, 16, 1);
+  c.fillStyle = 'rgba(30,60,25,0.30)'; c.fillRect(0, 15, 16, 1); // ground shade at the foot
 });
-TILES.window = tileCanvas(c => { // framed window: curtains, muntins, sill, flower box
+TILES.window = tileCanvas(c => {
   c.drawImage(TILES.wall, 0, 0);
-  c.fillStyle = '#f4f4f0'; c.fillRect(2, 2, 12, 11);
-  c.fillStyle = '#ffe9a8'; c.fillRect(4, 4, 8, 7);
-  c.fillStyle = '#fff6cf'; c.fillRect(6, 5, 2, 3);
-  // pink curtains hanging at both sides of the glass, with a shaded fold
-  c.fillStyle = '#f2a7bb'; c.fillRect(4, 4, 2, 7); c.fillRect(10, 4, 2, 7);
-  c.fillStyle = '#d97b96'; c.fillRect(5, 4, 1, 7); c.fillRect(10, 4, 1, 7);
-  c.fillStyle = '#f4f4f0'; c.fillRect(7, 4, 2, 7); c.fillRect(4, 7, 8, 1);
-  c.fillStyle = FK; c.fillRect(2, 2, 12, 1); c.fillRect(2, 12, 12, 1); c.fillRect(2, 2, 1, 11); c.fillRect(13, 2, 1, 11);
-  c.fillStyle = '#e0e4ea'; c.fillRect(1, 13, 14, 2);
-  c.fillStyle = '#6ea3dd'; c.fillRect(1, 15, 14, 1);
-  // a flower box on the sill: green tufts and three bright blooms
-  c.fillStyle = '#2f9e44'; c.fillRect(3, 12, 10, 1);
-  c.fillStyle = '#ff5d8f'; c.fillRect(4, 11, 1, 1); c.fillRect(11, 11, 1, 1);
-  c.fillStyle = '#ffd94a'; c.fillRect(7, 11, 2, 1);
-  c.fillStyle = '#ffffff'; c.fillRect(9, 12, 1, 1);
+  c.fillStyle = '#f7f7f2'; c.fillRect(2, 2, 12, 11);
+  c.fillStyle = '#ccd2d8'; c.fillRect(2, 11, 12, 2); c.fillRect(12, 2, 2, 11);
+  const grad = c.createLinearGradient(0, 3, 0, 12); grad.addColorStop(0, '#cfeaff'); grad.addColorStop(1, '#7fb2e8');
+  c.fillStyle = grad; c.fillRect(4, 4, 8, 7);
+  c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillRect(5, 4, 2, 5); c.fillRect(6, 4, 1, 7); // sky shine
+  c.fillStyle = '#f2a7bb'; c.fillRect(4, 4, 2, 7); c.fillRect(10, 4, 2, 7); // curtains
+  c.fillStyle = '#d97b96'; c.fillRect(5, 5, 1, 6); c.fillRect(10, 5, 1, 6);
+  c.fillStyle = '#f7f7f2'; c.fillRect(7, 4, 2, 7); c.fillRect(4, 7, 8, 1); // muntins
+  c.fillStyle = '#20242a'; c.fillRect(2, 2, 12, 1); c.fillRect(2, 12, 12, 1); c.fillRect(2, 2, 1, 11); c.fillRect(13, 2, 1, 11);
+  c.fillStyle = '#e8ecf1'; c.fillRect(1, 13, 14, 2); c.fillStyle = '#9db6cc'; c.fillRect(1, 14, 14, 1);
+  c.fillStyle = '#2f7a24'; c.fillRect(3, 12, 10, 1); // flower box
+  c.fillStyle = '#ff6b9d'; c.fillRect(4, 11, 1, 1); c.fillRect(11, 11, 1, 1);
+  c.fillStyle = '#ffd94a'; c.fillRect(7, 11, 2, 1); c.fillStyle = '#ffffff'; c.fillRect(9, 12, 1, 1);
 });
-TILES.door = tileCanvas(c => { // paneled door: awning, porch posts, wreath, hanging basket
+TILES.door = tileCanvas(c => {
   c.drawImage(TILES.wall, 0, 0);
-  c.fillStyle = '#37b24d'; c.fillRect(0, 0, 16, 2);
-  c.fillStyle = '#2b8a3e'; c.fillRect(0, 2, 16, 1); c.fillRect(2, 3, 2, 1); c.fillRect(7, 3, 2, 1); c.fillRect(12, 3, 2, 1);
-  c.fillStyle = '#f4f4f0'; c.fillRect(3, 3, 10, 13);
+  c.fillStyle = '#37b24d'; c.fillRect(0, 0, 16, 2); c.fillStyle = '#2b8a3e'; c.fillRect(0, 2, 16, 1); // awning
+  c.fillStyle = '#5cc46a'; c.fillRect(2, 0, 2, 2); c.fillRect(7, 0, 2, 2); c.fillRect(12, 0, 2, 2);
+  c.fillStyle = '#f7f7f2'; c.fillRect(3, 3, 10, 13); c.fillStyle = '#ccd2d8'; c.fillRect(11, 3, 2, 13);
   c.fillStyle = '#a5662c'; c.fillRect(4, 4, 8, 12);
-  c.fillStyle = '#ffe9a8'; c.fillRect(5, 5, 6, 3);
-  c.fillStyle = '#8a4f1f'; c.fillRect(5, 9, 6, 2); c.fillRect(5, 12, 6, 3);
-  c.fillStyle = '#ffd94a'; c.fillRect(10, 10, 2, 2);
-  // a wreath on the door: green ring with red berries
-  c.fillStyle = '#2f9e44'; c.fillRect(6, 9, 3, 1); c.fillRect(6, 11, 3, 1); c.fillRect(6, 10, 1, 1); c.fillRect(8, 10, 1, 1);
-  c.fillStyle = '#e0483e'; c.fillRect(6, 9, 1, 1); c.fillRect(8, 11, 1, 1);
-  // porch posts flanking the door frame
-  c.fillStyle = '#f4f4f0'; c.fillRect(0, 4, 1, 12); c.fillRect(15, 4, 1, 12);
-  c.fillStyle = '#c9ced4'; c.fillRect(1, 4, 1, 12); c.fillRect(14, 8, 1, 8);
-  // hanging flower basket at the top-right, on a little chain
-  c.fillStyle = FK; c.fillRect(13, 3, 1, 1);
-  c.fillStyle = '#ff5d8f'; c.fillRect(12, 4, 1, 1); c.fillRect(14, 4, 1, 1);
-  c.fillStyle = '#2f9e44'; c.fillRect(12, 5, 3, 1);
-  c.fillStyle = '#8a5a30'; c.fillRect(12, 6, 3, 2);
+  c.fillStyle = '#bd7c38'; c.fillRect(4, 4, 1, 12); c.fillStyle = '#8a4f1f'; c.fillRect(11, 4, 1, 12);
+  c.fillStyle = '#ffe9a8'; c.fillRect(5, 5, 6, 3); c.fillStyle = '#fff6cf'; c.fillRect(6, 5, 2, 2); // door glass
+  c.fillStyle = '#8a4f1f'; c.fillRect(5, 9, 6, 2); c.fillRect(5, 12, 6, 3); // panels
+  c.fillStyle = '#ffd94a'; c.fillRect(10, 10, 2, 2); // knob
+  c.fillStyle = '#2f7a24'; c.fillRect(6, 9, 3, 1); c.fillRect(6, 11, 3, 1); c.fillRect(6, 10, 1, 1); c.fillRect(8, 10, 1, 1); // wreath
+  c.fillStyle = '#54c95e'; c.fillRect(7, 9, 1, 1); c.fillStyle = '#e0483e'; c.fillRect(6, 9, 1, 1); c.fillRect(8, 11, 1, 1);
+  c.fillStyle = '#f7f7f2'; c.fillRect(0, 4, 1, 12); c.fillRect(15, 4, 1, 12); // porch posts
+  c.fillStyle = '#ccd2d8'; c.fillRect(1, 4, 1, 12); c.fillRect(14, 8, 1, 8);
+  c.fillStyle = '#20242a'; c.fillRect(13, 3, 1, 1);
+  c.fillStyle = '#ff6b9d'; c.fillRect(12, 4, 1, 1); c.fillRect(14, 4, 1, 1); // hanging basket
+  c.fillStyle = '#2f7a24'; c.fillRect(12, 5, 3, 1); c.fillStyle = '#8a5a30'; c.fillRect(12, 6, 3, 2);
 });
-TILES.porch = tileCanvas(c => { // wooden deck boards in front of the door, with a welcome mat
-  c.fillStyle = '#b5854d'; c.fillRect(0, 0, 16, 16);
-  for (let y = 0; y < 16; y += 4) {
-    c.fillStyle = '#c99a5f'; c.fillRect(0, y, 16, 1);
-    c.fillStyle = '#96682f'; c.fillRect(0, y + 3, 16, 1);
+
+/* ---- fences & yard furniture ---- */
+function fenceGround(c) {
+  c.drawImage(TILES.grass, 0, 0);
+  c.fillStyle = 'rgba(30,60,25,0.28)'; c.fillRect(0, 13, 16, 3); // soft ground shadow
+}
+TILES.fenceH = tileCanvas(c => {
+  fenceGround(c);
+  c.fillStyle = '#e3e6e0'; c.fillRect(0, 6, 16, 2); c.fillRect(0, 11, 16, 2); // rails behind
+  c.fillStyle = '#c3c9cd'; c.fillRect(0, 7, 16, 1); c.fillRect(0, 12, 16, 1);
+  for (const x of [1, 6, 12]) { // pickets: lit left, white face, shaded right
+    c.fillStyle = '#ffffff'; c.fillRect(x + 1, 2, 1, 1);
+    c.fillStyle = '#f7f7f2'; c.fillRect(x, 3, 3, 12);
+    c.fillStyle = '#ffffff'; c.fillRect(x, 3, 1, 12);
+    c.fillStyle = '#ccd2d8'; c.fillRect(x + 2, 3, 1, 12);
+    c.fillStyle = '#8a919c'; c.fillRect(x + 1, 6, 1, 1); c.fillRect(x + 1, 11, 1, 1); // nails
   }
-  c.fillStyle = '#6f4520'; c.fillRect(2, 1, 1, 1); c.fillRect(13, 5, 1, 1); c.fillRect(2, 9, 1, 1); c.fillRect(13, 13, 1, 1);
-  c.fillStyle = '#b03030'; c.fillRect(5, 6, 6, 4);
-  c.fillStyle = '#8a2424'; c.fillRect(5, 6, 6, 1);
-  c.fillStyle = '#8a5a30'; c.fillRect(0, 15, 16, 1);
+});
+TILES.fenceV = tileCanvas(c => {
+  fenceGround(c);
+  c.fillStyle = 'rgba(30,60,25,0.28)'; c.fillRect(10, 0, 6, 13);
+  c.fillStyle = '#e3e6e0'; c.fillRect(4, 2, 2, 12); c.fillRect(11, 2, 2, 12);
+  c.fillStyle = '#f7f7f2'; c.fillRect(6, 1, 5, 14);
+  c.fillStyle = '#ffffff'; c.fillRect(6, 1, 1, 14);
+  c.fillStyle = '#ccd2d8'; c.fillRect(9, 1, 2, 14);
+  c.fillStyle = '#8a919c'; c.fillRect(8, 0, 2, 1);
+});
+TILES.gate = tileCanvas(c => {
+  c.drawImage(TILES.grass, 0, 0);
+  c.fillStyle = 'rgba(30,60,25,0.25)'; c.fillRect(1, 14, 14, 2);
+  c.fillStyle = '#a5713d'; c.fillRect(1, 2, 14, 13);
+  c.fillStyle = '#bd8a4f'; c.fillRect(1, 2, 2, 13); c.fillRect(6, 2, 1, 13);
+  c.fillStyle = '#8a5a30'; c.fillRect(1, 6, 14, 1); c.fillRect(1, 11, 14, 1);
+  c.fillStyle = '#6f4520'; c.fillRect(13, 2, 2, 13); c.fillRect(7, 2, 1, 13);
+  c.fillStyle = '#3a3f46'; c.fillRect(12, 8, 3, 2); c.fillRect(1, 3, 2, 2); // latch + hinge
 });
 TILES.bench = tileCanvas(c => {
-  // garden bench: two slats, short legs, and a mulched planting bed at its base
-  c.fillStyle = '#c08b4d'; c.fillRect(0, 3, 16, 1);
+  c.drawImage(TILES.grass, 0, 0);
+  c.fillStyle = 'rgba(30,60,25,0.25)'; c.fillRect(0, 11, 16, 2);
+  c.fillStyle = '#e0b273'; c.fillRect(0, 3, 16, 1);
   c.fillStyle = '#a5713d'; c.fillRect(0, 4, 16, 2); c.fillRect(0, 7, 16, 2);
+  c.fillStyle = '#d9ab68'; c.fillRect(0, 7, 16, 1);
+  c.fillStyle = '#bd8a4f'; c.fillRect(2, 4, 5, 1); c.fillRect(9, 7, 4, 1); // grain light
   c.fillStyle = '#8a5a30'; c.fillRect(0, 6, 16, 1); c.fillRect(0, 9, 16, 1);
-  c.fillStyle = '#6f4520'; c.fillRect(0, 4, 1, 5); c.fillRect(15, 4, 1, 5); // seams between bench sections
+  c.fillStyle = '#3a3f46'; c.fillRect(0, 4, 1, 6); c.fillRect(15, 4, 1, 6); // iron ends
   c.fillStyle = '#6f4520'; c.fillRect(2, 10, 2, 2); c.fillRect(12, 10, 2, 2);
-  c.fillStyle = '#6f4520'; c.fillRect(0, 12, 16, 4);
+  c.fillStyle = '#5f3717'; c.fillRect(0, 12, 16, 4); // mulched bed at the base
   c.fillStyle = '#8a5a30'; c.fillRect(2, 13, 2, 1); c.fillRect(8, 14, 2, 1); c.fillRect(13, 13, 2, 1);
   c.fillStyle = '#54c95e'; c.fillRect(5, 12, 1, 1); c.fillRect(11, 14, 1, 1);
 });
 TILES.compost = tileCanvas(c => {
+  c.drawImage(TILES.grass, 0, 0);
   c.fillStyle = '#6f4520'; c.fillRect(1, 4, 14, 12);
   c.fillStyle = '#8a5a30'; c.fillRect(1, 4, 14, 2); c.fillRect(1, 9, 14, 1); c.fillRect(1, 13, 14, 1);
+  c.fillStyle = '#bd8a4f'; c.fillRect(1, 4, 14, 1);
   c.fillStyle = '#4a7c2f'; c.fillRect(4, 2, 3, 3); c.fillRect(9, 1, 4, 3); c.fillRect(12, 3, 2, 2);
-  c.fillStyle = '#5da244'; c.fillRect(5, 1, 2, 2); c.fillRect(10, 0, 2, 2);
+  c.fillStyle = '#67c24e'; c.fillRect(5, 1, 2, 2); c.fillRect(10, 0, 2, 2);
+  c.fillStyle = '#8a5a30'; c.fillRect(6, 3, 2, 1); c.fillRect(11, 2, 1, 1);
 });
+
 /* ---- weeds (pass 8): drawn OVER a grass tile, decor layer. The common
    tuft is a yellow-green fan, quite unlike the lawn's own thin tufts; the
    deep-rooted one is taller, darker, and shows its root flare. ---- */
@@ -342,828 +402,652 @@ const WEED_DEEP = makeSprite([
 '................',
 ], { D: '#2e5d24', d: '#3f7030', s: '#c9a83e', R: '#5a3a1e' });
 
-/* ---- pass 3 dressing: sway frames, garden plot, props, dressed fences ---- */
-TILES.flowerB = tileCanvas(c => { // flower frame B: blooms leaned 1px the other way (sway)
-  c.drawImage(TILES.grass, 0, 0);
-  const dots = [[4, 3, '#ff5d8f'], [12, 6, '#ffd94a'], [7, 12, '#ff5d8f'], [14, 13, '#ffffff']];
-  for (const [x, y, col] of dots) { c.fillStyle = col; c.fillRect(x, y, 2, 2); c.fillStyle = '#fff6b0'; c.fillRect(x, y, 1, 1); }
-  c.fillStyle = GRASS_D; c.fillRect(3, 5, 1, 2); c.fillRect(11, 8, 1, 2); c.fillRect(6, 14, 1, 1);
-});
-TILES.tuftB = tileCanvas(c => {
-  c.drawImage(TILES.grass, 0, 0); c.fillStyle = GRASS_D;
-  c.fillRect(7, 5, 1, 4); c.fillRect(9, 4, 1, 5); c.fillRect(11, 5, 1, 4); c.fillRect(8, 7, 3, 1);
-  c.fillStyle = GRASS_L; c.fillRect(9, 4, 1, 1); c.fillRect(7, 5, 1, 1); c.fillRect(11, 5, 1, 1);
-});
-TILES.flower2 = tileCanvas(c => { // purple / orange / teal bed
-  c.drawImage(TILES.grass, 0, 0);
-  const dots = [[2, 4, '#b07fe8'], [9, 2, '#ff9f43'], [5, 10, '#3ec6b8'], [12, 12, '#b07fe8'], [13, 6, '#ff9f43']];
-  for (const [x, y, col] of dots) { c.fillStyle = col; c.fillRect(x, y, 2, 2); c.fillStyle = '#fff6b0'; c.fillRect(x, y, 1, 1); }
-});
-TILES.flower3 = tileCanvas(c => { // blue / white / red bed
-  c.drawImage(TILES.grass, 0, 0);
-  const dots = [[4, 2, '#5b9bf0'], [11, 5, '#ffffff'], [6, 9, '#e0483e'], [13, 12, '#5b9bf0'], [2, 13, '#ffffff']];
-  for (const [x, y, col] of dots) { c.fillStyle = col; c.fillRect(x, y, 2, 2); c.fillStyle = '#fff6b0'; c.fillRect(x, y, 1, 1); }
-});
-function bedTile(blooms) { // a real flower BED: mulch border, leafy fill, dense blooms
+/* ---- beds, bushes and the small props ---- */
+function bedTile(cols) {
   return tileCanvas(c => {
     c.fillStyle = '#6f4520'; c.fillRect(0, 0, 16, 16);
-    c.fillStyle = '#8a5a30'; c.fillRect(1, 1, 14, 14);
+    c.fillStyle = '#7d4e24'; c.fillRect(1, 1, 14, 14);
     c.fillStyle = '#5f3717'; c.fillRect(3, 4, 2, 1); c.fillRect(11, 9, 2, 1); c.fillRect(6, 13, 2, 1);
-    c.fillStyle = '#2f9e44';
-    c.fillRect(2, 2, 6, 5); c.fillRect(9, 2, 5, 4); c.fillRect(3, 8, 5, 5); c.fillRect(9, 8, 5, 6); c.fillRect(6, 5, 4, 4);
-    c.fillStyle = '#54c95e';
-    c.fillRect(3, 3, 3, 2); c.fillRect(10, 3, 2, 2); c.fillRect(4, 9, 3, 2); c.fillRect(11, 10, 2, 2); c.fillRect(7, 6, 2, 1);
-    for (const [x, y, col] of blooms) { c.fillStyle = col; c.fillRect(x, y, 2, 2); c.fillStyle = '#fff6b0'; c.fillRect(x, y, 1, 1); }
+    c.fillStyle = '#2f7a24'; c.fillRect(2, 2, 6, 5); c.fillRect(9, 2, 5, 4); c.fillRect(3, 8, 5, 5); c.fillRect(9, 8, 5, 6); c.fillRect(6, 5, 4, 4);
+    c.fillStyle = '#54c95e'; c.fillRect(3, 3, 3, 2); c.fillRect(10, 3, 2, 2); c.fillRect(4, 9, 3, 2); c.fillRect(11, 10, 2, 2); c.fillRect(7, 6, 2, 1);
+    c.fillStyle = '#7ed957'; c.fillRect(4, 3, 1, 1); c.fillRect(10, 9, 1, 1);
+    [[3, 3], [11, 4], [6, 9], [12, 11], [4, 12], [8, 5]].forEach(([x, y], i) => {
+      c.fillStyle = cols[i % cols.length]; c.fillRect(x, y, 2, 2); c.fillStyle = '#fff3b0'; c.fillRect(x, y, 1, 1);
+    });
   });
 }
-TILES.bedA = bedTile([[3, 3, '#ff5d8f'], [11, 4, '#ffffff'], [6, 9, '#ffd94a'], [12, 11, '#ff5d8f'], [4, 12, '#ffffff'], [8, 5, '#ff5d8f']]);
-TILES.bedB = bedTile([[4, 4, '#b07fe8'], [11, 3, '#ff9f43'], [6, 10, '#3ec6b8'], [12, 12, '#b07fe8'], [3, 11, '#ff9f43'], [9, 6, '#b07fe8']]);
-TILES.soilSprout = tileCanvas(c => { // tilled row with sproutlets coming up
-  c.drawImage(TILES.soil, 0, 0);
-  c.fillStyle = '#2f9e44';
-  c.fillRect(3, 2, 1, 2); c.fillRect(8, 2, 1, 2); c.fillRect(13, 2, 1, 2);
-  c.fillRect(5, 7, 1, 2); c.fillRect(11, 7, 1, 2);
-  c.fillRect(3, 12, 1, 2); c.fillRect(9, 12, 1, 2); c.fillRect(14, 12, 1, 2);
-  c.fillStyle = '#54c95e';
-  c.fillRect(2, 1, 1, 1); c.fillRect(4, 1, 1, 1); c.fillRect(7, 1, 1, 1); c.fillRect(9, 1, 1, 1); c.fillRect(12, 1, 1, 1); c.fillRect(14, 1, 1, 1);
-  c.fillRect(4, 6, 1, 1); c.fillRect(6, 6, 1, 1); c.fillRect(10, 6, 1, 1); c.fillRect(12, 6, 1, 1);
-  c.fillRect(2, 11, 1, 1); c.fillRect(4, 11, 1, 1); c.fillRect(8, 11, 1, 1); c.fillRect(10, 11, 1, 1); c.fillRect(13, 11, 1, 1); c.fillRect(15, 11, 1, 1);
-});
-TILES.pathStone = tileCanvas(c => { // path with two big flat stepping stones
-  c.drawImage(TILES.path, 0, 0);
-  c.fillStyle = '#c9ced4'; c.fillRect(3, 2, 6, 5); c.fillRect(8, 9, 6, 5);
-  c.fillStyle = '#e8edf2'; c.fillRect(3, 2, 6, 1); c.fillRect(8, 9, 6, 1);
-  c.fillStyle = '#8a8f96'; c.fillRect(3, 6, 6, 1); c.fillRect(8, 13, 6, 1); c.fillRect(5, 3, 1, 2); c.fillRect(11, 10, 1, 2);
-});
-TILES.bush = tileCanvas(c => { // a leafy bush with berries, on grass
+TILES.bedA = bedTile(['#ff6b9d', '#ffffff', '#ffd94a']);
+TILES.bedB = bedTile(['#b07fe8', '#ff9f43', '#3ec6b8']);
+TILES.bush = tileCanvas(c => {
   c.drawImage(TILES.grass, 0, 0);
-  c.fillStyle = '#357a2a'; c.fillRect(2, 12, 12, 3);
-  c.fillStyle = '#1f6b2a'; c.fillRect(3, 4, 10, 9); c.fillRect(2, 6, 12, 6);
-  c.fillStyle = '#2f9e44'; c.fillRect(4, 3, 8, 8); c.fillRect(3, 5, 10, 5);
-  c.fillStyle = '#54c95e'; c.fillRect(5, 4, 4, 3); c.fillRect(9, 7, 3, 2);
-  c.fillStyle = '#7ed957'; c.fillRect(6, 4, 2, 1); c.fillRect(10, 6, 1, 1);
+  c.fillStyle = 'rgba(30,60,25,0.30)'; c.fillRect(2, 13, 12, 2);
+  c.fillStyle = '#2c6e24'; c.fillRect(3, 4, 10, 9); c.fillRect(2, 6, 12, 6);
+  c.fillStyle = '#3f9433'; c.fillRect(4, 3, 8, 8); c.fillRect(3, 5, 10, 5);
+  c.fillStyle = '#57b84a'; c.fillRect(5, 4, 4, 3); c.fillRect(9, 7, 3, 2);
+  c.fillStyle = '#83d95f'; c.fillRect(6, 4, 2, 1); c.fillRect(10, 6, 1, 1);
   c.fillStyle = '#e0483e'; c.fillRect(5, 8, 1, 1); c.fillRect(9, 10, 1, 1); c.fillRect(12, 7, 1, 1); c.fillRect(7, 6, 1, 1);
 });
-TILES.birdbath = tileCanvas(c => { // stone birdbath on grass; the sparkle is animated at draw time
+TILES.birdbath = tileCanvas(c => {
   c.drawImage(TILES.grass, 0, 0);
-  c.fillStyle = SHADOW; c.fillRect(3, 13, 10, 2);
-  c.fillStyle = '#8a8f96'; c.fillRect(7, 8, 3, 5); c.fillRect(5, 13, 7, 1); // pedestal and foot
-  c.fillStyle = '#6f747c'; c.fillRect(5, 8, 7, 1); // shadow under the basin
-  c.fillStyle = '#c9ced4'; c.fillRect(1, 4, 14, 3); c.fillRect(2, 3, 12, 1); // the wide basin
-  c.fillStyle = '#5b9bf0'; c.fillRect(3, 4, 10, 1); // water
-  c.fillStyle = '#a8dcff'; c.fillRect(4, 4, 4, 1);
-  c.fillStyle = '#e8edf2'; c.fillRect(1, 7, 14, 1); // lit rim underside
+  c.fillStyle = 'rgba(30,60,25,0.30)'; c.fillRect(3, 13, 10, 2);
+  c.fillStyle = '#8f959e'; c.fillRect(7, 8, 3, 5); c.fillRect(5, 13, 7, 1);
+  c.fillStyle = '#b9bfc7'; c.fillRect(7, 8, 1, 5);
+  c.fillStyle = '#6f747c'; c.fillRect(5, 8, 7, 1);
+  c.fillStyle = '#cdd3db'; c.fillRect(1, 4, 14, 3); c.fillRect(2, 3, 12, 1);
+  c.fillStyle = '#6fb7ef'; c.fillRect(3, 4, 10, 1); c.fillStyle = '#a8dcff'; c.fillRect(4, 4, 4, 1);
+  c.fillStyle = '#eef3f8'; c.fillRect(1, 7, 14, 1);
 });
-TILES.mailbox = tileCanvas(c => { // fence line with a mailbox by the gate, red flag up
+TILES.mailbox = tileCanvas(c => {
   c.drawImage(TILES.fenceH, 0, 0);
-  c.fillStyle = '#6f4520'; c.fillRect(7, 8, 2, 7);
+  c.fillStyle = '#6f4520'; c.fillRect(7, 8, 2, 7); c.fillStyle = '#8a5a30'; c.fillRect(7, 8, 1, 7);
   c.fillStyle = '#3b6fe0'; c.fillRect(4, 3, 9, 5);
-  c.fillStyle = '#2f56b8'; c.fillRect(4, 7, 9, 1); c.fillRect(11, 3, 2, 5);
-  c.fillStyle = '#a8dcff'; c.fillRect(5, 4, 3, 1);
-  c.fillStyle = '#e0483e'; c.fillRect(12, 0, 1, 3); c.fillRect(11, 0, 2, 1);
-  c.fillStyle = FK; c.fillRect(5, 5, 1, 1);
+  c.fillStyle = '#5b90e8'; c.fillRect(4, 3, 9, 1); c.fillStyle = '#a8dcff'; c.fillRect(5, 4, 3, 1);
+  c.fillStyle = '#2a529e'; c.fillRect(4, 7, 9, 1); c.fillRect(11, 3, 2, 5);
+  c.fillStyle = '#e0483e'; c.fillRect(12, 0, 1, 3); c.fillRect(11, 0, 2, 1); // flag up
+  c.fillStyle = '#20242a'; c.fillRect(5, 5, 1, 1);
 });
-TILES.crate = tileCanvas(c => { // two stacked crates on the grass
+TILES.crate = tileCanvas(c => {
   c.drawImage(TILES.grass, 0, 0);
-  c.fillStyle = '#357a2a'; c.fillRect(1, 14, 14, 2);
+  c.fillStyle = 'rgba(30,60,25,0.28)'; c.fillRect(1, 14, 14, 2);
   c.fillStyle = '#a5713d'; c.fillRect(2, 8, 12, 7); c.fillRect(4, 2, 9, 6);
-  c.fillStyle = '#c08b4d'; c.fillRect(2, 8, 12, 1); c.fillRect(4, 2, 9, 1);
-  c.fillStyle = '#6f4520';
-  c.fillRect(2, 11, 12, 1); c.fillRect(4, 5, 9, 1);
+  c.fillStyle = '#c99a5f'; c.fillRect(2, 8, 12, 1); c.fillRect(4, 2, 9, 1);
+  c.fillStyle = '#bd8a4f'; c.fillRect(3, 10, 4, 1); c.fillRect(6, 4, 3, 1);
+  c.fillStyle = '#6f4520'; c.fillRect(2, 11, 12, 1); c.fillRect(4, 5, 9, 1);
   c.fillRect(3, 9, 1, 5); c.fillRect(12, 9, 1, 5); c.fillRect(5, 3, 1, 4); c.fillRect(11, 3, 1, 4);
-  c.fillRect(7, 9, 1, 5); c.fillRect(8, 3, 1, 4);
 });
-TILES.can = tileCanvas(c => { // a watering can left on the grass by the bench
+TILES.can = tileCanvas(c => {
   c.drawImage(TILES.grass, 0, 0);
-  c.fillStyle = '#357a2a'; c.fillRect(4, 13, 9, 2);
+  c.fillStyle = 'rgba(30,60,25,0.28)'; c.fillRect(4, 13, 9, 2);
   c.fillStyle = '#37b24d'; c.fillRect(5, 8, 7, 5);
-  c.fillStyle = '#2b8a3e'; c.fillRect(5, 12, 7, 1); c.fillRect(10, 8, 2, 5);
-  c.fillStyle = '#54c95e'; c.fillRect(5, 8, 7, 1);
-  c.fillRect(3, 10, 2, 1); c.fillRect(12, 9, 3, 1); // spout and handle
+  c.fillStyle = '#5cc46a'; c.fillRect(5, 8, 7, 1); c.fillStyle = '#2b8a3e'; c.fillRect(5, 12, 7, 1); c.fillRect(10, 8, 2, 5);
+  c.fillRect(3, 10, 2, 1); c.fillRect(12, 9, 3, 1);
   c.fillStyle = '#2b8a3e'; c.fillRect(2, 9, 1, 2); c.fillRect(14, 8, 1, 2);
   c.fillStyle = '#ffd94a'; c.fillRect(8, 10, 1, 1);
 });
-TILES.fenceBloom = tileCanvas(c => { // fence with a flower bed at its base
+TILES.fenceBloom = tileCanvas(c => {
   c.drawImage(TILES.fenceH, 0, 0);
-  const dots = [[1, 13, '#ff5d8f'], [6, 14, '#ffd94a'], [11, 13, '#b07fe8'], [14, 14, '#ffffff']];
-  for (const [x, y, col] of dots) { c.fillStyle = col; c.fillRect(x, y, 2, 2); }
-  c.fillStyle = '#2f9e44'; c.fillRect(3, 14, 1, 2); c.fillRect(9, 13, 1, 2); c.fillRect(13, 15, 1, 1);
+  c.fillStyle = '#5f3717'; c.fillRect(0, 14, 16, 2);
+  c.fillStyle = '#2f7a24'; c.fillRect(2, 13, 3, 2); c.fillRect(9, 13, 4, 2); c.fillRect(14, 14, 2, 1);
+  for (const [x, y, col] of [[1, 12, '#ff6b9d'], [6, 13, '#ffd94a'], [11, 12, '#b07fe8'], [14, 13, '#ffffff']]) {
+    c.fillStyle = col; c.fillRect(x, y, 2, 2); c.fillStyle = '#fff3b0'; c.fillRect(x, y, 1, 1);
+  }
 });
-TILES.fenceVine = tileCanvas(c => { // side fence with a vine climbing it
+TILES.fenceVine = tileCanvas(c => {
   c.drawImage(TILES.fenceV, 0, 0);
-  c.fillStyle = '#2f9e44'; c.fillRect(5, 10, 3, 2); c.fillRect(6, 7, 3, 2); c.fillRect(5, 4, 2, 2); c.fillRect(7, 12, 2, 2);
+  c.fillStyle = '#2f7a24'; c.fillRect(5, 10, 3, 2); c.fillRect(6, 7, 3, 2); c.fillRect(5, 4, 2, 2); c.fillRect(7, 12, 2, 2);
   c.fillStyle = '#54c95e'; c.fillRect(6, 9, 1, 1); c.fillRect(7, 6, 1, 1); c.fillRect(6, 3, 1, 1);
-  c.fillStyle = '#ff5d8f'; c.fillRect(8, 5, 1, 1);
+  c.fillStyle = '#ff6b9d'; c.fillRect(8, 5, 1, 1);
 });
+/* tree: a 48x56 volumetric canopy, drawn anchored bottom-centre on its
+   tile (the trunk's base sits at the tile's bottom-middle). Layers: dark
+   silhouette, mid clusters, lit clusters toward the sun (top-left), a
+   bright crown, a shaded belly; the trunk tapers into a root flare. */
+const TREE = (() => {
+  const cv = document.createElement('canvas'); cv.width = 48; cv.height = 56;
+  const c = cv.getContext('2d');
+  const blobs = [
+    [24, 20, 15], [12, 26, 10], [36, 26, 10], [17, 12, 10], [31, 12, 10],
+    [24, 30, 12], [10, 34, 7], [38, 34, 7], [24, 8, 8],
+  ];
+  const inside = (x, y, shrink, dx, dy) => blobs.some(([bx, by, r]) => {
+    const rr = r - shrink; if (rr <= 0) return false;
+    const ddx = x - (bx + dx), ddy = y - (by + dy); return ddx * ddx + ddy * ddy <= rr * rr;
+  });
+  for (let y = 0; y < 44; y++) for (let x = 0; x < 48; x++) {
+    if (!inside(x, y, 0, 0, 0)) continue;
+    let col = '#2c6e24'; // silhouette / edge tone
+    if (inside(x, y, 2.5, -1, -1)) col = '#3f9433';
+    if (inside(x, y, 5, -2, -2)) col = '#57b84a';
+    if (inside(x, y, 8.5, -3, -3)) col = '#83d95f';
+    if (y > 30 && !inside(x, y + 3, 0, 0, 0)) col = '#24591d'; // shaded belly
+    if (col === '#57b84a' && tileHash(x, y, 31) > 0.82) col = '#3f9433'; // leaf-cluster breakup
+    if (col === '#3f9433' && tileHash(x, y, 37) > 0.86) col = '#2c6e24';
+    if (col === '#83d95f' && tileHash(x, y, 41) > 0.7) col = '#57b84a';
+    c.fillStyle = col; c.fillRect(x, y, 1, 1);
+  }
+  // trunk: shaded right, lit left, root flare at the base
+  for (let y = 36; y < 56; y++) {
+    const w = y < 50 ? 3 : 3 + Math.floor((y - 49) / 2);
+    const x0 = 24 - Math.floor(w / 2);
+    c.fillStyle = '#7a4a26'; c.fillRect(x0, y, w, 1);
+    c.fillStyle = '#96602f'; c.fillRect(x0, y, 1, 1);
+    c.fillStyle = '#54341a'; c.fillRect(x0 + w - 1, y, 1, 1);
+  }
+  c.fillStyle = '#54341a'; c.fillRect(20, 54, 2, 1); c.fillRect(27, 54, 2, 1);
+  return cv;
+})();
 
-/* tree: 16x32 object sprite, drawn anchored to its tile's bottom */
-const TREE = makeSprite([
-'.....kkkkkk.....',
-'...kkggggggkk...',
-'..kggHgggggggk..',
-'..gHgGGgggGggg..',
-'.kgGGGGgGGGGGgk.',
-'.gGGGGGgGGgGGGg.',
-'.gGGgGGGGGGGGGg.',
-'..kgGGGGgGGGgk..',
-'...kkggggggkk...',
-'....kkttttkk....',
-'......ttTt......',
-'......ttTt......',
-'......ttTt......',
-'.....tttTt......',
-'....ttttTTt.....',
-'................',
-], { k: '#1f6b2a', g: '#2f9e44', G: '#54c95e', H: '#7ed957', t: '#7a4a21', T: '#5f3717' });
-
-/* ============================== CHARACTERS (16x16) ============================== */
+/* ============================== CHARACTERS ============================== */
+/* Art overhaul (Nov 27, 2026): Frank, Constance and Alvin are drawn at
+   the GBA sample's proportions (Frank/Constance 16x24, Alvin 20x18,
+   feet anchored by charSprite via set.w/set.h). The remaining cast
+   still uses the 32x32 sets until their overhaul stage lands. */
 const SKIN = '#f2c184', HAIR = '#6b4423', EYE = '#20242a';
 /* k = outline, S/H/B = shaded side of skin/hair/shirt */
-const FRANK_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: HAIR, H: '#54381d', e: EYE, c: '#2e8b3a', C: '#1f6b2a', b: '#2f6fd0', B: '#245aa8', p: '#33549e', y: '#ffd94a', o: '#33261a', w: '#f8f8f8' };
+const FRANK_PAL = { k: '#33302a', G: '#3da34a', g: '#2c7a36', L: '#5cc46a', s: '#f2c184', S: '#dda15e', h: '#7a4a26', H: '#5b3418', l: '#96602f', e: '#26221e', b: '#3a78d4', B: '#2a5aa8', p: '#2f4d8f', P: '#233a6e', o: '#6b4423', O: '#4e2f16', w: '#f8f8f8' };
 const FRANK_DOWN = makeSprite([
-'................................',
-'..........kkkkkkkkkkkk..........',
-'........kkcccccCCccccckk........',
-'.......kccccccccccccccCCk.......',
-'.......kccccccccccccccCCk.......',
-'......kCCCCCCCCCCCCCCCCCCk......',
-'......kkkkkkkkkkkkkkkkkkkk......',
-'.......khhsssssssssssshhk.......',
-'.......khsssssssssssssshk.......',
-'.......khssHHssssssHHsshk.......',
-'.......khsswewsssswewsshk.......',
-'.......khsswewsssswewsshk.......',
-'.......khhsssssSSssssshhk.......',
-'.......khhsssssoossssshhk.......',
-'........khhhHhhhhhHhhhhk........',
-'..........kSSHhhhhHSSk..........',
-'..........kbbbbbbbbbbk..........',
-'......kkbbbbbbbbbbbbbbbbkk......',
-'.....kbbbkppppppppppppkbbbk.....',
-'....ksbbkpyykppppppkyypkbbsk....',
-'....ksbbbkppppppppppppkbbbsk....',
-'....ksBBBkppppppppppppkBBBsk....',
-'....ksBBBkpppkppppkpppkBBBsk....',
-'.....kbbbkppppppppppppkbbbk.....',
-'.......kkppppppppppppppkk.......',
-'..........kppppkkppppk..........',
-'..........kppppkkppppk..........',
-'..........kppppkkppppk..........',
-'..........kppppkkppppk..........',
-'..........kbbbbkkbbbbk..........',
-'.........koooookkoooook.........',
-'.........kkkkkkkkkkkkkk.........',
+'................',
+'.....kkkkkk.....',
+'....kLLLLLLk....',
+'...kLLGGGGGgk...',
+'...kGGGGGGGGk...',
+'...kggggggggk...',
+'....kkkkkkkk....',
+'...kssssssssk...',
+'...ksesssesSk...',
+'...kssssSSsSk...',
+'....khhhhhhk....',
+'..khhlhhhhHhhk..',
+'..khhhhhhhhhk...',
+'...kkhSSShk.....',
+'.....kbbbk......',
+'....kbbbbbbk....',
+'..kkbbbbbbbbkk..',
+'..kbkbbbbbbkBk..',
+'..ksbkbbbbkBsk..',
+'..kSSkbbbbkSSk..',
+'....kppppppk....',
+'....kppkkPPk....',
+'....kppk.kPPk...',
+'....kook.koOk...',
 ], FRANK_PAL);
 const FRANK_DOWN2 = makeSprite([
-'................................',
-'..........kkkkkkkkkkkk..........',
-'........kkcccccCCccccckk........',
-'.......kccccccccccccccCCk.......',
-'.......kccccccccccccccCCk.......',
-'......kCCCCCCCCCCCCCCCCCCk......',
-'......kkkkkkkkkkkkkkkkkkkk......',
-'.......khhsssssssssssshhk.......',
-'.......khsssssssssssssshk.......',
-'.......khssHHssssssHHsshk.......',
-'.......khsswewsssswewsshk.......',
-'.......khsswewsssswewsshk.......',
-'.......khhsssssSSssssshhk.......',
-'.......khhsssssoossssshhk.......',
-'........khhhHhhhhhHhhhhk........',
-'..........kSSHhhhhHSSk..........',
-'..........kbbbbbbbbbbk..........',
-'......kkbbbbbbbbbbbbbbbbkk......',
-'.....kbbbkppppppppppppkbbbk.....',
-'....ksbbkpyykppppppkyypkbbsk....',
-'....ksbbbkppppppppppppkbbbsk....',
-'....ksbbbkppppppppppppkBBBsk....',
-'....ksBBBkpppkppppkpppkBBBsk....',
-'.....kbbbkppppppppppppkbbbk.....',
-'.......kkppppppppppppppkk.......',
-'.........kppppkkkkppppk.........',
-'.........kppppkkkkppppk.........',
-'.........kppppkkkkppppk.........',
-'.........kppppkkkkppppk.........',
-'.........kbbbbkkkkbbbbk.........',
-'........koooookkkkoooook........',
-'........kkkkkkk....kkkkkkk......',
+'................',
+'.....kkkkkk.....',
+'....kLLLLLLk....',
+'...kLLGGGGGgk...',
+'...kGGGGGGGGk...',
+'...kggggggggk...',
+'....kkkkkkkk....',
+'...kssssssssk...',
+'...ksesssesSk...',
+'...kssssSSsSk...',
+'....khhhhhhk....',
+'..khhlhhhhHhhk..',
+'..khhhhhhhhhk...',
+'...kkhSSShk.....',
+'.....kbbbk......',
+'....kbbbbbbk....',
+'..kkbbbbbbbbkk..',
+'..kbkbbbbbbkBk..',
+'..ksbkbbbbkBsk..',
+'..kSSkbbbbkSSk..',
+'....kppppppk....',
+'....kppkkPPk....',
+'...kppk..kPPk...',
+'...koook..kOOk..',
 ], FRANK_PAL);
 const FRANK_UP = makeSprite([
-'................................',
-'..........kkkkkkkkkkkk..........',
-'........kkcccccCCccccckk........',
-'.......kccccccccccccccCCk.......',
-'.......kccccccccccccccCCk.......',
-'......kCCCCCCCCCCCCCCCCCCk......',
-'......kkkkkkkkkkkkkkkkkkkk......',
-'.......khhcccccccccccchhk.......',
-'.......khhhcccccccccchhhk.......',
-'.......khhhhhhhhhhhhhhhhk.......',
-'.......khhhhhhhhhhhhhhhhk.......',
-'........khhhhhhhhhhhhhhk........',
-'........khhhhhhsshhhhhhk........',
-'..........kSSHhhhhHSSk..........',
-'..........kbbbbbbbbbbk..........',
-'......kkbbbbbbbbbbbbbbbbkk......',
-'.....kbbbkppppppppppppkbbbk.....',
-'....ksbbkppppppppppppppkbbsk....',
-'....ksbbkppppppppppppppkbbsk....',
-'....ksBBkppppppppppppppkBBsk....',
-'....ksBBkppppkppppkppppkBBsk....',
-'.....kbbbkppppppppppppkbbbk.....',
-'.......kkppppppppppppppkk.......',
-'..........kppppkkppppk..........',
-'..........kppppkkppppk..........',
-'..........kppppkkppppk..........',
-'..........kppppkkppppk..........',
-'..........kbbbbkkbbbbk..........',
-'..........kppppkkppppk..........',
-'.........koooookkoooook.........',
-'.........koooookkoooook.........',
-'.........kkkkkkkkkkkkkk.........',
+'................',
+'.....kkkkkk.....',
+'....kGGGGGGk....',
+'...kGGGGGGGGk...',
+'...kGGGGGGGGk...',
+'...kggggggggk...',
+'....kkkkkkkk....',
+'...khhhhhhhhk...',
+'...khhhhhhhhk...',
+'...khhhhhhhhk...',
+'...khhsssshhk...',
+'....kssssssk....',
+'.....kbbbk......',
+'....kbbbbbbk....',
+'..kkbbbbbbbbkk..',
+'..kbkbbbbbbkBk..',
+'..ksbkbbbbkBsk..',
+'..ksskbbbbkssk..',
+'....kbbbbbbk....',
+'....kbbbbbbk....',
+'....kppppppk....',
+'....kppkkPPk....',
+'....kppk.kPPk...',
+'....kook.koOk...',
 ], FRANK_PAL);
 const FRANK_UP2 = makeSprite([
-'................................',
-'..........kkkkkkkkkkkk..........',
-'........kkcccccCCccccckk........',
-'.......kccccccccccccccCCk.......',
-'.......kccccccccccccccCCk.......',
-'......kCCCCCCCCCCCCCCCCCCk......',
-'......kkkkkkkkkkkkkkkkkkkk......',
-'.......khhcccccccccccchhk.......',
-'.......khhhcccccccccchhhk.......',
-'.......khhhhhhhhhhhhhhhhk.......',
-'.......khhhhhhhhhhhhhhhhk.......',
-'........khhhhhhhhhhhhhhk........',
-'........khhhhhhsshhhhhhk........',
-'..........kSSHhhhhHSSk..........',
-'..........kbbbbbbbbbbk..........',
-'......kkbbbbbbbbbbbbbbbbkk......',
-'.....kbbbkppppppppppppkbbbk.....',
-'....ksbbkppppppppppppppkbbsk....',
-'....ksbbkppppppppppppppkbbsk....',
-'....ksbbkppppppppppppppkBBsk....',
-'....ksBBkppppkppppkppppkBBsk....',
-'.....kbbbkppppppppppppkbbbk.....',
-'.......kkppppppppppppppkk.......',
-'.........kppppkkkkppppk.........',
-'.........kppppkkkkppppk.........',
-'.........kppppkkkkppppk.........',
-'.........kppppkkkkppppk.........',
-'.........kbbbbkkkkbbbbk.........',
-'.........kppppkkkkppppk.........',
-'........koooookkkkoooook........',
-'........koooookkkkoooook........',
-'........kkkkkkk....kkkkkkk......',
+'................',
+'.....kkkkkk.....',
+'....kGGGGGGk....',
+'...kGGGGGGGGk...',
+'...kGGGGGGGGk...',
+'...kggggggggk...',
+'....kkkkkkkk....',
+'...khhhhhhhhk...',
+'...khhhhhhhhk...',
+'...khhhhhhhhk...',
+'...khhsssshhk...',
+'....kssssssk....',
+'.....kbbbk......',
+'....kbbbbbbk....',
+'..kkbbbbbbbbkk..',
+'..kbkbbbbbbkBk..',
+'..ksbkbbbbkBsk..',
+'..ksskbbbbkssk..',
+'....kbbbbbbk....',
+'....kbbbbbbk....',
+'....kppppppk....',
+'....kppkkPPk....',
+'...kppk..kPPk...',
+'...koook..kOOk..',
 ], FRANK_PAL);
 const FRANK_SIDE = makeSprite([
-'................................',
-'........kkkkkkkkkkkkkk..........',
-'......kkcccccccccccccckk........',
-'.....kcccccccccccccccccCCk......',
-'.....kcccccccccccccccccCCk......',
-'....kCCCCCCCCCCCCCCCCCCCk.......',
-'....kkkkkkkkkkkkkkkkkkkk........',
-'.....khhhsssssssssssssk.........',
-'.....khhssssssssssssssk.........',
-'.....khhssssssssHHssssk.........',
-'.....khhsssssssswewssk..........',
-'.....khhsssssssswewsssk.........',
-'.....khhssssssssssssssSk........',
-'.....khhsssssssssoosk...........',
-'......khhssssssshhhssk..........',
-'........kSSsshhhhhk.............',
-'.......kbbbbbbk.................',
-'.....kkbbbbbbbbbbbbbk...........',
-'....kbbkpppppppppppkbk..........',
-'....ksbkpyykpppppppkbbk.........',
-'...ksbbkpppppppppppkbbk.........',
-'...ksBBkpppppppppppkBBk.........',
-'...ksBBkppkppppppkpkBBk.........',
-'....kbbkpppppppppppkbk..........',
-'.....kkpppppppppppppkk..........',
-'......kppppkkkppppk.............',
-'......kppppkkkppppk.............',
-'......kppppkkkppppk.............',
-'......kbbbbkkkbbbbk.............',
-'......kppppkkkppppk.............',
-'....kooooook..kooooook..........',
-'....kkkkkkkk..kkkkkkkk..........',
+'................',
+'.....kkkkkk.....',
+'....kLLLLLLk....',
+'...kGGGGGGGGkkk.',
+'...kGGGGGGGGk...',
+'...kggggggggk...',
+'....kkkkkkkk....',
+'....kssssssk....',
+'....ksessSsk....',
+'....kssssSSkk...',
+'....khhhhhhhk...',
+'...khhhhhhhhhk..',
+'...khhhhhhhhhk..',
+'....kkhhhhk.....',
+'.....kbbbk......',
+'....kbbbbbbk....',
+'...kbbbbbbbbk...',
+'...kbbbbbbBbk...',
+'...ksbbbbbbBk...',
+'....kbbbbbbk....',
+'....kppppppk....',
+'....kpppPPPk....',
+'.....kppkPPk....',
+'.....kookOOk....',
 ], FRANK_PAL);
 const FRANK_SIDE2 = makeSprite([
-'................................',
-'........kkkkkkkkkkkkkk..........',
-'......kkcccccccccccccckk........',
-'.....kcccccccccccccccccCCk......',
-'.....kcccccccccccccccccCCk......',
-'....kCCCCCCCCCCCCCCCCCCCk.......',
-'....kkkkkkkkkkkkkkkkkkkk........',
-'.....khhhsssssssssssssk.........',
-'.....khhssssssssssssssk.........',
-'.....khhssssssssHHssssk.........',
-'.....khhsssssssswewssk..........',
-'.....khhsssssssswewsssk.........',
-'.....khhssssssssssssssSk........',
-'.....khhsssssssssoosk...........',
-'......khhssssssshhhssk..........',
-'........kSSsshhhhhk.............',
-'.......kbbbbbbk.................',
-'.....kkbbbbbbbbbbbbbk...........',
-'....kbbkpppppppppppkbk..........',
-'....ksbkpyykpppppppkbbk.........',
-'...ksbbkpppppppppppkbbk.........',
-'...ksbbkpppppppppppkBBk.........',
-'...ksBBkppkppppppkpkBBk.........',
-'....kbbkpppppppppppkbk..........',
-'.....kkpppppppppppppkk..........',
-'.....kppppkkkkkppppk............',
-'.....kppppkkkkkppppk............',
-'.....kppppkkkkkppppk............',
-'.....kbbbbkkkkkbbbbk............',
-'.....kppppkkkkkppppk............',
-'...kooooook....kooooook.........',
-'...kkkkkkkk....kkkkkkkk.........',
+'................',
+'.....kkkkkk.....',
+'....kLLLLLLk....',
+'...kGGGGGGGGkkk.',
+'...kGGGGGGGGk...',
+'...kggggggggk...',
+'....kkkkkkkk....',
+'....kssssssk....',
+'....ksessSsk....',
+'....kssssSSkk...',
+'....khhhhhhhk...',
+'...khhhhhhhhhk..',
+'...khhhhhhhhhk..',
+'....kkhhhhk.....',
+'.....kbbbk......',
+'....kbbbbbbk....',
+'...kbbbbbbbbk...',
+'...kbbbbbbBbk...',
+'...ksbbbbbbBk...',
+'....kbbbbbbk....',
+'....kppppppk....',
+'....kpppPPPk....',
+'....kppk.kPPk...',
+'...koook..kOOk..',
 ], FRANK_PAL);
-/* idle blink frames: the standing front/side views with eyes closed */
 const FRANK_DOWN_BLINK = makeSprite([
-'................................',
-'..........kkkkkkkkkkkk..........',
-'........kkcccccCCccccckk........',
-'.......kccccccccccccccCCk.......',
-'.......kccccccccccccccCCk.......',
-'......kCCCCCCCCCCCCCCCCCCk......',
-'......kkkkkkkkkkkkkkkkkkkk......',
-'.......khhsssssssssssshhk.......',
-'.......khsssssssssssssshk.......',
-'.......khssHHssssssHHsshk.......',
-'.......khsssssssssssssshk.......',
-'.......khsskksssssskksshk.......',
-'.......khhsssssSSssssshhk.......',
-'.......khhsssssoossssshhk.......',
-'........khhhHhhhhhHhhhhk........',
-'..........kSSHhhhhHSSk..........',
-'..........kbbbbbbbbbbk..........',
-'......kkbbbbbbbbbbbbbbbbkk......',
-'.....kbbbkppppppppppppkbbbk.....',
-'....ksbbkpyykppppppkyypkbbsk....',
-'....ksbbbkppppppppppppkbbbsk....',
-'....ksBBBkppppppppppppkBBBsk....',
-'....ksBBBkpppkppppkpppkBBBsk....',
-'.....kbbbkppppppppppppkbbbk.....',
-'.......kkppppppppppppppkk.......',
-'..........kppppkkppppk..........',
-'..........kppppkkppppk..........',
-'..........kppppkkppppk..........',
-'..........kppppkkppppk..........',
-'..........kbbbbkkbbbbk..........',
-'.........koooookkoooook.........',
-'.........kkkkkkkkkkkkkk.........',
+'................',
+'.....kkkkkk.....',
+'....kLLLLLLk....',
+'...kLLGGGGGgk...',
+'...kGGGGGGGGk...',
+'...kggggggggk...',
+'....kkkkkkkk....',
+'...kssssssssk...',
+'...ksSsssSsSk...',
+'...kssssSSsSk...',
+'....khhhhhhk....',
+'..khhlhhhhHhhk..',
+'..khhhhhhhhhk...',
+'...kkhSSShk.....',
+'.....kbbbk......',
+'....kbbbbbbk....',
+'..kkbbbbbbbbkk..',
+'..kbkbbbbbbkBk..',
+'..ksbkbbbbkBsk..',
+'..kSSkbbbbkSSk..',
+'....kppppppk....',
+'....kppkkPPk....',
+'....kppk.kPPk...',
+'....kook.koOk...',
 ], FRANK_PAL);
 const FRANK_DOWN_TALK = makeSprite([
-'................................',
-'..........kkkkkkkkkkkk..........',
-'........kkcccccCCccccckk........',
-'.......kccccccccccccccCCk.......',
-'.......kccccccccccccccCCk.......',
-'......kCCCCCCCCCCCCCCCCCCk......',
-'......kkkkkkkkkkkkkkkkkkkk......',
-'.......khhsssssssssssshhk.......',
-'.......khsssssssssssssshk.......',
-'.......khssHHssssssHHsshk.......',
-'.......khsswewsssswewsshk.......',
-'.......khsswewsssswewsshk.......',
-'.......khhsssssSSssssshhk.......',
-'.......khhsssssooosssshhk.......',
-'........khhhHhhhhhHhhhhk........',
-'..........kSSHhhhhHSSk..........',
-'..........kbbbbbbbbbbk..........',
-'......kkbbbbbbbbbbbbbbbbkk......',
-'.....kbbbkppppppppppppkbbbk.....',
-'....ksbbkpyykppppppkyypkbbsk....',
-'....ksbbbkppppppppppppkbbbsk....',
-'....ksBBBkppppppppppppkBBBsk....',
-'....ksBBBkpppkppppkpppkBBBsk....',
-'.....kbbbkppppppppppppkbbbk.....',
-'.......kkppppppppppppppkk.......',
-'..........kppppkkppppk..........',
-'..........kppppkkppppk..........',
-'..........kppppkkppppk..........',
-'..........kppppkkppppk..........',
-'..........kbbbbkkbbbbk..........',
-'.........koooookkoooook.........',
-'.........kkkkkkkkkkkkkk.........',
+'................',
+'.....kkkkkk.....',
+'....kLLLLLLk....',
+'...kLLGGGGGgk...',
+'...kGGGGGGGGk...',
+'...kggggggggk...',
+'....kkkkkkkk....',
+'...kssssssssk...',
+'...ksesssesSk...',
+'...kssssSSsSk...',
+'....khhhhhhk....',
+'..khhlhhhhHhhk..',
+'..khhhOOOhhhk...',
+'...kkhSSShk.....',
+'.....kbbbk......',
+'....kbbbbbbk....',
+'..kkbbbbbbbbkk..',
+'..kbkbbbbbbkBk..',
+'..ksbkbbbbkBsk..',
+'..kSSkbbbbkSSk..',
+'....kppppppk....',
+'....kppkkPPk....',
+'....kppk.kPPk...',
+'....kook.koOk...',
 ], FRANK_PAL);
 const FRANK_SIDE_BLINK = makeSprite([
-'................................',
-'........kkkkkkkkkkkkkk..........',
-'......kkcccccccccccccckk........',
-'.....kcccccccccccccccccCCk......',
-'.....kcccccccccccccccccCCk......',
-'....kCCCCCCCCCCCCCCCCCCCk.......',
-'....kkkkkkkkkkkkkkkkkkkk........',
-'.....khhhsssssssssssssk.........',
-'.....khhssssssssssssssk.........',
-'.....khhssssssssHHssssk.........',
-'.....khhssssssssssssssk.........',
-'.....khhsssssssskkssssk.........',
-'.....khhssssssssssssssSk........',
-'.....khhsssssssssoosk...........',
-'......khhssssssshhhssk..........',
-'........kSSsshhhhhk.............',
-'.......kbbbbbbk.................',
-'.....kkbbbbbbbbbbbbbk...........',
-'....kbbkpppppppppppkbk..........',
-'....ksbkpyykpppppppkbbk.........',
-'...ksbbkpppppppppppkbbk.........',
-'...ksBBkpppppppppppkBBk.........',
-'...ksBBkppkppppppkpkBBk.........',
-'....kbbkpppppppppppkbk..........',
-'.....kkpppppppppppppkk..........',
-'......kppppkkkppppk.............',
-'......kppppkkkppppk.............',
-'......kppppkkkppppk.............',
-'......kbbbbkkkbbbbk.............',
-'......kppppkkkppppk.............',
-'....kooooook..kooooook..........',
-'....kkkkkkkk..kkkkkkkk..........',
+'................',
+'.....kkkkkk.....',
+'....kLLLLLLk....',
+'...kGGGGGGGGkkk.',
+'...kGGGGGGGGk...',
+'...kggggggggk...',
+'....kkkkkkkk....',
+'....kssssssk....',
+'....ksSssSsk....',
+'....kssssSSkk...',
+'....khhhhhhhk...',
+'...khhhhhhhhhk..',
+'...khhhhhhhhhk..',
+'....kkhhhhk.....',
+'.....kbbbk......',
+'....kbbbbbbk....',
+'...kbbbbbbbbk...',
+'...kbbbbbbBbk...',
+'...ksbbbbbbBk...',
+'....kbbbbbbk....',
+'....kppppppk....',
+'....kpppPPPk....',
+'.....kppkPPk....',
+'.....kookOOk....',
 ], FRANK_PAL);
 const FRANK_SIDE_TALK = makeSprite([
-'................................',
-'........kkkkkkkkkkkkkk..........',
-'......kkcccccccccccccckk........',
-'.....kcccccccccccccccccCCk......',
-'.....kcccccccccccccccccCCk......',
-'....kCCCCCCCCCCCCCCCCCCCk.......',
-'....kkkkkkkkkkkkkkkkkkkk........',
-'.....khhhsssssssssssssk.........',
-'.....khhssssssssssssssk.........',
-'.....khhssssssssHHssssk.........',
-'.....khhsssssssswewssk..........',
-'.....khhsssssssswewsssk.........',
-'.....khhssssssssssssssSk........',
-'.....khhssssssssooosk...........',
-'......khhssssssshhhssk..........',
-'........kSSsshhhhhk.............',
-'.......kbbbbbbk.................',
-'.....kkbbbbbbbbbbbbbk...........',
-'....kbbkpppppppppppkbk..........',
-'....ksbkpyykpppppppkbbk.........',
-'...ksbbkpppppppppppkbbk.........',
-'...ksBBkpppppppppppkBBk.........',
-'...ksBBkppkppppppkpkBBk.........',
-'....kbbkpppppppppppkbk..........',
-'.....kkpppppppppppppkk..........',
-'......kppppkkkppppk.............',
-'......kppppkkkppppk.............',
-'......kppppkkkppppk.............',
-'......kbbbbkkkbbbbk.............',
-'......kppppkkkppppk.............',
-'....kooooook..kooooook..........',
-'....kkkkkkkk..kkkkkkkk..........',
+'................',
+'.....kkkkkk.....',
+'....kLLLLLLk....',
+'...kGGGGGGGGkkk.',
+'...kGGGGGGGGk...',
+'...kggggggggk...',
+'....kkkkkkkk....',
+'....kssssssk....',
+'....ksessSsk....',
+'....kssssSSkk...',
+'....khhhhhhhk...',
+'...khhhhhhhhhk..',
+'...khhhOOhhhk...',
+'....kkhhhhk.....',
+'.....kbbbk......',
+'....kbbbbbbk....',
+'...kbbbbbbbbk...',
+'...kbbbbbbBbk...',
+'...ksbbbbbbBk...',
+'....kbbbbbbk....',
+'....kppppppk....',
+'....kpppPPPk....',
+'.....kppkPPk....',
+'.....kookOOk....',
 ], FRANK_PAL);
-const FRANK_SET = { down: [FRANK_DOWN, FRANK_DOWN2], up: [FRANK_UP, FRANK_UP2], side: [FRANK_SIDE, FRANK_SIDE2], blinkDown: FRANK_DOWN_BLINK, blinkSide: FRANK_SIDE_BLINK, talkDown: FRANK_DOWN_TALK, talkSide: FRANK_SIDE_TALK };
-const CONSTANCE_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: '#8a5a2e', H: '#6f4520', e: EYE, d: '#2a9d8f', D: '#1f7a6e', w: '#f8f8f8', o: '#3a2c1c' };
+const FRANK_SET = { down: [FRANK_DOWN, FRANK_DOWN2], up: [FRANK_UP, FRANK_UP2], side: [FRANK_SIDE, FRANK_SIDE2], blinkDown: FRANK_DOWN_BLINK, blinkSide: FRANK_SIDE_BLINK, talkDown: FRANK_DOWN_TALK, talkSide: FRANK_SIDE_TALK, w: 16, h: 24 };
+const CONSTANCE_PAL = { k: '#33302a', s: '#f2c184', S: '#dda15e', h: '#8a5a2e', H: '#6f4520', l: '#a5713d', e: '#26221e', d: '#2a9d8f', D: '#1f7a6e', L: '#45bcab', w: '#f8f8f8', o: '#3a2c1c', m: '#7a3b2e' };
 const CONSTANCE_DOWN = makeSprite([
-'................................',
-'.........kkkkkkkkkkkkkk.........',
-'.......kkhhhhHHhhhhhhhkk........',
-'......khhhhhhhhhhhhhhhHHk.......',
-'......khhhhhhhhhhhhhhhHHk.......',
-'......khhhsssssssssssshhhk......',
-'......khhssssssssssssshhk.......',
-'......khhssHHssssssHHsshhk......',
-'......khhsswewsssswewsshhk......',
-'......khhsswewsssswewsshhk......',
-'......khhssssssSSsssssshk.......',
-'......khhsssssoossssssshk.......',
-'......khhsSssssssssssSshk.......',
-'.......khhssssssssssssshk.......',
-'..........kSSssssssSSk..........',
-'.....khhhkddddddddddddkhhhk.....',
-'....kkddddddddddddddddddddkk....',
-'...ksddddkwwwwwwwwwwwwkddddsk...',
-'...ksddddkwwwwwwwwwwwwkddddsk...',
-'...ksDDDDkwwwwwwwwwwwwkDDDDsk...',
-'...ksDDDDkwwwkwwwwkwwwkDDDDsk...',
-'...ksDDDDkwwwwwwwwwwwwkDDDDsk...',
-'....kkdddkwwwkwwkwwkwwkdddkk....',
-'...kkddddddddddddddddddddddkk...',
-'...kkdddddddddddDDdddddddddkk...',
-'...kkddddddddddddddddddddddkk...',
-'....kkkkkkkkkkkkkkkkkkkkkkkk....',
-'.........ksssskkkkssssk.........',
-'.........ksssskkkkssssk.........',
-'.........kSSSSkkkkSSSSk.........',
-'........kooooookkkkooooook......',
-'........kkkkkkk....kkkkkkk......',
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khllllllhk...',
+'...khsssssshHk..',
+'...khseSeshHk...',
+'...khsssssshHk..',
+'....kssmmssk....',
+'...khhsssshhHk..',
+'....kksssskk....',
+'....kddddddk....',
+'...kddLLLLddk...',
+'..kddkddddkddk..',
+'..kddkddddkddk..',
+'..kskddddddksk..',
+'....kddddddk....',
+'....kdddDDdk....',
+'...kdddDDdddk...',
+'...kddddDDddk...',
+'..kdddddDDdddk..',
+'..kddddddDDddk..',
+'..kkkkkkkkkkkk..',
+'....ksk..ksk....',
+'....koo..koo....',
 ], CONSTANCE_PAL);
 const CONSTANCE_DOWN2 = makeSprite([
-'................................',
-'.........kkkkkkkkkkkkkk.........',
-'.......kkhhhhHHhhhhhhhkk........',
-'......khhhhhhhhhhhhhhhHHk.......',
-'......khhhhhhhhhhhhhhhHHk.......',
-'......khhhsssssssssssshhhk......',
-'......khhssssssssssssshhk.......',
-'......khhssHHssssssHHsshhk......',
-'......khhsswewsssswewsshhk......',
-'......khhsswewsssswewsshhk......',
-'......khhssssssSSsssssshk.......',
-'......khhsssssoossssssshk.......',
-'......khhsSssssssssssSshk.......',
-'.......khhssssssssssssshk.......',
-'..........kSSssssssSSk..........',
-'.....khhhkddddddddddddkhhhk.....',
-'....kkddddddddddddddddddddkk....',
-'...ksddddkwwwwwwwwwwwwkddddsk...',
-'...ksddddkwwwwwwwwwwwwkddddsk...',
-'...ksddddkwwwwwwwwwwwwkDDDDsk...',
-'...ksDDDDkwwwkwwwwkwwwkDDDDsk...',
-'...ksDDDDkwwwwwwwwwwwwkDDDDsk...',
-'....kkdddkwwwkwwkwwkwwkdddkk....',
-'...kkddddddddddddddddddddddkk...',
-'...kkdddddddddddDDdddddddddkk...',
-'...kkddddddddddddddddddddddkk...',
-'....kkkkkkkkkkkkkkkkkkkkkkkk....',
-'........ksssskkkkkkssssk........',
-'........ksssskkkkkkssssk........',
-'........kSSSSkkkkkkSSSSk........',
-'.......kooooookkkkkkooooook.....',
-'.......kkkkkkk......kkkkkkk.....',
-], CONSTANCE_PAL);
-const CONSTANCE_SIDE = makeSprite([
-'................................',
-'.........kkkkkkkkkkkkkk.........',
-'.......kkhhhhHHhhhhhhhkk........',
-'......khhhhhhhhhhhhhhhhhhk......',
-'.....khhhhhhhhhhhhhhhhhhhhk.....',
-'.....khhhhhhsssssssssssk........',
-'.....khhhhhssssssssssssk........',
-'.....khhhhhssssssHHsssk.........',
-'.....khhhhhsssssswewssk.........',
-'.....khhhhhsssssswewssk.........',
-'.....khhhhhsssssssssssssk.......',
-'.....khhhhhsssssssssoosk........',
-'.....khhhhhsssssssssssk.........',
-'.....khhhhsssssssk..............',
-'........kSSssssk................',
-'.....khhhkdddddddddk............',
-'....kkdddddddddddddddk..........',
-'...ksddkwwwwwwwwwwkddk..........',
-'...ksddkwwwwwwwwwwkddk..........',
-'...ksDDkwwwwwwwwwwkDDk..........',
-'...ksDDkwwwkwwkwwwkDDk..........',
-'...ksDDkwwwwwwwwwwkDDk..........',
-'....kddkwwwwwwwwwwkddkk.........',
-'...kkddddddddddddddddkk.........',
-'...kkddddddddddddddddkk.........',
-'...kkddddddddddddddddkk.........',
-'....kkkkkkkkkkkkkkkkkk..........',
-'......ksssskkkkssssk............',
-'......ksssskkkkssssk............',
-'......kSSSSkkkkSSSSk............',
-'.....kooooookkkkooooook.........',
-'.....kkkkkkk....kkkkkkk.........',
-], CONSTANCE_PAL);
-const CONSTANCE_SIDE2 = makeSprite([
-'................................',
-'.........kkkkkkkkkkkkkk.........',
-'.......kkhhhhHHhhhhhhhkk........',
-'......khhhhhhhhhhhhhhhhhhk......',
-'.....khhhhhhhhhhhhhhhhhhhhk.....',
-'.....khhhhhhsssssssssssk........',
-'.....khhhhhssssssssssssk........',
-'.....khhhhhssssssHHsssk.........',
-'.....khhhhhsssssswewssk.........',
-'.....khhhhhsssssswewssk.........',
-'.....khhhhhsssssssssssssk.......',
-'.....khhhhhsssssssssoosk........',
-'.....khhhhhsssssssssssk.........',
-'.....khhhhsssssssk..............',
-'........kSSssssk................',
-'.....khhhkdddddddddk............',
-'....kkdddddddddddddddk..........',
-'...ksddkwwwwwwwwwwkddk..........',
-'...ksddkwwwwwwwwwwkddk..........',
-'...ksddkwwwwwwwwwwkDDk..........',
-'...ksDDkwwwkwwkwwwkDDk..........',
-'...ksDDkwwwwwwwwwwkDDk..........',
-'....kddkwwwwwwwwwwkddkk.........',
-'...kkddddddddddddddddkk.........',
-'...kkddddddddddddddddkk.........',
-'...kkddddddddddddddddkk.........',
-'....kkkkkkkkkkkkkkkkkk..........',
-'.....ksssskkkkkkssssk...........',
-'.....ksssskkkkkkssssk...........',
-'.....kSSSSkkkkkkSSSSk...........',
-'....kooooookkkkkkooooook........',
-'....kkkkkkk......kkkkkkk........',
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khllllllhk...',
+'...khsssssshHk..',
+'...khseSeshHk...',
+'...khsssssshHk..',
+'....kssmmssk....',
+'...khhsssshhHk..',
+'....kksssskk....',
+'....kddddddk....',
+'...kddLLLLddk...',
+'..kddkddddkddk..',
+'..kddkddddkddk..',
+'..kskddddddksk..',
+'....kddddddk....',
+'....kdddDDdk....',
+'...kdddDDdddk...',
+'...kddddDDddk...',
+'..kdddddDDdddk..',
+'..kddddddDDddk..',
+'..kkkkkkkkkkkk..',
+'.....ksk.ksk....',
+'....koo...koo...',
 ], CONSTANCE_PAL);
 const CONSTANCE_UP = makeSprite([
-'................................',
-'.........kkkkkkkkkkkkkk.........',
-'.......kkhhhhHHhhhhhhhkk........',
-'......khhhhhhhhhhhhhhhHHk.......',
-'......khhhhhhhhhhhhhhhHHk.......',
-'.....khhhhhhhhhhhhhhhhhhk.......',
-'.....khhhhhhhhhhhhhhhhhhk.......',
-'.....khhhhhhhhhhhhhhhhhhk.......',
-'.....khhhhhhhhhhhhhhhHHHk.......',
-'.....khhhhhhhhhhhhhhhhhhk.......',
-'.....khhhhhhhhhhhhhhhhhhk.......',
-'......khhhhhhhhhhhhhhhhhk.......',
-'.......khhhhhhhhhhhhhhhhhk......',
-'......khhhsssssssssssshhhk......',
-'..........kSSssssssSSk..........',
-'.....khhhkddddddddddddkhhhk.....',
-'....kkddddddddddddddddddddkk....',
-'...ksddddddddddddddddddddddsk...',
-'...ksddddddddddddddddddddddsk...',
-'...ksDDDddddddddddddddddDDDsk...',
-'...ksDDDddddddkwwkddddddDDDsk...',
-'...ksDDDddddddddddddddddDDDsk...',
-'....kkddddddddddddddddddddkk....',
-'...kkddddddddddddddddddddddkk...',
-'...kkdddddddddddDDdddddddddkk...',
-'...kkddddddddddddddddddddddkk...',
-'....kkkkkkkkkkkkkkkkkkkkkkkk....',
-'.........ksssskkkkssssk.........',
-'.........ksssskkkkssssk.........',
-'.........kSSSSkkkkSSSSk.........',
-'........kooooookkkkooooook......',
-'........kkkkkkk....kkkkkkk......',
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khllllllhk...',
+'...khhhhhhhhHk..',
+'...khhhhhhhhHk..',
+'...khhhhhhhhHk..',
+'...khhhhhhhhHk..',
+'...khhhhhhhhHk..',
+'....khhhhhhk....',
+'....kddddddk....',
+'...kddLLLLddk...',
+'..kddkddddkddk..',
+'..kddkddddkddk..',
+'..kskddddddksk..',
+'....kddddddk....',
+'....kdddDDdk....',
+'...kdddDDdddk...',
+'...kddddDDddk...',
+'..kdddddDDdddk..',
+'..kddddddDDddk..',
+'..kkkkkkkkkkkk..',
+'....ksk..ksk....',
+'....koo..koo....',
 ], CONSTANCE_PAL);
 const CONSTANCE_UP2 = makeSprite([
-'................................',
-'.........kkkkkkkkkkkkkk.........',
-'.......kkhhhhHHhhhhhhhkk........',
-'......khhhhhhhhhhhhhhhHHk.......',
-'......khhhhhhhhhhhhhhhHHk.......',
-'.....khhhhhhhhhhhhhhhhhhk.......',
-'.....khhhhhhhhhhhhhhhhhhk.......',
-'.....khhhhhhhhhhhhhhhhhhk.......',
-'.....khhhhhhhhhhhhhhhHHHk.......',
-'.....khhhhhhhhhhhhhhhhhhk.......',
-'.....khhhhhhhhhhhhhhhhhhk.......',
-'......khhhhhhhhhhhhhhhhhk.......',
-'.......khhhhhhhhhhhhhhhhhk......',
-'......khhhsssssssssssshhhk......',
-'..........kSSssssssSSk..........',
-'.....khhhkddddddddddddkhhhk.....',
-'....kkddddddddddddddddddddkk....',
-'...ksddddddddddddddddddddddsk...',
-'...ksddddddddddddddddddddddsk...',
-'...ksdddddddddddddddddddDDDsk...',
-'...ksDDDddddddkwwkddddddDDDsk...',
-'...ksDDDddddddddddddddddDDDsk...',
-'....kkddddddddddddddddddddkk....',
-'...kkddddddddddddddddddddddkk...',
-'...kkdddddddddddDDdddddddddkk...',
-'...kkddddddddddddddddddddddkk...',
-'....kkkkkkkkkkkkkkkkkkkkkkkk....',
-'........ksssskkkkkkssssk........',
-'........ksssskkkkkkssssk........',
-'........kSSSSkkkkkkSSSSk........',
-'.......kooooookkkkkkooooook.....',
-'.......kkkkkkk......kkkkkkk.....',
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khllllllhk...',
+'...khhhhhhhhHk..',
+'...khhhhhhhhHk..',
+'...khhhhhhhhHk..',
+'...khhhhhhhhHk..',
+'...khhhhhhhhHk..',
+'....khhhhhhk....',
+'....kddddddk....',
+'...kddLLLLddk...',
+'..kddkddddkddk..',
+'..kddkddddkddk..',
+'..kskddddddksk..',
+'....kddddddk....',
+'....kdddDDdk....',
+'...kdddDDdddk...',
+'...kddddDDddk...',
+'..kdddddDDdddk..',
+'..kddddddDDddk..',
+'..kkkkkkkkkkkk..',
+'.....ksk.ksk....',
+'....koo...koo...',
+], CONSTANCE_PAL);
+const CONSTANCE_SIDE = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khllllllhk...',
+'...khhssssshk...',
+'...khhsseshk....',
+'...khhsssshk....',
+'....khssmsk.....',
+'...khhsssshk....',
+'....kkssskk.....',
+'....kddddk......',
+'...kddLLddk.....',
+'...kdddddDk.....',
+'...kdddddDk.....',
+'....kddddDdk....',
+'....ksddddDk....',
+'....kddddDdk....',
+'....kddddDdk....',
+'...kdddddDddk...',
+'...kdddddDddk...',
+'..kddddddDDddk..',
+'..kkkkkkkkkkkk..',
+'.....ksk.ksk....',
+'.....koo.koo....',
+], CONSTANCE_PAL);
+const CONSTANCE_SIDE2 = makeSprite([
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khllllllhk...',
+'...khhssssshk...',
+'...khhsseshk....',
+'...khhsssshk....',
+'....khssmsk.....',
+'...khhsssshk....',
+'....kkssskk.....',
+'....kddddk......',
+'...kddLLddk.....',
+'...kdddddDk.....',
+'...kdddddDk.....',
+'....kddddDdk....',
+'....ksddddDk....',
+'....kddddDdk....',
+'....kddddDdk....',
+'...kdddddDddk...',
+'...kdddddDddk...',
+'..kddddddDDddk..',
+'..kkkkkkkkkkkk..',
+'....ksk..ksk....',
+'....koo...koo...',
 ], CONSTANCE_PAL);
 const CONSTANCE_DOWN_BLINK = makeSprite([
-'................................',
-'.........kkkkkkkkkkkkkk.........',
-'.......kkhhhhHHhhhhhhhkk........',
-'......khhhhhhhhhhhhhhhHHk.......',
-'......khhhhhhhhhhhhhhhHHk.......',
-'......khhhsssssssssssshhhk......',
-'......khhssssssssssssshhk.......',
-'......khhssHHssssssHHsshhk......',
-'......khhssssssssssssshhk.......',
-'......khhsskksssssskksshhk......',
-'......khhssssssSSsssssshk.......',
-'......khhsssssoossssssshk.......',
-'......khhsSssssssssssSshk.......',
-'.......khhssssssssssssshk.......',
-'..........kSSssssssSSk..........',
-'.....khhhkddddddddddddkhhhk.....',
-'....kkddddddddddddddddddddkk....',
-'...ksddddkwwwwwwwwwwwwkddddsk...',
-'...ksddddkwwwwwwwwwwwwkddddsk...',
-'...ksDDDDkwwwwwwwwwwwwkDDDDsk...',
-'...ksDDDDkwwwkwwwwkwwwkDDDDsk...',
-'...ksDDDDkwwwwwwwwwwwwkDDDDsk...',
-'....kkdddkwwwkwwkwwkwwkdddkk....',
-'...kkddddddddddddddddddddddkk...',
-'...kkdddddddddddDDdddddddddkk...',
-'...kkddddddddddddddddddddddkk...',
-'....kkkkkkkkkkkkkkkkkkkkkkkk....',
-'.........ksssskkkkssssk.........',
-'.........ksssskkkkssssk.........',
-'.........kSSSSkkkkSSSSk.........',
-'........kooooookkkkooooook......',
-'........kkkkkkk....kkkkkkk......',
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khllllllhk...',
+'...khsssssshHk..',
+'...khsSSsshHk...',
+'...khsssssshHk..',
+'....kssmmssk....',
+'...khhsssshhHk..',
+'....kksssskk....',
+'....kddddddk....',
+'...kddLLLLddk...',
+'..kddkddddkddk..',
+'..kddkddddkddk..',
+'..kskddddddksk..',
+'....kddddddk....',
+'....kdddDDdk....',
+'...kdddDDdddk...',
+'...kddddDDddk...',
+'..kdddddDDdddk..',
+'..kddddddDDddk..',
+'..kkkkkkkkkkkk..',
+'....ksk..ksk....',
+'....koo..koo....',
 ], CONSTANCE_PAL);
 const CONSTANCE_DOWN_TALK = makeSprite([
-'................................',
-'.........kkkkkkkkkkkkkk.........',
-'.......kkhhhhHHhhhhhhhkk........',
-'......khhhhhhhhhhhhhhhHHk.......',
-'......khhhhhhhhhhhhhhhHHk.......',
-'......khhhsssssssssssshhhk......',
-'......khhssssssssssssshhk.......',
-'......khhssHHssssssHHsshhk......',
-'......khhsswewsssswewsshhk......',
-'......khhsswewsssswewsshhk......',
-'......khhssssssSSsssssshk.......',
-'......khhsssssooosssssshk.......',
-'......khhsSssssssssssSshk.......',
-'.......khhssssssssssssshk.......',
-'..........kSSssssssSSk..........',
-'.....khhhkddddddddddddkhhhk.....',
-'....kkddddddddddddddddddddkk....',
-'...ksddddkwwwwwwwwwwwwkddddsk...',
-'...ksddddkwwwwwwwwwwwwkddddsk...',
-'...ksDDDDkwwwwwwwwwwwwkDDDDsk...',
-'...ksDDDDkwwwkwwwwkwwwkDDDDsk...',
-'...ksDDDDkwwwwwwwwwwwwkDDDDsk...',
-'....kkdddkwwwkwwkwwkwwkdddkk....',
-'...kkddddddddddddddddddddddkk...',
-'...kkdddddddddddDDdddddddddkk...',
-'...kkddddddddddddddddddddddkk...',
-'....kkkkkkkkkkkkkkkkkkkkkkkk....',
-'.........ksssskkkkssssk.........',
-'.........ksssskkkkssssk.........',
-'.........kSSSSkkkkSSSSk.........',
-'........kooooookkkkooooook......',
-'........kkkkkkk....kkkkkkk......',
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khllllllhk...',
+'...khsssssshHk..',
+'...khseSeshHk...',
+'...khsssssshHk..',
+'....kssoossk....',
+'...khhsssshhHk..',
+'....kksssskk....',
+'....kddddddk....',
+'...kddLLLLddk...',
+'..kddkddddkddk..',
+'..kddkddddkddk..',
+'..kskddddddksk..',
+'....kddddddk....',
+'....kdddDDdk....',
+'...kdddDDdddk...',
+'...kddddDDddk...',
+'..kdddddDDdddk..',
+'..kddddddDDddk..',
+'..kkkkkkkkkkkk..',
+'....ksk..ksk....',
+'....koo..koo....',
 ], CONSTANCE_PAL);
 const CONSTANCE_SIDE_BLINK = makeSprite([
-'................................',
-'.........kkkkkkkkkkkkkk.........',
-'.......kkhhhhHHhhhhhhhkk........',
-'......khhhhhhhhhhhhhhhhhhk......',
-'.....khhhhhhhhhhhhhhhhhhhhk.....',
-'.....khhhhhhsssssssssssk........',
-'.....khhhhhssssssssssssk........',
-'.....khhhhhssssssHHsssk.........',
-'.....khhhhhssssssssssssk........',
-'.....khhhhhsssssskkssssk........',
-'.....khhhhhsssssssssssssk.......',
-'.....khhhhhsssssssssoosk........',
-'.....khhhhhsssssssssssk.........',
-'.....khhhhsssssssk..............',
-'........kSSssssk................',
-'.....khhhkdddddddddk............',
-'....kkdddddddddddddddk..........',
-'...ksddkwwwwwwwwwwkddk..........',
-'...ksddkwwwwwwwwwwkddk..........',
-'...ksDDkwwwwwwwwwwkDDk..........',
-'...ksDDkwwwkwwkwwwkDDk..........',
-'...ksDDkwwwwwwwwwwkDDk..........',
-'....kddkwwwwwwwwwwkddkk.........',
-'...kkddddddddddddddddkk.........',
-'...kkddddddddddddddddkk.........',
-'...kkddddddddddddddddkk.........',
-'....kkkkkkkkkkkkkkkkkk..........',
-'......ksssskkkkssssk............',
-'......ksssskkkkssssk............',
-'......kSSSSkkkkSSSSk............',
-'.....kooooookkkkooooook.........',
-'.....kkkkkkk....kkkkkkk.........',
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khllllllhk...',
+'...khhssssshk...',
+'...khhssSshk....',
+'...khhsssshk....',
+'....khssmsk.....',
+'...khhsssshk....',
+'....kkssskk.....',
+'....kddddk......',
+'...kddLLddk.....',
+'...kdddddDk.....',
+'...kdddddDk.....',
+'....kddddDdk....',
+'....ksddddDk....',
+'....kddddDdk....',
+'....kddddDdk....',
+'...kdddddDddk...',
+'...kdddddDddk...',
+'..kddddddDDddk..',
+'..kkkkkkkkkkkk..',
+'.....ksk.ksk....',
+'.....koo.koo....',
 ], CONSTANCE_PAL);
 const CONSTANCE_SIDE_TALK = makeSprite([
-'................................',
-'.........kkkkkkkkkkkkkk.........',
-'.......kkhhhhHHhhhhhhhkk........',
-'......khhhhhhhhhhhhhhhhhhk......',
-'.....khhhhhhhhhhhhhhhhhhhhk.....',
-'.....khhhhhhsssssssssssk........',
-'.....khhhhhssssssssssssk........',
-'.....khhhhhssssssHHsssk.........',
-'.....khhhhhsssssswewssk.........',
-'.....khhhhhsssssswewssk.........',
-'.....khhhhhsssssssssssssk.......',
-'.....khhhhhssssssssooosk........',
-'.....khhhhhsssssssssssk.........',
-'.....khhhhsssssssk..............',
-'........kSSssssk................',
-'.....khhhkdddddddddk............',
-'....kkdddddddddddddddk..........',
-'...ksddkwwwwwwwwwwkddk..........',
-'...ksddkwwwwwwwwwwkddk..........',
-'...ksDDkwwwwwwwwwwkDDk..........',
-'...ksDDkwwwkwwkwwwkDDk..........',
-'...ksDDkwwwwwwwwwwkDDk..........',
-'....kddkwwwwwwwwwwkddkk.........',
-'...kkddddddddddddddddkk.........',
-'...kkddddddddddddddddkk.........',
-'...kkddddddddddddddddkk.........',
-'....kkkkkkkkkkkkkkkkkk..........',
-'......ksssskkkkssssk............',
-'......ksssskkkkssssk............',
-'......kSSSSkkkkSSSSk............',
-'.....kooooookkkkooooook.........',
-'.....kkkkkkk....kkkkkkk.........',
+'................',
+'.....kkkkkk.....',
+'....khhhhhhk....',
+'...khllllllhk...',
+'...khhssssshk...',
+'...khhsseshk....',
+'...khhsssshk....',
+'....khssoosk....',
+'...khhsssshk....',
+'....kkssskk.....',
+'....kddddk......',
+'...kddLLddk.....',
+'...kdddddDk.....',
+'...kdddddDk.....',
+'....kddddDdk....',
+'....ksddddDk....',
+'....kddddDdk....',
+'....kddddDdk....',
+'...kdddddDddk...',
+'...kdddddDddk...',
+'..kddddddDDddk..',
+'..kkkkkkkkkkkk..',
+'.....ksk.ksk....',
+'.....koo.koo....',
 ], CONSTANCE_PAL);
-const CONSTANCE_SET = { down: [CONSTANCE_DOWN, CONSTANCE_DOWN2], up: [CONSTANCE_UP, CONSTANCE_UP2], side: [CONSTANCE_SIDE, CONSTANCE_SIDE2], blinkDown: CONSTANCE_DOWN_BLINK, blinkSide: CONSTANCE_SIDE_BLINK, talkDown: CONSTANCE_DOWN_TALK, talkSide: CONSTANCE_SIDE_TALK };
+const CONSTANCE_SET = { down: [CONSTANCE_DOWN, CONSTANCE_DOWN2], up: [CONSTANCE_UP, CONSTANCE_UP2], side: [CONSTANCE_SIDE, CONSTANCE_SIDE2], blinkDown: CONSTANCE_DOWN_BLINK, blinkSide: CONSTANCE_SIDE_BLINK, talkDown: CONSTANCE_DOWN_TALK, talkSide: CONSTANCE_SIDE_TALK, w: 16, h: 24 };
 const JEREMIAH_PAL = { k: '#20242a', s: SKIN, S: '#d99e5f', h: '#4a2f1d', H: '#38220f', e: EYE, t: '#3b6fe0', T: '#2a4a9f', j: '#2a4a7f', w: '#e8e8e8', o: '#33261a' };
 const JEREMIAH_DOWN = makeSprite([
 '................................',
@@ -2968,314 +2852,188 @@ const LILY_STROLLER = makeSprite([
 /* Alvin: tan short coat, floppy darker ears, green collar with a tag.
    Side sprite faces right (charSprite flips it for left); the two frames
    wag his tail and stride his legs. */
-const ALVIN_PAL = { k: '#20242a', t: '#d9a05a', T: '#b57f3d', d: '#8a5a2e', m: '#ecd3a0', n: '#20242a', g: '#37b24d', G: '#2b8a3e', y: '#ffd94a', e: '#20242a', r: '#e88ca0' };
+const ALVIN_PAL = { k: '#33302a', t: '#d9a05a', T: '#b57f3d', L: '#ecc088', D: '#8a5a2e', d: '#6f4520', m: '#f0dcae', n: '#26221e', g: '#37b24d', G: '#2b8a3e', y: '#ffd94a' };
 const ALVIN_DOWN = makeSprite([
-'................................',
-'................................',
-'................................',
-'..........kkkkkkkkkkkk..........',
-'.....kdddkttttttttttttkdddk.....',
-'....kddddttttttttttttttddddk....',
-'....kddTTttttttttttttttTTddk....',
-'....kddTTttttttttttttttTTddk....',
-'....kddddttteetttteetttddddk....',
-'....kddddttteetttteetttddddk....',
-'....kdddmttttttttttttttmdddk....',
-'....kdddmtttmmmmmmmmtttmdddk....',
-'.....kdddttmmmmmmmmmmttdddk.....',
-'.....kdddtmmmmnnnnmmmmtdddk.....',
-'......kddkmmmmmmmmmmmmkddk......',
-'......kddkmmmmmkkmmmmmkddk......',
-'........kdkmmmmmmmmmmkdk........',
-'.........kmmmmmmmmmmmmk.........',
-'........kggggggggggggggk........',
-'........kgggggkyykgggggk........',
-'........kttttttttttttttk........',
-'........ktttttTTTTtttttk........',
-'........kttttmmmmmmttttk........',
-'........kttttmmmmmmttttk........',
-'........ktttttmmmmtttttk........',
-'.........kttttkkkkttttk.........',
-'.........kttttkkkkttttk.........',
-'.........kttttkkkkttttk.........',
-'.........kttttkkkkttttk.........',
-'.........kttttkkkkttttk.........',
-'.........kmmmmkkkkmmmmk.........',
-'..........kkkk....kkkk..........',
+'.....kkkkkkkkkk.....',
+'..kkkttttttttttkkk..',
+'..kDDkttLLttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDktntttnttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kddkttmmmmttkddk..',
+'...kkttmmnnmmttkk...',
+'....kttmmmmmmttk....',
+'....ktttmmnnmttk....',
+'...kggggggggggggk...',
+'...kgggggyyGGGGgk...',
+'..kttttttttttttttk..',
+'..ktttLLttttttTTTk..',
+'..ktttLLttttttTTTk..',
+'..kttkttttttttkttk..',
+'..kkkk........kkkk..',
 ], ALVIN_PAL);
 const ALVIN_DOWN2 = makeSprite([
-'................................',
-'................................',
-'................................',
-'..........kkkkkkkkkkkk..........',
-'.....kdddkttttttttttttkdddk.....',
-'....kddddttttttttttttttddddk....',
-'....kddTTttttttttttttttTTddk....',
-'....kddTTttttttttttttttTTddk....',
-'....kddddttteetttteetttddddk....',
-'....kddddttteetttteetttddddk....',
-'....kdddmttttttttttttttmdddk....',
-'....kdddmtttmmmmmmmmtttmdddk....',
-'.....kdddttmmmmmmmmmmttdddk.....',
-'.....kdddtmmmmnnnnmmmmtdddk.....',
-'......kddkmmmmmmmmmmmmkddk......',
-'......kddkmmmmmkkmmmmmkddk......',
-'........kdkmmmmmmmmmmkdk........',
-'.........kmmmmmmmmmmmmk.........',
-'........kggggggggggggggk........',
-'........kgggggkyykgggggk........',
-'........kttttttttttttttk........',
-'........ktttttTTTTtttttk........',
-'........kttttmmmmmmttttk........',
-'........kttttmmmmmmttttk........',
-'........ktttttmmmmtttttk........',
-'........kttttkkkkkkttttk........',
-'........kttttkkkkkkttttk........',
-'........kttttkkkkkkttttk........',
-'........kttttkkkkkkttttk........',
-'........kttttkkkkkkttttk........',
-'........kmmmmkkkkkkmmmmk........',
-'........kkkkk......kkkkk........',
+'.....kkkkkkkkkk.....',
+'.kkkkttttttttttkkkk.',
+'.kDDDkttLLttttkDDDk.',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDktntttnttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kddkttmmmmttkddk..',
+'...kkttmmnnmmttkk...',
+'....kttmmmmmmttk....',
+'....ktttmmnnmttk....',
+'...kggggggggggggk...',
+'...kggggggyyGGGGk...',
+'..kttttttttttttttk..',
+'..ktttLLttttttTTTk..',
+'..ktttLLttttttTTTk..',
+'..kttkttttttttkttk..',
+'..kkkk........kkkk..',
 ], ALVIN_PAL);
 const ALVIN_UP = makeSprite([
-'................................',
-'................................',
-'................................',
-'..........kkkkkkkkkkkk..........',
-'.....kdddkttttttttttttkdddk.....',
-'....kddddttttttttttttttddddk....',
-'....kddddtttttTTTTtttttddddk....',
-'....kddddttttttttttttttddddk....',
-'....kddddttttttttttttttddddk....',
-'....kddddttttttttttttttddddk....',
-'....kddddttttttttttttttddddk....',
-'.....kdddttttttttttttttdddk.....',
-'......kddttttttttttttttddk......',
-'.......kdttttttttttttttdk.......',
-'........kttttttttttttttk........',
-'........kggggggggggggggk........',
-'........kggggggggggggggk........',
-'........kttttttttttttttk........',
-'.......kttttttttttttttttk.......',
-'.......kttttttTTTTttttttk.......',
-'.......kttttttttttttttttk.......',
-'.......kttttttttttttttttk.......',
-'.......kttttttttttttttttk.......',
-'.........kttttkkkkttttk.........',
-'.........kttttkkkkttttk.........',
-'.........kttttkkkkttttk.........',
-'.........kttttkTTkttttk.........',
-'.........kttttkkkkttttk.........',
-'.........kttttkkkkttttk.........',
-'.........kmmmmkkkkmmmmk.........',
-'.........kmmmmkkkkmmmmk.........',
-'..........kkkk....kkkk..........',
+'.....kkkkkkkkkk.....',
+'..kkkttttttttttkkk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'...kkttttttttttkk...',
+'....kttttttttttk....',
+'....kttttttttttk....',
+'...kggggggggggggk...',
+'...kGGGGGGGGGGGGk...',
+'..kttttttttttttttk..',
+'..ktttttttttttTTTk..',
+'..ktttttttttttTTTk..',
+'..kttkttttttttkttk..',
+'..kkkk........kkkk..',
 ], ALVIN_PAL);
 const ALVIN_UP2 = makeSprite([
-'................................',
-'................................',
-'................................',
-'..........kkkkkkkkkkkk..........',
-'.....kdddkttttttttttttkdddk.....',
-'....kddddttttttttttttttddddk....',
-'....kddddtttttTTTTtttttddddk....',
-'....kddddttttttttttttttddddk....',
-'....kddddttttttttttttttddddk....',
-'....kddddttttttttttttttddddk....',
-'....kddddttttttttttttttddddk....',
-'.....kdddttttttttttttttdddk.....',
-'......kddttttttttttttttddk......',
-'.......kdttttttttttttttdk.......',
-'........kttttttttttttttk........',
-'........kggggggggggggggk........',
-'........kggggggggggggggk........',
-'........kttttttttttttttk........',
-'.......kttttttttttttttttk.......',
-'.......kttttttTTTTttttttk.......',
-'.......kttttttttttttttttk.......',
-'.......kttttttttttttttttk.......',
-'.......kttttttttttttttttk.......',
-'........kttttkkkkkkttttk........',
-'........kttttkkkkkkttttk........',
-'........kttttkkkkkkttttk........',
-'........kttttkTTkkkttttk........',
-'........kttttkkkkkkttttk........',
-'........kttttkkkkkkttttk........',
-'........kmmmmkkkkkkmmmmk........',
-'........kmmmmkkkkkkmmmmk........',
-'........kkkkk......kkkkk........',
+'.....kkkkkkkkkk.....',
+'.kkkkttttttttttkkkk.',
+'.kDDDkttLLttttkDDDk.',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'...kkttttttttttkk...',
+'....kttttttttttk....',
+'....kttttttttttk....',
+'...kggggggggggggk...',
+'...kGGGGGGGGGGGGk...',
+'..kttttttttttttttk..',
+'..ktttttttttttTTTk..',
+'..ktttttttttttTTTk..',
+'..kttktttkktttkttk..',
+'..kkkk........kkkk..',
 ], ALVIN_PAL);
 const ALVIN_SIDE = makeSprite([
-'................................',
-'................................',
-'................................',
-'................................',
-'................................',
-'..kttk...............kttttttk...',
-'..ktttk............kddddttttttk.',
-'...ktttk...........kdddtttttttk.',
-'....ktttk..........kdddttteettk.',
-'....ktttk..........kdddttteettk.',
-'.....ktttk.........kdddttttttmnn',
-'.....ktttk..k......kddktttttmmmm',
-'.....kttttk.k......kttktttttmmmk',
-'......ktttttttttttttktmmmm......',
-'.....kttttttttttttttttttmmm.....',
-'.....kttttttttttttttttttmmtk....',
-'.....ktttttttttttttkggggggk.....',
-'.....ktttttttttttttkgggyggk.....',
-'.....kttttttttttttttttttttk.....',
-'.....kttttttttttttttttttttk.....',
-'.....kTTTTTTTTTTTTTTTTTTTTk.....',
-'......kTTTTTTTTTTTTTTTTTTk......',
-'......kttttkktttttttttkktttk....',
-'......ktttk...........ktttk.....',
-'......ktttk...........ktttk.....',
-'......ktttk...........ktttk.....',
-'......ktttk...........ktttk.....',
-'......ktttk...........ktttk.....',
-'......kTTTk...........kTTTk.....',
-'.....kmmmmk...........kmmmmk....',
-'.....kmmmmk...........kmmmmk....',
-'.....kkkkk............kkkkk.....',
+'....................',
+'..............kkkkk.',
+'..kk.........ktttttk',
+'..kttk.......ktLLttk',
+'..kttk.......ktDtttk',
+'...kk........ktDtntk',
+'....kkkkk....ktDtttk',
+'..kttttttkkkttDmmmmk',
+'.ktttttttttttDmmnmk.',
+'.ktttttttttttkmmmmk.',
+'.ktttttttttttkggggk.',
+'..kttttttttttktttk..',
+'..kttttttttttttttk..',
+'..ktttttttttttTTTk..',
+'...kktttttttttkkk...',
+'.....ktk....ktk.....',
+'.....ktk....ktk.....',
+'.....kkk....kkk.....',
 ], ALVIN_PAL);
 const ALVIN_SIDE2 = makeSprite([
-'................................',
-'................................',
-'................................',
-'................................',
-'................................',
-'................................',
-'..kttk...............kttttttk...',
-'..ktttk............kddddttttttk.',
-'...ktttk...........kdddtttttttk.',
-'....ktttk..........kdddttteettk.',
-'....ktttk..........kdddttteettk.',
-'.....ktttk.........kdddttttttmnn',
-'.....ktttk..k......kddktttttmmmm',
-'.....kttttk.k......kttktttttmmmk',
-'......ktttttttttttttktmmmm......',
-'.....kttttttttttttttttttmmm.....',
-'.....kttttttttttttttttttmmtk....',
-'.....ktttttttttttttkggggggk.....',
-'.....ktttttttttttttkgggyggk.....',
-'.....kttttttttttttttttttttk.....',
-'.....kTTTTTTTTTTTTTTTTTTTTk.....',
-'......kTTTTTTTTTTTTTTTTTTk......',
-'......kttttkktttttttttkktttk....',
-'........ktttk.......ktttk.......',
-'........ktttk.......ktttk.......',
-'........ktttk.......ktttk.......',
-'........ktttk.......ktttk.......',
-'........ktttk.......ktttk.......',
-'........kTTTk.......kTTTk.......',
-'.......kmmmmk......kmmmmk.......',
-'.......kmmmmk......kmmmmk.......',
-'.......kkkkk.......kkkkk........',
+'....................',
+'..............kkkkk.',
+'...kk........ktttttk',
+'..kttk.......ktLLttk',
+'..kttk.......ktDtttk',
+'...kk........ktDtntk',
+'....kkkkk....ktDtttk',
+'..kttttttkkkttDmmmmk',
+'.ktttttttttttDmmnmk.',
+'.ktttttttttttkmmmmk.',
+'.ktttttttttttkggggk.',
+'..kttttttttttktttk..',
+'..kttttttttttttttk..',
+'..ktttttttttttTTTk..',
+'...kktttttttttkkk...',
+'....ktk..ktk.ktk....',
+'....ktk..ktk..ktk...',
+'....kkk...kkk..kkk..',
 ], ALVIN_PAL);
 const ALVIN_SIT_DOWN = makeSprite([
-'................................',
-'................................',
-'................................',
-'..........kkkkkkkkkkkk..........',
-'.....kdddkttttttttttttkdddk.....',
-'....kddddttttttttttttttddddk....',
-'....kddTTttttttttttttttTTddk....',
-'....kddTTttttttttttttttTTddk....',
-'....kddddttteetttteetttddddk....',
-'....kddddttteetttteetttddddk....',
-'....kdddmttttttttttttttmdddk....',
-'....kdddmtttmmmmmmmmtttmdddk....',
-'.....kdddttmmmmmmmmmmttdddk.....',
-'.....kdddtmmmmnnnnmmmmtdddk.....',
-'......kddkmmmmmmmmmmmmkddk......',
-'......kddkmmmmmkkmmmmmkddk......',
-'........kdkmmmmmmmmmmkdk........',
-'.........kmmmmmmmmmmmmk.........',
-'........kggggggggggggggk........',
-'........kgggggkyykgggggk........',
-'........kttttttttttttttk........',
-'.......kttttttttttttttttk.......',
-'......kttttttttttttttttttk......',
-'.....kttttkttttkkttttkttttk.....',
-'.....kttttkttttkkttttkttttk.....',
-'.....kttttkttttkkttttkttttk.....',
-'.....kttttkttttkkttttkttttk.....',
-'.....kttttkttttkkttttkttttk.....',
-'.....kTTTTkmmmmkkmmmmkTTTTk.....',
-'.....kTTTTkmmmmkkmmmmkTTTTk.....',
-'....kmmmmmkmmmmkkmmmmkmmmmmk....',
-'....kkkkkk...kkkkkk...kkkkkk....',
+'.....kkkkkkkkkk.....',
+'..kkkttttttttttkkk..',
+'..kDDkttLLttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDktntttnttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kddkttmmmmttkddk..',
+'...kkttmmnnmmttkk...',
+'....kttmmmmmmttk....',
+'....ktttmmnnmttk....',
+'...kggggggggggggk...',
+'...kgggggyyGGGGgk...',
+'..kkttttttttttttkk..',
+'.kttttttttttttttttk.',
+'.kttttLLttttttTTTtk.',
+'.kttttttkttkttttttk.',
+'..kkkkkkkkkkkkkkkk..',
 ], ALVIN_PAL);
 const ALVIN_SIT_UP = makeSprite([
-'................................',
-'................................',
-'................................',
-'..........kkkkkkkkkkkk..........',
-'.....kdddkttttttttttttkdddk.....',
-'....kddddttttttttttttttddddk....',
-'....kddddtttttTTTTtttttddddk....',
-'....kddddttttttttttttttddddk....',
-'....kddddttttttttttttttddddk....',
-'....kddddttttttttttttttddddk....',
-'....kddddttttttttttttttddddk....',
-'.....kdddttttttttttttttdddk.....',
-'......kddttttttttttttttddk......',
-'.......kdttttttttttttttdk.......',
-'........kttttttttttttttk........',
-'........kggggggggggggggk........',
-'........kggggggggggggggk........',
-'.......kttttttttttttttttk.......',
-'......kttttttttttttttttttk......',
-'.....kttttttttTTTTttttttttk.....',
-'.....kttttkttttkkttttkttttk.....',
-'.....kttttkttttTTttttkttttk.....',
-'.....kttttkttttTTttttkttttk.....',
-'.....kttttkttttkkttttkttttk.....',
-'.....kttttkttttkkttttkttttk.....',
-'.....kttttkttttkkttttkttttk.....',
-'.....kttttkttttkkttttkttttk.....',
-'.....kttttkttttkkttttkttttk.....',
-'.....kTTTTkmmmmkkmmmmkTTTTk.....',
-'.....kTTTTkmmmmkkmmmmkTTTTk.....',
-'....kmmmmmkmmmmkkmmmmkmmmmmk....',
-'....kkkkkk...kkkkkk...kkkkkk....',
+'.....kkkkkkkkkk.....',
+'..kkkttttttttttkkk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'..kDDkttttttttkDDk..',
+'...kkttttttttttkk...',
+'....kttttttttttk....',
+'....kttttttttttk....',
+'...kggggggggggggk...',
+'...kGGGGGGGGGGGGk...',
+'..kkttttttttttttkk..',
+'.kttttttttttttttttk.',
+'.kttttttttttttTTTTk.',
+'.kttttttkttkttttttk.',
+'..kkkkkkkkkkkkkkkk..',
 ], ALVIN_PAL);
 const ALVIN_SIT_SIDE = makeSprite([
-'................................',
-'................................',
-'................................',
-'................................',
-'................................',
-'..kttk...............kttttttk...',
-'..ktttk............kddddttttttk.',
-'...ktttk...........kdddtttttttk.',
-'....ktttk..........kdddttteettk.',
-'....ktttk..........kdddttteettk.',
-'.....ktttk.........kdddttttttmnn',
-'.....ktttk..k......kddktttttmmmm',
-'.....kttttk.k......kttktttttmmmk',
-'......ktttttttttttttktmmmm......',
-'.....kttttttttttttttttttmmm.....',
-'.....kttttttttttttttttttmmtk....',
-'.....ktttttttttttttkggggggk.....',
-'.....ktttttttttttttkgggyggk.....',
-'.....kttttttttttttttttttttk.....',
-'.....kttttttttttttttttttttk.....',
-'.....kTTTTTTTTTTTTTTTTTTTTk.....',
-'......kTTTTTTTTTTTTTTTTTTk......',
-'....kttttttk..........ktttk.....',
-'....kTTTTTTk..........ktttk.....',
-'....kTTTTTTk..........ktttk.....',
-'.....kTTTTTk..........ktttk.....',
-'.....kTTTTTk..........ktttk.....',
-'..kttttkTTTk..........ktttk.....',
-'..ktttttkk............kmmmmk....',
-'....kmmmmmk...........kmmmmk....',
-'....kmmmmmk...........kmmmmk....',
-'....kkkkkk............kkkkk.....',
+'..............kkkkk.',
+'.............ktttttk',
+'.............ktLLttk',
+'.............ktDtttk',
+'.............ktDtntk',
+'.............ktDtttk',
+'............kttDmmmk',
+'............kttmmnmk',
+'...........kttmmmmk.',
+'..........ktkggggk..',
+'.........kttttttk...',
+'.......kkttttttk....',
+'.....ktttttttttk....',
+'....ktttttttttttk...',
+'...kttttttttttttk...',
+'...kttttttttktk.....',
+'..kttttttttktk......',
+'..kkkkkkkkkkkkk.....',
 ], ALVIN_PAL);
-const ALVIN_SET = { down: [ALVIN_DOWN, ALVIN_DOWN2], up: [ALVIN_UP, ALVIN_UP2], side: [ALVIN_SIDE, ALVIN_SIDE2], sitDown: ALVIN_SIT_DOWN, sitUp: ALVIN_SIT_UP, sitSide: ALVIN_SIT_SIDE };
+const ALVIN_SET = { down: [ALVIN_DOWN, ALVIN_DOWN2], up: [ALVIN_UP, ALVIN_UP2], side: [ALVIN_SIDE, ALVIN_SIDE2], sitDown: ALVIN_SIT_DOWN, sitUp: ALVIN_SIT_UP, sitSide: ALVIN_SIT_SIDE, w: 20, h: 18 };
 /* small deer for the yard */
 const DEER_SMALL = makeSprite([
 '................................',
@@ -3313,64 +3071,30 @@ const DEER_SMALL = makeSprite([
 ], { a: '#8a5a2e', h: '#caa06a', e: '#20242a', b: '#b07a45', t: '#e8dcc0', k: '#20242a', m: '#e8dcc0', w: '#e8dcc0' });
 
 /* ============================== POTS (16x16, sit on the bench) ============================== */
-const POT_PAL = { p: '#b5651d', P: '#8a4a16', s: '#5a3a1e', g: '#2f9e44', G: '#54c95e', b: '#3b6fe0', B: '#2f56b8' };
-function potSprite(extra) {
-  return makeSprite([
-'................',
-'................',
-'................',
-'................',
-'................',
-'................',
-'................',
-'................',
-extra[0], extra[1],
-'....pppppppp....',
-'...pppppppppp...',
-'...ppppsspppp...',
-'....pppppppp....',
-'.....PPPPPP.....',
-'......PPPP......',
-], POT_PAL);
+/* ============================== POTS (16x16, sit on the bench) ============================== */
+/* Terracotta with a lit rim and shaded foot (art overhaul, Nov 27, 2026 —
+   ported from the approved sample lab). Stage 0 is the empty pot, 1 the
+   sown seeds, 2 the sprout, 3 the seedling. */
+function potBaseDraw(c) {
+  c.fillStyle = '#e08a52'; c.fillRect(3, 7, 10, 2); // rim, lit
+  c.fillStyle = '#c96f3f'; c.fillRect(3, 9, 10, 1);
+  c.fillStyle = '#b85c33'; c.fillRect(4, 10, 8, 5);
+  c.fillStyle = '#8a3d20'; c.fillRect(10, 10, 2, 5); c.fillRect(4, 14, 8, 1); // shade + foot shadow
+  c.fillStyle = '#e8a06a'; c.fillRect(4, 10, 1, 4);
+  c.fillStyle = '#4a2c14'; c.fillRect(4, 7, 8, 1); // soil
+  c.fillStyle = '#5f3717'; c.fillRect(5, 7, 3, 1);
 }
-const POT_EMPTY = potSprite(['................', '................']);
-const POT_SEED = potSprite(['......s..s......', '....s...s.......']);
-const POT_SPROUT = makeSprite([
-'................',
-'................',
-'................',
-'.......gg.......',
-'......gGGg......',
-'.......gg.......',
-'......gGg.......',
-'.......gg.......',
-'.......gg.......',
-'.......gg.......',
-'....pppppppp....',
-'...pppppppppp...',
-'...ppppsspppp...',
-'....pppppppp....',
-'.....PPPPPP.....',
-'......PPPP......',
-], POT_PAL);
-const POT_SEEDLING = makeSprite([
-'.......bb.......',
-'......bBBb......',
-'.......gg.......',
-'.....ggGGgg.....',
-'....gGGGGGGg....',
-'.....gGGgGg.....',
-'.......gg.......',
-'.......gg.......',
-'................',
-'................',
-'....pppppppp....',
-'...pppppppppp...',
-'...ppppsspppp...',
-'....pppppppp....',
-'.....PPPPPP.....',
-'......PPPP......',
-], POT_PAL);
+function potLeaves(c, pts, big) {
+  for (const [x, y] of pts) {
+    c.fillStyle = '#2f7a24'; c.fillRect(x, y + 1, 2, 1);
+    c.fillStyle = big ? '#57b84a' : '#3f9433'; c.fillRect(x, y, 2, 1);
+    c.fillStyle = '#7ed957'; c.fillRect(x, y, 1, 1);
+  }
+}
+const POT_EMPTY = tileCanvas(c => { potBaseDraw(c); });
+const POT_SEED = tileCanvas(c => { potBaseDraw(c); c.fillStyle = '#d9c9a0'; c.fillRect(6, 6, 1, 1); c.fillRect(9, 6, 1, 1); c.fillRect(7, 7, 1, 1); });
+const POT_SPROUT = tileCanvas(c => { potBaseDraw(c); c.fillStyle = '#2f7a24'; c.fillRect(7, 3, 1, 4); potLeaves(c, [[5, 2], [8, 1]], false); });
+const POT_SEEDLING = tileCanvas(c => { potBaseDraw(c); c.fillStyle = '#2f7a24'; c.fillRect(7, 1, 1, 6); c.fillRect(5, 3, 1, 2); c.fillRect(9, 2, 1, 2); potLeaves(c, [[3, 2], [6, 0], [9, 1], [5, 4], [8, 3]], true); });
 const POT_SPRITES = [POT_EMPTY, POT_SEED, POT_SPROUT, POT_SEEDLING];
 
 /* ============================== BATTLE SPRITES ============================== */
@@ -5334,7 +5058,11 @@ function renderBerry() {
     if (ch === 'o') t = sway ? TILES.flowerB : TILES.flower;
     if (winter && SNOW_TILES[TILEMAP[ch]]) t = SNOW_TILES[TILEMAP[ch]];
     if (t && TILEMAP[ch] !== 'grass') ctx.drawImage(t, sx, sy);
-    if (ch === 'T') ctx.drawImage(winter && SNOW_TREE ? SNOW_TREE : TREE, sx, sy);
+    if (ch === 'T') { // soft ground shadow, then the canopy anchored bottom-centre on its tile
+      ctx.fillStyle = 'rgba(30,60,25,0.30)';
+      ctx.beginPath(); ctx.ellipse(sx + 10, sy + 14, 20, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.drawImage(winter && SNOW_TREE ? SNOW_TREE : TREE, sx - 16, sy - 40);
+    }
     if (ch === 's' && ty >= 13) { // the field: combed soil, waiting for stakes
       ctx.fillStyle = 'rgba(90,58,30,0.35)'; ctx.fillRect(sx, sy + 3, TILE, 1); ctx.fillRect(sx, sy + 10, TILE, 1);
     }
@@ -7432,26 +7160,23 @@ function drawSceneBanner(y0, seedling) {
   ctx.fillStyle = '#ffd94a'; ctx.fillRect(76, y0 + 2, 12, 12);
   ctx.fillStyle = '#ffec9e'; ctx.fillRect(79, y0 + 5, 6, 6);
   ctx.fillStyle = '#ffd94a'; ctx.fillRect(81, y0, 2, 2); ctx.fillRect(81, y0 + 14, 2, 2); ctx.fillRect(72, y0 + 7, 2, 2); ctx.fillRect(90, y0 + 7, 2, 2);
-  // the little blue house, left — with a chimney and its first smoke
-  ctx.fillStyle = '#b0552f'; ctx.fillRect(36, y0 + 2, 5, 7);
-  ctx.fillStyle = '#e8edf2'; ctx.fillRect(42, y0 + 1, 3, 2); ctx.fillRect(46, y0 + 2, 2, 2);
-  ctx.fillStyle = '#2f56b8'; ctx.fillRect(4, y0 + 12, 40, 4); ctx.fillRect(8, y0 + 8, 32, 4); ctx.fillRect(14, y0 + 4, 20, 4);
-  ctx.fillStyle = '#7fb2e8'; ctx.fillRect(14, y0 + 4, 20, 1); // a lit ridge along the roof's top step
-  ctx.fillStyle = '#7fb2e8'; ctx.fillRect(7, y0 + 16, 34, 22);
-  ctx.fillStyle = '#5b93d6'; ctx.fillRect(7, y0 + 21, 34, 1); ctx.fillRect(7, y0 + 27, 34, 1); ctx.fillRect(7, y0 + 33, 34, 1);
-  ctx.fillStyle = '#f4f4f0'; ctx.fillRect(11, y0 + 20, 7, 7); ctx.fillRect(30, y0 + 20, 7, 7);
-  ctx.fillStyle = '#ffe9a8'; ctx.fillRect(12, y0 + 21, 5, 5); ctx.fillRect(31, y0 + 21, 5, 5);
-  ctx.fillStyle = '#8a5a2e'; ctx.fillRect(20, y0 + 26, 8, 12);
-  ctx.fillStyle = '#ffd94a'; ctx.fillRect(26, y0 + 31, 1, 1);
-  // a tree, right — a rounder, two-blob canopy with lit patches
-  ctx.fillStyle = '#7a4a21'; ctx.fillRect(130, y0 + 26, 4, 12);
-  ctx.fillStyle = '#2f9e44'; ctx.fillRect(120, y0 + 13, 24, 12); ctx.fillRect(124, y0 + 8, 16, 6); ctx.fillRect(117, y0 + 17, 5, 6); ctx.fillRect(142, y0 + 17, 5, 6);
-  ctx.fillStyle = '#54c95e'; ctx.fillRect(124, y0 + 11, 7, 4); ctx.fillRect(133, y0 + 16, 7, 5); ctx.fillRect(121, y0 + 19, 5, 3);
-  ctx.fillStyle = '#7ed957'; ctx.fillRect(126, y0 + 10, 3, 2); ctx.fillRect(136, y0 + 15, 3, 2);
-  // ground + picket fence line
-  ctx.fillStyle = '#58b93e'; ctx.fillRect(0, y0 + 38, VW, 26);
-  ctx.fillStyle = '#6fce52'; ctx.fillRect(0, y0 + 38, VW, 2); // the lit edge where the fence line sits
-  ctx.fillStyle = '#3f9433'; ctx.fillRect(0, y0 + 56, VW, 8);
+  // ground: the yard's own grass tiles, then the picket fence line
+  for (let gx = 0; gx < VW; gx += 16) {
+    ctx.drawImage(gx % 32 ? TILES.grass2 : TILES.grass, gx, y0 + 32);
+    ctx.drawImage(gx % 48 ? TILES.grass : TILES.grass2, gx, y0 + 48);
+  }
+  for (let gx = 0; gx < VW; gx += 16) ctx.drawImage(TILES.fenceH, gx, y0 + 30);
+  // the little blue house, left — built from the yard's own tiles now,
+  // with a shaded brick chimney and its first smoke
+  ctx.drawImage(TILES.roof, 4, y0 + 10); ctx.drawImage(TILES.roof, 20, y0 + 10);
+  ctx.drawImage(TILES.window, 4, y0 + 26); ctx.drawImage(TILES.door, 20, y0 + 26);
+  ctx.fillStyle = '#b85c38'; ctx.fillRect(28, y0 + 3, 5, 8);
+  ctx.fillStyle = '#d97b4a'; ctx.fillRect(28, y0 + 3, 1, 8);
+  ctx.fillStyle = '#8a3d20'; ctx.fillRect(32, y0 + 3, 1, 8);
+  ctx.fillStyle = '#c3c9d1'; ctx.fillRect(27, y0 + 2, 7, 2);
+  ctx.fillStyle = '#e8edf2'; ctx.fillRect(35, y0 + 1, 3, 2); ctx.fillRect(39, y0 + 2, 2, 2);
+  // the tree, right — the yard's volumetric canopy, scaled to the banner
+  ctx.drawImage(TREE, 114, y0 - 4, 36, 42);
   // the house and tree throw soft shadows onto the grass, like everything else
   ctx.fillStyle = '#2f7a24';
   ctx.fillRect(5, y0 + 38, 40, 2); ctx.fillRect(8, y0 + 40, 34, 1);
@@ -7462,16 +7187,13 @@ function drawSceneBanner(y0, seedling) {
   }
   ctx.fillStyle = '#3f9433';
   for (const tx of [22, 44, 88, 118, 138]) { ctx.fillRect(tx, y0 + 46, 1, 2); ctx.fillRect(tx + 2, y0 + 47, 1, 2); }
-  ctx.fillStyle = '#f4f4f0';
-  for (let x = 2; x < VW; x += 12) { ctx.fillRect(x, y0 + 34, 3, 6); }
-  ctx.fillRect(0, y0 + 36, VW, 1);
   // the family out in the yard: Frank among his pots, Constance by the
   // tree with Alvin at her heel — each on a little ground shadow
   const folkShadow = (x) => { ctx.fillStyle = '#2f7a24'; ctx.fillRect(x + 2, y0 + 58, 12, 2); };
-  folkShadow(47); ctx.drawImage((perfNow % 3.7) < 0.13 ? FRANK_DOWN_BLINK : FRANK_DOWN, 47, y0 + 43, 16, 16);
-  folkShadow(118); ctx.drawImage(((perfNow + 1.9) % 3.7) < 0.13 ? CONSTANCE_DOWN_BLINK : CONSTANCE_DOWN, 118, y0 + 43, 16, 16);
+  folkShadow(47); ctx.drawImage((perfNow % 3.7) < 0.13 ? FRANK_DOWN_BLINK : FRANK_DOWN, 47, y0 + 35, 16, 24);
+  folkShadow(118); ctx.drawImage(((perfNow + 1.9) % 3.7) < 0.13 ? CONSTANCE_DOWN_BLINK : CONSTANCE_DOWN, 118, y0 + 35, 16, 24);
   for (let i = 0; i < 6; i++) ctx.drawImage(seedling ? POT_SEEDLING : POT_SPROUT, 14 + i * 17, y0 + 44, 13, 13);
-  folkShadow(138); ctx.drawImage(Math.floor(perfNow * 3) % 2 ? ALVIN_DOWN2 : ALVIN_DOWN, 138, y0 + 44, 16, 16);
+  folkShadow(138); ctx.drawImage(Math.floor(perfNow * 3) % 2 ? ALVIN_DOWN2 : ALVIN_DOWN, 136, y0 + 42, 20, 18);
 }
 function renderTitle() {
   ctx.fillStyle = '#274e13'; ctx.fillRect(0, 0, VW, VH);
@@ -7586,8 +7308,13 @@ function charSprite(e, set) {
   // as shade on path and garden tiles too, not just grass)
   const shx = Math.round(e.px - camX), shy = Math.round(e.py - camY);
   ctx.fillStyle = 'rgba(20,26,20,0.25)';
-  ctx.fillRect(shx + 2, shy + 13, 12, 2); ctx.fillRect(shx + 3, shy + 15, 10, 1);
-  drawSprite(img, shx, shy, e.dir === 'left', 16, 16); // character maps are 32x32 art in a 16x16 of game space
+  if ((set.w || 16) > 16) { ctx.fillRect(shx - 1, shy + 13, 18, 2); ctx.fillRect(shx, shy + 15, 16, 1); }
+  else { ctx.fillRect(shx + 2, shy + 13, 12, 2); ctx.fillRect(shx + 3, shy + 15, 10, 1); }
+  // overhaul sets (set.w/set.h) are taller than a tile: the figure draws
+  // upward from the tile's bottom edge, feet planted where they always
+  // were; legacy sets still draw as 32x32 art in a 16x16 of game space
+  const dw = set.w || 16, dh = set.h || 16;
+  drawSprite(img, shx + Math.round((16 - dw) / 2), shy + 16 - dh, e.dir === 'left', dw, dh);
 }
 function renderOverworld() {
   if (area === 'barnOut') return renderBerry();
@@ -7612,12 +7339,13 @@ function renderOverworld() {
     if (winter && SNOW_TILES[TILEMAP[ch]]) t = SNOW_TILES[TILEMAP[ch]];
     if (t && TILEMAP[ch] !== 'grass') ctx.drawImage(t, sx, sy);
     if (ch === 'T') {
-      ctx.fillStyle = SHADOW; ctx.fillRect(sx + 2, sy + 13, 12, 2); ctx.fillRect(sx + 3, sy + 15, 10, 1); // the canopy's ground shadow
-      ctx.drawImage(winter && SNOW_TREE ? SNOW_TREE : TREE, sx, sy);
+      ctx.fillStyle = 'rgba(30,60,25,0.30)'; // the canopy's soft ground shadow
+      ctx.beginPath(); ctx.ellipse(sx + 10, sy + 14, 20, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.drawImage(winter && SNOW_TREE ? SNOW_TREE : TREE, sx - 16, sy - 40);
       // now and then a leaf lets go and spirals down the canopy
       const lt = (perfNow * 0.22 + tx * 0.37 + ty * 0.11) % 1;
       if (lt < 0.7) {
-        const lx = Math.round(sx + 8 + Math.sin(lt * 9 + tx) * 4), ly = Math.round(sy + 5 + lt * 10);
+        const lx = Math.round(sx + 8 + Math.sin(lt * 9 + tx) * 9), ly = Math.round(sy - 22 + lt * 34);
         ctx.fillStyle = lt < 0.35 ? '#54c95e' : '#7ed957';
         ctx.fillRect(lx, ly, 2, 1); ctx.fillRect(lx, ly + 1, 1, 1);
       }
@@ -7977,9 +7705,9 @@ function renderControls() {
   drawPanel(4, 4, 152, 136);
   // the cast presents the controls, each standing on a soft ground shade
   // in the panel's own paper tones (as on the register card)
-  ctx.fillStyle = '#c9ced4'; ctx.fillRect(12, 20, 12, 1); ctx.fillRect(136, 20, 12, 1);
-  ctx.fillStyle = '#dfe9f5'; ctx.fillRect(13, 21, 10, 1); ctx.fillRect(137, 21, 10, 1);
-  ctx.drawImage(FRANK_DOWN, 10, 7, 16, 16); ctx.drawImage(ALVIN_DOWN, 134, 7, 16, 16);
+  ctx.fillStyle = '#c9ced4'; ctx.fillRect(12, 25, 12, 1); ctx.fillRect(136, 25, 12, 1);
+  ctx.fillStyle = '#dfe9f5'; ctx.fillRect(13, 26, 10, 1); ctx.fillRect(137, 26, 10, 1);
+  ctx.drawImage(FRANK_DOWN, 10, 2, 16, 24); ctx.drawImage(ALVIN_DOWN, 132, 8, 20, 18);
   drawText(TEXT.controls.controls, 80 - textW(TEXT.controls.controls, 2) / 2, 10, '#20242a', 2);
   const head = (t, y) => drawText(t, 12, y, '#2e8b3a', 1);
   const row = (t, y) => drawText(t, 12, y, '#20242a', 1);
