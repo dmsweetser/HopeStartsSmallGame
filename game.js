@@ -5198,82 +5198,137 @@ function drawGreenTile(ch, sx, sy, tx, ty) {
   }
 }
 function drawHouseTile(ch, sx, sy, tx, ty) {
-  // warm wood floor everywhere first
-  ctx.fillStyle = '#9a6b42'; ctx.fillRect(sx, sy, TILE, TILE);
-  ctx.fillStyle = '#8a5f38'; ctx.fillRect(sx, sy + 7, TILE, 1); ctx.fillRect(sx + ((tx * 7 + ty * 3) % 9), sy, 1, 7);
+  // warm plank floor everywhere first: lit board tops, dark seams,
+  // staggered joints and the odd knot — placed by the tile hash
+  const fh = tileHash(tx, ty, 21);
+  ctx.fillStyle = '#a06a3c'; ctx.fillRect(sx, sy, TILE, TILE);
+  ctx.fillStyle = fh > 0.5 ? 'rgba(255,220,160,0.06)' : 'rgba(60,30,0,0.06)'; ctx.fillRect(sx, sy, TILE, TILE); // board tone drifts tile to tile
+  ctx.fillStyle = '#b57f4a'; ctx.fillRect(sx, sy, TILE, 1); ctx.fillRect(sx, sy + 8, TILE, 1);
+  ctx.fillStyle = '#8a5a30'; ctx.fillRect(sx, sy + 7, TILE, 1); ctx.fillRect(sx, sy + 15, TILE, 1);
+  if (fh > 0.35) ctx.fillStyle = '#7d5327', ctx.fillRect(sx + ((tx * 7 + ty * 3) % 9), sy, 1, 7);
+  if (fh < 0.65) ctx.fillStyle = '#7d5327', ctx.fillRect(sx + ((tx * 5 + ty * 11) % 13), sy + 8, 1, 7);
+  if (fh > 0.72) { ctx.fillStyle = '#8a5a30'; ctx.fillRect(sx + 3 + Math.floor(fh * 10) % 9, sy + 3, 2, 1); }
   if (ch === 'z') return;
-  if (ch === 'Z') { // the rug: deep red, bordered, worn in the middle
+  if (ch === 'Z') { // the rug: deep red, double border, a worn diamond at its heart
     ctx.fillStyle = '#8e3b34'; ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#a34a41'; ctx.fillRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
-    ctx.fillStyle = '#8e3b34'; ctx.fillRect(sx + 5, sy + 5, TILE - 10, TILE - 10);
+    ctx.fillStyle = '#6e2a24'; ctx.fillRect(sx, sy, TILE, 1); ctx.fillRect(sx, sy + 15, TILE, 1); ctx.fillRect(sx, sy, 1, TILE); ctx.fillRect(sx + 15, sy, 1, TILE);
+    ctx.fillStyle = '#c9853e'; ctx.fillRect(sx + 2, sy + 2, TILE - 4, 1); ctx.fillRect(sx + 2, sy + 13, TILE - 4, 1); ctx.fillRect(sx + 2, sy + 2, 1, TILE - 4); ctx.fillRect(sx + 13, sy + 2, 1, TILE - 4);
+    ctx.fillStyle = '#a34a41'; ctx.fillRect(sx + 4, sy + 4, TILE - 8, TILE - 8);
+    ctx.fillStyle = '#c9853e'; ctx.fillRect(sx + 7, sy + 6, 2, 2); ctx.fillRect(sx + 6, sy + 7, 4, 1); ctx.fillRect(sx + 7, sy + 8, 2, 1);
+    ctx.fillStyle = 'rgba(232,226,210,0.20)'; ctx.fillRect(sx + 5, sy + 5, 3, 1); // worn sheen
     return;
   }
-  if (ch === 'H') { // interior wall: warm cream over wainscot
+  if (ch === 'H') { // interior wall: warm cream over panelled wainscot, baseboard below
     ctx.fillStyle = '#6b5136'; ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#e6d9bd'; ctx.fillRect(sx, sy, TILE, 9);
-    ctx.fillStyle = '#cbb894'; ctx.fillRect(sx, sy + 9, TILE, 1);
+    ctx.fillStyle = '#e9dcbe'; ctx.fillRect(sx, sy, TILE, 9);
+    ctx.fillStyle = '#f4ecd4'; ctx.fillRect(sx, sy, TILE, 1);
+    ctx.fillStyle = 'rgba(160,130,80,0.25)'; ctx.fillRect(sx + 3, sy + 2, 1, 6); ctx.fillRect(sx + 11, sy + 2, 1, 6); // faint paper stripes
+    ctx.fillStyle = '#cbb894'; ctx.fillRect(sx, sy + 9, TILE, 1); // chair rail
+    ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx, sy + 10, TILE, 5);
+    ctx.fillStyle = '#75582f'; ctx.fillRect(sx + 2, sy + 11, 4, 3); ctx.fillRect(sx + 10, sy + 11, 4, 3); // panels
+    ctx.fillStyle = '#5e4c36'; ctx.fillRect(sx, sy + 15, TILE, 1); // baseboard shade
     return;
   }
-  if (ch === 'a') { // the window shelf: pale wood under a bright window
-    ctx.fillStyle = '#cfe4f7'; ctx.fillRect(sx, sy, TILE, 9);
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 2, sy + 2, 4, 3);
-    ctx.fillStyle = '#a8895c'; ctx.fillRect(sx, sy + 9, TILE, 7);
+  if (ch === 'a') { // the window shelf: a bright framed window over pale wood
+    ctx.fillStyle = '#f7f7f2'; ctx.fillRect(sx, sy, TILE, 10);
+    const grad = ctx.createLinearGradient(sx, sy, sx, sy + 9); grad.addColorStop(0, '#cfeaff'); grad.addColorStop(1, '#8fc0f0');
+    ctx.fillStyle = grad; ctx.fillRect(sx + 2, sy + 1, 12, 8);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(sx + 3, sy + 2, 3, 4); // sky shine
+    ctx.fillStyle = '#7fb2e8'; ctx.fillRect(sx + 10, sy + 5, 3, 3); // far hill through the glass
+    ctx.fillStyle = '#f7f7f2'; ctx.fillRect(sx + 7, sy + 1, 2, 8); ctx.fillRect(sx + 2, sy + 4, 12, 1); // muntins
+    ctx.fillStyle = '#20242a'; ctx.fillRect(sx + 1, sy, 1, 10); ctx.fillRect(sx + 14, sy, 1, 10); ctx.fillRect(sx, sy + 9, TILE, 1);
+    ctx.fillStyle = '#a8895c'; ctx.fillRect(sx, sy + 10, TILE, 6); // the shelf board
+    ctx.fillStyle = '#c9a86a'; ctx.fillRect(sx, sy + 10, TILE, 1);
     ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx, sy + 14, TILE, 2);
+    ctx.fillStyle = 'rgba(60,35,10,0.25)'; ctx.fillRect(sx, sy + 13, TILE, 1); // shade under the board
     return;
   }
   if (ch === 'r') { // the fridge: tall, white, humming faintly with importance
+    ctx.fillStyle = 'rgba(60,35,10,0.25)'; ctx.fillRect(sx + 2, sy + 14, 13, 2); // floor shade
     ctx.fillStyle = '#eef1f4'; ctx.fillRect(sx + 1, sy - 6, 14, 22);
-    ctx.fillStyle = '#c9ced4'; ctx.fillRect(sx + 1, sy + 3, 14, 1);
-    ctx.fillStyle = '#8a919c'; ctx.fillRect(sx + 12, sy - 3, 2, 5); ctx.fillRect(sx + 12, sy + 5, 2, 7);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 2, sy - 5, 3, 20); // lit left face
+    ctx.fillStyle = '#c9ced4'; ctx.fillRect(sx + 13, sy - 6, 2, 22); ctx.fillRect(sx + 1, sy + 3, 14, 1); // shaded edge + door split
+    ctx.fillStyle = '#8a919c'; ctx.fillRect(sx + 12, sy - 3, 2, 5); ctx.fillRect(sx + 12, sy + 5, 2, 7); // handles
+    ctx.fillStyle = '#20242a'; ctx.fillRect(sx + 1, sy - 6, 14, 1); ctx.fillRect(sx + 1, sy + 15, 14, 1);
     ctx.fillStyle = '#ffd94a'; ctx.fillRect(sx + 3, sy - 4, 4, 5); // a note, held by a magnet
+    ctx.fillStyle = '#fff3b0'; ctx.fillRect(sx + 3, sy - 4, 4, 1);
     ctx.fillStyle = '#b03030'; ctx.fillRect(sx + 4, sy - 5, 2, 2);
     return;
   }
-  if (ch === 'k') { // kitchen counter
+  if (ch === 'k') { // kitchen counter: speckled stone top, panelled wood front
     ctx.fillStyle = '#7a6248'; ctx.fillRect(sx, sy + 4, TILE, 12);
+    ctx.fillStyle = '#8a7154'; ctx.fillRect(sx + 2, sy + 8, 5, 6); ctx.fillRect(sx + 9, sy + 8, 5, 6); // cabinet panels
+    ctx.fillStyle = '#5e4c36'; ctx.fillRect(sx + 3, sy + 9, 10, 1); ctx.fillRect(sx, sy + 15, TILE, 1);
     ctx.fillStyle = '#d8cfc0'; ctx.fillRect(sx, sy + 2, TILE, 4);
-    ctx.fillStyle = '#5e4c36'; ctx.fillRect(sx + 3, sy + 9, 10, 1);
+    ctx.fillStyle = '#efe9dc'; ctx.fillRect(sx, sy + 2, TILE, 1);
+    ctx.fillStyle = '#b8ab94'; ctx.fillRect(sx + 3, sy + 4, 2, 1); ctx.fillRect(sx + 9, sy + 3, 2, 1); ctx.fillRect(sx + 12, sy + 5, 2, 1); // stone speckle
+    ctx.fillStyle = 'rgba(60,35,10,0.30)'; ctx.fillRect(sx, sy + 6, TILE, 1); // shade under the top
     return;
   }
   if (ch === 'j') { // Frank's desk, and the journal that lives on it now
+    ctx.fillStyle = 'rgba(60,35,10,0.25)'; ctx.fillRect(sx + 1, sy + 14, 14, 2);
     ctx.fillStyle = '#7a6248'; ctx.fillRect(sx, sy + 5, TILE, 11);
-    ctx.fillStyle = '#8a2f2a'; ctx.fillRect(sx + 3, sy + 1, 9, 5);
+    ctx.fillStyle = '#8a7154'; ctx.fillRect(sx, sy + 5, TILE, 2);
+    ctx.fillStyle = '#5e4c36'; ctx.fillRect(sx, sy + 14, TILE, 2); ctx.fillRect(sx + 2, sy + 9, 4, 4); // drawer front
+    ctx.fillStyle = '#ffd94a'; ctx.fillRect(sx + 3, sy + 10, 1, 1); // drawer knob
+    ctx.fillStyle = '#8a2f2a'; ctx.fillRect(sx + 3, sy + 1, 9, 5); // the journal
+    ctx.fillStyle = '#a33327'; ctx.fillRect(sx + 3, sy + 1, 9, 1);
     ctx.fillStyle = '#f8f0d8'; ctx.fillRect(sx + 4, sy + 2, 7, 3);
     ctx.fillStyle = '#8a919c'; ctx.fillRect(sx + 5, sy + 3, 5, 1);
-    ctx.fillStyle = '#ffd94a'; ctx.fillRect(sx + 13, sy + 4, 3, 1);
+    ctx.fillStyle = '#ffd94a'; ctx.fillRect(sx + 13, sy + 4, 3, 1); ctx.fillRect(sx + 15, sy + 4, 1, 1); // the pencil
     return;
   }
-  if (ch === 'h') { // the fireplace
+  if (ch === 'h') { // the fireplace: brick, mantel, logs and a living flame
     ctx.fillStyle = '#7a4636'; ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#5e3427'; ctx.fillRect(sx + 3, sy + 6, 10, 10);
+    ctx.fillStyle = '#8a5340'; ctx.fillRect(sx, sy, TILE, 2); // mantel shelf, lit
+    ctx.fillStyle = '#5e3427'; ctx.fillRect(sx + 1, sy + 5, 6, 1); ctx.fillRect(sx + 9, sy + 5, 6, 1); ctx.fillRect(sx + 5, sy + 9, 6, 1); // mortar lines
+    ctx.fillStyle = '#20242a'; ctx.fillRect(sx + 3, sy + 6, 10, 10); // firebox
+    ctx.fillStyle = '#5a3a1e'; ctx.fillRect(sx + 5, sy + 13, 7, 2); ctx.fillRect(sx + 6, sy + 12, 5, 1); // logs
     const fl = Math.floor(perfNow * 6) % 2;
     ctx.fillStyle = '#e07b2a'; ctx.fillRect(sx + 5, sy + 10 - fl, 6, 5 + fl);
     ctx.fillStyle = '#ffd94a'; ctx.fillRect(sx + 7, sy + 11 - fl, 2, 3 + fl);
+    ctx.fillStyle = '#fff3b0'; ctx.fillRect(sx + 7, sy + 12 - fl, 1, 1);
     return;
   }
-  if (ch === 'e') { // the dining table
+  if (ch === 'e') { // the dining table: a cloth runner band that tiles
+    // along the table's length — wood above and below, cream between,
+    // with the red pinstripes that mark the runner's edges
     ctx.fillStyle = '#8a5f38'; ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#e8e2d2'; ctx.fillRect(sx + 1, sy + 3, TILE - 2, 9);
-    ctx.fillStyle = '#c9bfa8'; ctx.fillRect(sx + 1, sy + 11, TILE - 2, 1);
+    ctx.fillStyle = '#a5713d'; ctx.fillRect(sx, sy, TILE, 1); ctx.fillRect(sx, sy + 15, TILE, 1);
+    ctx.fillStyle = '#e8e2d2'; ctx.fillRect(sx, sy + 3, TILE, 10);
+    ctx.fillStyle = '#f7f3e6'; ctx.fillRect(sx, sy + 3, TILE, 2); // lit fold
+    ctx.fillStyle = '#b03030'; ctx.fillRect(sx, sy + 5, TILE, 1); ctx.fillRect(sx, sy + 11, TILE, 1); // pinstripes
+    ctx.fillStyle = '#c9bfa8'; ctx.fillRect(sx, sy + 12, TILE, 1);
     return;
   }
-  if (ch === 'm') { // a bed, made up neat
+  if (ch === 'm') { // a bed, made up neat: pillow, folded blanket, frame
+    ctx.fillStyle = 'rgba(60,35,10,0.22)'; ctx.fillRect(sx + 1, sy + 14, 14, 2);
     ctx.fillStyle = '#7a4636'; ctx.fillRect(sx, sy + 2, TILE, 12);
-    ctx.fillStyle = '#e8e2d2'; ctx.fillRect(sx + 1, sy + 3, TILE - 2, 4);
-    ctx.fillStyle = '#8e3b34'; ctx.fillRect(sx + 1, sy + 7, TILE - 2, 6);
+    ctx.fillStyle = '#5e3427'; ctx.fillRect(sx, sy + 13, TILE, 1);
+    ctx.fillStyle = '#f4f1e6'; ctx.fillRect(sx + 1, sy + 3, TILE - 2, 4); // pillow
+    ctx.fillStyle = '#d8d2c0'; ctx.fillRect(sx + 1, sy + 6, TILE - 2, 1);
+    ctx.fillStyle = '#8e3b34'; ctx.fillRect(sx + 1, sy + 7, TILE - 2, 6); // blanket
+    ctx.fillStyle = '#a34a41'; ctx.fillRect(sx + 1, sy + 7, TILE - 2, 2); // its folded top
+    ctx.fillStyle = '#c9853e'; ctx.fillRect(sx + 1, sy + 10, TILE - 2, 1); // a woven stripe
     return;
   }
-  if (ch === 'x') { // stairs up: bedrooms and boxes
+  if (ch === 'x') { // stairs: lit treads, shaded risers
     ctx.fillStyle = '#6b5136'; ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx, sy + 10, TILE, 3); ctx.fillRect(sx, sy + 5, TILE, 3); ctx.fillRect(sx, sy, TILE, 3);
+    ctx.fillStyle = '#a8895c'; ctx.fillRect(sx, sy, TILE, 3); ctx.fillRect(sx, sy + 5, TILE, 3); ctx.fillRect(sx, sy + 10, TILE, 3);
+    ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx, sy + 3, TILE, 2); ctx.fillRect(sx, sy + 8, TILE, 2); ctx.fillRect(sx, sy + 13, TILE, 2);
+    ctx.fillStyle = '#5e4c36'; ctx.fillRect(sx, sy + 4, TILE, 1); ctx.fillRect(sx, sy + 9, TILE, 1); ctx.fillRect(sx, sy + 14, TILE, 1);
     return;
   }
-  if (ch === 'D') { // the door mat
+  if (ch === 'D') { // the door mat: woven, bordered, worn bright in the middle
     ctx.fillStyle = '#5e7a4a'; ctx.fillRect(sx + 1, sy + 4, 14, 9);
+    ctx.fillStyle = '#6d8a56'; ctx.fillRect(sx + 2, sy + 5, 12, 7);
     ctx.fillStyle = '#4a6339'; ctx.fillRect(sx + 3, sy + 6, 10, 5);
+    ctx.fillStyle = '#7ea065'; ctx.fillRect(sx + 6, sy + 7, 4, 3); // the worn patch
+    ctx.fillStyle = '#3d552e'; ctx.fillRect(sx + 1, sy + 4, 14, 1); ctx.fillRect(sx + 1, sy + 12, 14, 1);
     return;
   }
 }
+
 function drawAreaProps() {
   if (area === 'barnIn' && G.save.wine.jar) { // the jar, breathing on the kitchen counter
     const jx = 9 * TILE - camX, jy = 2 * TILE - camY;
@@ -5344,7 +5399,9 @@ function drawAreaProps() {
   }
   if (s.tray.n > 0 || s.world.flags.fridgeTray) {
     const sx = 1 * TILE - camX, sy = 1 * TILE - camY;
+    ctx.fillStyle = 'rgba(60,35,10,0.25)'; ctx.fillRect(sx + 2, sy + 11, 13, 2); // the tray's shade
     ctx.fillStyle = '#5e4c36'; ctx.fillRect(sx + 1, sy + 6, 14, 6);
+    ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx + 1, sy + 6, 14, 1); // its lit rim
     ctx.fillStyle = s.tray.ready ? '#7ed957' : '#c9b18a';
     for (let i = 0; i < 5; i++) ctx.fillRect(sx + 2 + i * 3, sy + 4, 2, 3);
   }
@@ -5353,14 +5410,19 @@ function drawAreaProps() {
   if (s.world.ch === 2 && s.world.step >= 5 && trips < 3) {
     for (let i = 0; i < 3 - trips; i++) {
       const sx = (15 + i) * TILE - camX, sy = 10 * TILE - camY;
+      ctx.fillStyle = 'rgba(60,35,10,0.25)'; ctx.fillRect(sx + 2, sy + 13, 13, 2);
       ctx.fillStyle = '#b08d57'; ctx.fillRect(sx + 1, sy + 3, 13, 11);
+      ctx.fillStyle = '#c9a86a'; ctx.fillRect(sx + 1, sy + 3, 13, 2); // lit top flaps
       ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx + 1, sy + 8, 13, 1); ctx.fillRect(sx + 7, sy + 3, 1, 11);
+      ctx.fillStyle = '#96762f'; ctx.fillRect(sx + 6, sy + 3, 3, 2); // the tape cross
     }
   }
   if (s.world.ch === 2 && s.world.step >= 8) { // the sale papers wait on the table
     const sx = 10 * TILE - camX, sy = 5 * TILE - camY;
+    ctx.fillStyle = 'rgba(60,35,10,0.25)'; ctx.fillRect(sx + 4, sy + 11, 10, 2);
     ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 3, sy + 5, 10, 7);
     ctx.fillStyle = '#8a919c'; ctx.fillRect(sx + 5, sy + 7, 6, 1); ctx.fillRect(sx + 5, sy + 9, 6, 1);
+    ctx.fillStyle = '#b03030'; ctx.fillRect(sx + 10, sy + 9, 2, 2); // a red seal, waiting
   }
 }
 
