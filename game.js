@@ -7935,6 +7935,13 @@ function renderControls() {
    the stages witnessed across the six lives (G.save.dex). */
 let regView = 'list', regSel = 0, regCardSel = 0;
 let regLoc = 'BENCH', regPage = 0, regPlant = -1; // regPlant: index into G.save.plants for the open card
+/* THE BERRYDEX (Nov 27, 2026): a reference shelf in the back of the
+   register — real blueberry varieties, their marks, the four kinds,
+   and a year of care. All of its writing lives in TEXT.berrydex.
+   Nothing points here: no prompt, no quest, no HUD. It is reached
+   only from the register's own index, by a reader who goes looking. */
+let dexView = 'menu', dexSel = 0, dexPage = 0, dexScroll = 0, dexVar = 0, dexTextKind = 'about';
+const DEX_PER_PAGE = 6, DEX_TEXT_LINES = 10;
 const REG_LOCS = ['FAVORITES', 'BENCH', 'WINDOW', 'FRIDGE', 'GREENHOUSE', 'NURSERY', 'OFFICE', 'ROW1', 'ROW2', 'ROW3', 'ROW4', 'ROW5', 'ROW6', 'ROW7', 'ROW8', 'ROW9', 'ROW10', 'ROW11', 'ROW12', 'GARDEN', 'MEMORIAL'];
 const LOC_PRETTY = TEXT.register.locPretty;
 function locPretty(loc) { return (LOC_PRETTY[loc] || (loc.startsWith('ROW') ? F(TEXT.misc.fieldReplaceval, { replaceVal: loc.replace("ROW", "ROW ") }) : loc)); }
@@ -8020,6 +8027,145 @@ function plantSuccessor(p) {
   saveGame();
   toast(F(TEXT.register.succPlanted, { name }));
 }
+function dexMenuEntries() {
+  const B = TEXT.berrydex;
+  return [
+    { kind: 'list', label: F(B.menuVarieties, { n: B.varieties.length }) },
+    { kind: 'text', text: 'about', label: B.menuAbout },
+    { kind: 'text', text: 'primer', label: B.menuPrimer },
+    { kind: 'text', text: 'care', label: B.menuCare },
+    { kind: 'text', text: 'sources', label: B.menuSources },
+  ];
+}
+function dexBgText(bg) { const B = TEXT.berrydex; return bg === 'YES' ? B.bgYes : bg === 'LISTED' ? B.bgListed : bg === 'GUIDE' ? B.bgGuide : B.bgNo; }
+function dexZ6Text(z6) { const B = TEXT.berrydex; return z6 === 'YES' ? B.z6Yes : z6 === 'EDGE' ? B.z6Edge : B.z6No; }
+function dexChips(v) {
+  const B = TEXT.berrydex;
+  return (v.bg === 'YES' ? B.chipBg : v.bg === 'NO' ? B.chipNone : B.chipBgQ) + ' ' + (v.z6 === 'YES' ? B.chipZ6 : v.z6 === 'NO' ? B.chipNone : B.chipZ6Q);
+}
+/* A variety's page: short fields ride on one line (label in green,
+   fact in ink); long ones take a green heading and wrapped lines. */
+function dexDetailLines(v) {
+  const B = TEXT.berrydex, out = [];
+  const field = (label, val) => {
+    if ((label + ' ' + val).length <= 36) out.push({ k: 'kv', a: label, b: val });
+    else { out.push({ k: 'h', t: label }); for (const l of wrapText(val, 32)) out.push({ k: 't', t: '  ' + l }); }
+  };
+  field(B.fType, v.type);
+  if (v.aka) field(B.fAka, v.aka);
+  field(B.fZones, v.zones);
+  field(B.fChill, v.chill);
+  field(B.fSize, v.size);
+  field(B.fFruit, v.fruit);
+  field(B.fSeason, v.season);
+  field(B.fYield, v.yld);
+  field(B.fPoll, v.poll);
+  field(B.fNotes, v.notes);
+  field(B.fBluegrass, dexBgText(v.bg));
+  field(B.fZone6a, dexZ6Text(v.z6));
+  return out;
+}
+/* The shelf's prose pages — about, the four kinds, a year of care,
+   the sources — as wrapped lines with green headings. */
+function dexTextLines(kind) {
+  const B = TEXT.berrydex, out = [];
+  const para = t => { for (const l of wrapText(t, 35)) out.push({ k: 't', t: l }); out.push({ k: 't', t: '' }); };
+  const head = t => { for (const l of wrapText(t, 35)) out.push({ k: 'h', t: l }); };
+  if (kind === 'about') B.about.forEach(para);
+  else if (kind === 'primer') for (const k of B.primer) { head(k.h); for (const l of wrapText(k.t, 33)) out.push({ k: 't', t: '  ' + l }); out.push({ k: 't', t: '' }); }
+  else if (kind === 'care') {
+    para(B.careIntro);
+    for (const sec of B.care) {
+      head(sec.h);
+      for (const b of sec.lines) { const wl = wrapText(b, 32); wl.forEach((l, i) => out.push({ k: 't', t: (i === 0 ? '· ' : '  ') + l })); }
+      out.push({ k: 't', t: '' });
+    }
+  }
+  else B.sources.forEach(para);
+  while (out.length && out[out.length - 1].t === '') out.pop();
+  return out;
+}
+function dexTextTitle() {
+  const B = TEXT.berrydex;
+  return dexTextKind === 'about' ? B.menuAbout : dexTextKind === 'primer' ? B.menuPrimer : dexTextKind === 'care' ? B.menuCare : B.menuSources;
+}
+function dexUpdate() {
+  const B = TEXT.berrydex;
+  if (dexView === 'menu') {
+    const es = dexMenuEntries();
+    if (Input.bHit) { regView = 'index'; regSel = 0; return; }
+    if (menuNavHit('up')) dexSel = (dexSel + es.length - 1) % es.length;
+    if (menuNavHit('down')) dexSel = (dexSel + 1) % es.length;
+    if (Input.aHit) {
+      const e = es[dexSel];
+      if (e.kind === 'list') { dexView = 'list'; dexSel = 0; dexPage = 0; }
+      else { dexView = 'text'; dexTextKind = e.text; dexScroll = 0; }
+    }
+  } else if (dexView === 'list') {
+    const n = B.varieties.length, pageCount = Math.ceil(n / DEX_PER_PAGE);
+    if (Input.bHit) { dexView = 'menu'; dexSel = 0; return; }
+    if (menuNavHit('up')) { if (dexSel > 0) dexSel--; else if (dexPage > 0) { dexPage--; dexSel = Math.min(DEX_PER_PAGE, n - dexPage * DEX_PER_PAGE) - 1; } }
+    if (menuNavHit('down')) { const pageItems = Math.min(DEX_PER_PAGE, n - dexPage * DEX_PER_PAGE); if (dexSel < pageItems - 1) dexSel++; else if (dexPage < pageCount - 1) { dexPage++; dexSel = 0; } }
+    if (menuNavHit('left')) { dexPage = (dexPage + pageCount - 1) % pageCount; dexSel = 0; }
+    if (menuNavHit('right')) { dexPage = (dexPage + 1) % pageCount; dexSel = 0; }
+    if (Input.aHit) { dexVar = dexPage * DEX_PER_PAGE + dexSel; dexView = 'detail'; dexScroll = 0; }
+  } else { // detail | text — a page of lines, read at the reader's pace
+    if (Input.bHit) { dexView = dexView === 'detail' ? 'list' : 'menu'; dexScroll = 0; return; }
+    const lines = dexView === 'detail' ? dexDetailLines(B.varieties[dexVar]) : dexTextLines(dexTextKind);
+    const maxScroll = Math.max(0, lines.length - DEX_TEXT_LINES);
+    if (menuNavHit('up')) dexScroll = Math.max(0, dexScroll - 1);
+    if (menuNavHit('down')) dexScroll = Math.min(maxScroll, dexScroll + 1);
+    if (menuNavHit('left')) dexScroll = Math.max(0, dexScroll - DEX_TEXT_LINES);
+    if (menuNavHit('right')) dexScroll = Math.min(maxScroll, dexScroll + DEX_TEXT_LINES);
+  }
+}
+function renderDex() {
+  const B = TEXT.berrydex;
+  if (dexView === 'menu') {
+    drawText(B.title, 80 - textW(B.title, 2) / 2, 10, '#20242a', 2);
+    drawText(B.subTitle, 80 - textW(B.subTitle, 1) / 2, 24, '#2e8b3a', 1);
+    dexMenuEntries().forEach((e, i) => {
+      const y = 38 + i * 11;
+      if (i === dexSel) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(9, y - 3, 142, 11); drawText('▶', 11, y, '#b03030', 1); }
+      drawText(e.label.slice(0, 34), 20, y, '#20242a', 1);
+    });
+    drawText(TEXT.screens.bBack, 12, 129, '#5a6270', 1);
+    drawPaw(142, 124, '#b09a72');
+  } else if (dexView === 'list') {
+    const vars = B.varieties, pageCount = Math.ceil(vars.length / DEX_PER_PAGE);
+    drawText(B.title, 80 - textW(B.title, 2) / 2, 10, '#20242a', 2);
+    const cur = vars[dexPage * DEX_PER_PAGE + dexSel];
+    if (cur) drawText(cur.group, 12, 23, '#2e8b3a', 1);
+    if (pageCount > 1) { const pg = F(B.pageOf, { p: dexPage + 1, n: pageCount }); drawText(pg, 148 - textW(pg, 1), 23, '#5a6270', 1); }
+    vars.slice(dexPage * DEX_PER_PAGE, dexPage * DEX_PER_PAGE + DEX_PER_PAGE).forEach((v, i) => {
+      const y = 38 + i * 14;
+      if (i === dexSel) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(9, y - 3, 142, 12); drawText('▶', 11, y, '#b03030', 1); }
+      ctx.fillStyle = '#dfe9f5'; ctx.fillRect(12, y + 9, 136, 1);
+      ctx.fillStyle = '#3b4a8c'; ctx.fillRect(21, y - 1, 7, 7);
+      ctx.fillStyle = '#7d94d8'; ctx.fillRect(22, y, 2, 2);
+      drawText(v.name.slice(0, 16), 36, y, '#20242a', 1);
+      const chips = dexChips(v);
+      drawText(chips, 148 - textW(chips, 1), y, '#5a6270', 1);
+    });
+    drawText(B.hintList, 12, 129, '#5a6270', 1);
+    drawPaw(142, 124, '#b09a72');
+  } else {
+    const isDetail = dexView === 'detail';
+    const title = isDetail ? B.varieties[dexVar].name : dexTextTitle();
+    drawText(title, 80 - textW(title, 2) / 2, 10, '#20242a', 2);
+    const lines = isDetail ? dexDetailLines(B.varieties[dexVar]) : dexTextLines(dexTextKind);
+    lines.slice(dexScroll, dexScroll + DEX_TEXT_LINES).forEach((L, i) => {
+      const y = 32 + i * 9;
+      if (L.k === 'kv') { drawText(L.a, 14, y, '#2e8b3a', 1); drawText(L.b, 14 + textW(L.a, 1) + 4, y, '#20242a', 1); }
+      else if (L.k === 'h') drawText(L.t, 14, y, '#2e8b3a', 1);
+      else drawText(L.t, 14, y, '#20242a', 1);
+    });
+    if (dexScroll > 0) drawText('↑', 148, 32, '#5a6270', 1);
+    if (dexScroll + DEX_TEXT_LINES < lines.length) drawText('▼', 148, 32 + (DEX_TEXT_LINES - 1) * 9, '#5a6270', 1);
+    drawText(TEXT.screens.bBack, 12, 129, '#5a6270', 1);
+    drawPaw(142, 124, '#b09a72');
+  }
+}
 function registerUpdate() {
   const locs = regLocationsPresent();
   if (regView === 'list') {
@@ -8054,6 +8200,7 @@ function registerUpdate() {
       if (e.kind === 'loc') { regLoc = e.loc; regPage = 0; regSel = -1; regView = 'list'; }
       else if (e.kind === 'az') { regView = 'az'; regSel = 0; }
       else if (e.kind === 'back') { regView = 'back'; regSel = 0; }
+      else if (e.kind === 'dex') { regView = 'dex'; dexView = 'menu'; dexSel = 0; dexScroll = 0; }
       else if (e.kind === 'page') { regView = 'page'; regPage = e.page; regSel = 0; }
     }
   } else if (regView === 'az') {
@@ -8087,6 +8234,8 @@ function registerUpdate() {
       return;
     }
     if (Input.bHit || Input.aHit) { regView = 'index'; regSel = 0; return; }
+  } else if (regView === 'dex') {
+    dexUpdate();
   } else { // card
     if (Input.bHit) { regView = regLoc === 'MEMORIAL' || (G.save.plants[regPlant] && G.save.plants[regPlant].memorial) ? 'back' : 'list'; if (regView === 'list') regSel = 0; return; }
     const p = G.save.plants[regPlant];
@@ -8109,6 +8258,7 @@ function regIndexEntries() {
   if ((G.save.company && !G.save.company.gone) || (G.save.company && G.save.company.plantedOut) || (G.save.nursery && (G.save.nursery.stock > 0 || G.save.nursery.history.length))) es.push({ kind: 'page', page: 'COMPANY', label: TEXT.register.theCompanyNursery });
   es.push({ kind: 'az', label: TEXT.register.aZNameIndex });
   es.push({ kind: 'back', label: TEXT.register.theBackPagesIn });
+  es.push({ kind: 'dex', label: TEXT.berrydex.indexLabel }); // the reference shelf, behind the written pages
   if (G.save.germ) es.push({ kind: 'page', page: 'GERMINATION', label: TEXT.register.germinationRecord });
   if (G.save.promise) es.push({ kind: 'page', page: 'PROMISE', label: TEXT.register.omaSPromise });
   if (G.save.wine.batches.length || G.save.wine.jar) es.push({ kind: 'page', page: 'CELLAR', label: TEXT.register.theCellar });
@@ -8161,9 +8311,11 @@ function renderRegister() {
   } else if (regView === 'index') {
     drawText(TEXT.register.theRegister, 80 - textW(TEXT.register.theRegister, 2) / 2, 10, '#20242a', 2);
     drawText(TEXT.register.everyPlantByName, 80 - textW(TEXT.register.everyPlantByName, 1) / 2, 24, '#2e8b3a', 1);
-    regIndexEntries().slice(0, 9).forEach((e, i) => {
+    const idxEntries = regIndexEntries();
+    const idxStart = Math.max(0, Math.min(regSel - 8, idxEntries.length - 9)); // the window follows the reader past nine entries
+    idxEntries.slice(idxStart, idxStart + 9).forEach((e, i) => {
       const y = 38 + i * 11;
-      if (i === regSel) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(9, y - 3, 142, 11); drawText('▶', 11, y, '#b03030', 1); }
+      if (idxStart + i === regSel) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(9, y - 3, 142, 11); drawText('▶', 11, y, '#b03030', 1); }
       drawText(e.label.slice(0, 34), 20, y, '#20242a', 1);
     });
     drawText(TEXT.screens.bBack, 12, 129, '#5a6270', 1);
@@ -8202,6 +8354,8 @@ function renderRegister() {
     pg.lines.slice(0, 12).forEach((l, i) => drawText(l.slice(0, 36), 14, 32 + i * 9, '#20242a', 1));
     drawText(TEXT.screens.bBack, 12, 129, '#5a6270', 1);
     drawPaw(142, 124, '#b09a72');
+  } else if (regView === 'dex') {
+    renderDex();
   } else {
     const p = s.plants[regPlant];
     if (!p) { regView = 'list'; return; }
@@ -8404,6 +8558,7 @@ window.__hss = {
       promise: G.save.promise, germ: G.save.germ,
       npcs: npcList.map(n => ({ id: n.id, x: n.tx, y: n.ty })),
       register: { view: regView, sel: regSel, cardSel: regCardSel, loc: regLoc, page: regPage },
+      berrydex: { view: dexView, sel: dexSel, page: dexPage, scroll: dexScroll, variety: dexVar, text: dexTextKind },
       dex: JSON.parse(JSON.stringify(G.save.dex)), deerBeaten: G.save.deerBeaten, deerPresent: G.save.deerPresent,
       chapterDone: G.save.chapterDone, player: { x: player.tx, y: player.ty, dir: player.dir },
       alvin: { x: alvin.tx, y: alvin.ty }, trial: trialSnapshot(),

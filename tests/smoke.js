@@ -1927,6 +1927,103 @@ function findChromium() {
     await page.evaluate(b => window.__hss.setSave(b), base11);
   }
 
+  // THE BERRYDEX (Nov 27, 2026): a reference shelf in the back of the
+  // register — 31 real varieties with their two marks (sold by
+  // Bluegrass Blueberries; fit for zone 6A), the four kinds, a year of
+  // care, and the sources. Nothing points at it: no prompt, no quest,
+  // no HUD. The tests walk in the way a reader does — register, index,
+  // the shelf — and read pages the way the game builds them.
+  {
+    const dexInfo = await page.evaluate(() => {
+      const vs = TEXT.berrydex.varieties;
+      return {
+        n: vs.length,
+        sold: vs.filter(v => v.bg === 'YES' || v.bg === 'LISTED').length,
+        both: vs.filter(v => (v.bg === 'YES' || v.bg === 'LISTED') && v.z6 === 'YES').length,
+        edge: vs.filter(v => v.z6 === 'EDGE').length,
+        legacy: vs.findIndex(v => v.name === 'LEGACY'),
+        misty: vs.findIndex(v => v.name === 'MISTY'),
+        tifblue: vs.findIndex(v => v.name === 'TIFBLUE'),
+      };
+    });
+    check('berrydex: 31 varieties — 24 sold by Bluegrass, 18 of those fit for 6A, 2 borderline', dexInfo.n === 31 && dexInfo.sold === 24 && dexInfo.both === 18 && dexInfo.edge === 2, JSON.stringify(dexInfo));
+
+    await page.evaluate(() => { window.__hss.openRegister(); regView = 'index'; regSel = regIndexEntries().findIndex(e => e.kind === 'dex'); });
+    await tap('z'); await page.waitForTimeout(250);
+    s = await S();
+    check('berrydex: the shelf opens from the register index', s.mode === 'register' && s.register.view === 'dex' && s.berrydex.view === 'menu', s.register.view + '/' + (s.berrydex && s.berrydex.view));
+    await page.screenshot({ path: path.join(SHOTS, 'berrydex-menu.png') });
+
+    await tap('z'); await page.waitForTimeout(250); // THE VARIETIES
+    s = await S();
+    check('berrydex: the variety index opens on page one', s.berrydex.view === 'list' && s.berrydex.page === 0 && s.berrydex.sel === 0, JSON.stringify(s.berrydex));
+    await page.screenshot({ path: path.join(SHOTS, 'berrydex-list.png') });
+    await tap('ArrowRight'); await page.waitForTimeout(200);
+    s = await S();
+    check('berrydex: Right turns the variety index to page two', s.berrydex.view === 'list' && s.berrydex.page === 1, JSON.stringify(s.berrydex));
+
+    // LEGACY — Bluegrass-sold and true for 6A, its two chill figures printed
+    await page.evaluate(i => { dexPage = Math.floor(i / 6); dexSel = i % 6; }, dexInfo.legacy);
+    await tap('z'); await page.waitForTimeout(250);
+    s = await S();
+    const legacyLines = await page.evaluate(i => dexDetailLines(TEXT.berrydex.varieties[i]).map(l => (l.k === 'kv' ? l.a + ' ' + l.b : l.t)).join(' | '), dexInfo.legacy);
+    check('berrydex: Legacy opens — sells at Bluegrass, YES for 6A, both chill figures on the page', s.berrydex.view === 'detail' && s.berrydex.variety === dexInfo.legacy && legacyLines.includes('SELLS IT') && legacyLines.includes('ZONE 6A: YES') && legacyLines.includes('700-900'), legacyLines.slice(0, 90));
+    await page.screenshot({ path: path.join(SHOTS, 'berrydex-legacy.png') });
+    await tap('ArrowDown'); await tap('ArrowDown'); await page.waitForTimeout(200);
+    s = await S();
+    check('berrydex: a variety page scrolls under the reader', s.berrydex.view === 'detail' && s.berrydex.scroll >= 2, 'scroll=' + s.berrydex.scroll);
+    await tap('x'); await page.waitForTimeout(200);
+
+    // MISTY — borderline for 6A, and the page says so in so many words
+    await page.evaluate(i => { dexPage = Math.floor(i / 6); dexSel = i % 6; }, dexInfo.misty);
+    await tap('z'); await page.waitForTimeout(250);
+    s = await S();
+    const mistyLines = await page.evaluate(i => dexDetailLines(TEXT.berrydex.varieties[i]).map(l => (l.k === 'kv' ? l.a + ' ' + l.b : l.t)).join(' | '), dexInfo.misty);
+    check('berrydex: Misty opens — BORDERLINE for 6A, in so many words', s.berrydex.view === 'detail' && s.berrydex.variety === dexInfo.misty && mistyLines.includes('BORDERLINE'), mistyLines.slice(0, 90));
+    await tap('x'); await page.waitForTimeout(200);
+
+    // TIFBLUE — a rabbiteye: NO for 6A, and only in Bluegrass's guide
+    await page.evaluate(i => { dexPage = Math.floor(i / 6); dexSel = i % 6; }, dexInfo.tifblue);
+    await tap('z'); await page.waitForTimeout(250);
+    s = await S();
+    const tif = await page.evaluate(i => { const v = TEXT.berrydex.varieties[i]; return { chips: dexChips(v), lines: dexDetailLines(v).map(l => (l.k === 'kv' ? l.a + ' ' + l.b : l.t)).join(' | ') }; }, dexInfo.tifblue);
+    check('berrydex: Tifblue opens — chips read BG? --, the page says NO for 6A and unverified for the shop', s.berrydex.view === 'detail' && s.berrydex.variety === dexInfo.tifblue && tif.chips === 'BG? --' && tif.lines.includes('ZONE 6A: NO') && tif.lines.includes('IN THEIR GUIDE') && tif.lines.includes('UNVERIFIED'), tif.chips);
+    await page.screenshot({ path: path.join(SHOTS, 'berrydex-tifblue.png') });
+    await tap('x'); await page.waitForTimeout(200); // back to the variety index
+    await tap('x'); await page.waitForTimeout(200); // back to the shelf menu
+    s = await S();
+    check('berrydex: B walks back out to the shelf menu', s.berrydex.view === 'menu', s.berrydex.view);
+
+    // A YEAR OF CARE — the care pages render, all six sections, and scroll
+    await page.evaluate(() => { dexSel = dexMenuEntries().findIndex(e => e.text === 'care'); });
+    await tap('z'); await page.waitForTimeout(250);
+    s = await S();
+    const careHeads = await page.evaluate(() => dexTextLines('care').filter(l => l.k === 'h').map(l => l.t).join(' | '));
+    check('berrydex: a year of care opens — ground rules through the quiet work', s.berrydex.view === 'text' && s.berrydex.text === 'care' && careHeads.includes('THE GROUND RULES') && careHeads.includes('PRUNING SEASON') && careHeads.includes('QUIET WORK'), careHeads.slice(0, 90));
+    await page.screenshot({ path: path.join(SHOTS, 'berrydex-care.png') });
+    for (let i = 0; i < 6; i++) await tap('ArrowDown');
+    await page.waitForTimeout(200);
+    s = await S();
+    check('berrydex: the care pages scroll', s.berrydex.view === 'text' && s.berrydex.scroll >= 6, 'scroll=' + s.berrydex.scroll);
+    await tap('x'); await page.waitForTimeout(200);
+
+    // THE FOUR KINDS opens too, and B leaves the shelf the way it came
+    await page.evaluate(() => { dexSel = dexMenuEntries().findIndex(e => e.text === 'primer'); });
+    await tap('z'); await page.waitForTimeout(250);
+    s = await S();
+    check('berrydex: the four kinds open', s.berrydex.view === 'text' && s.berrydex.text === 'primer', s.berrydex.text);
+    await tap('x'); await page.waitForTimeout(200);
+    await tap('x'); await page.waitForTimeout(200);
+    s = await S();
+    check('berrydex: B from the shelf returns to the register index', s.register.view === 'index', s.register.view);
+    await tap('x'); await page.waitForTimeout(200);
+    s = await S();
+    check('berrydex: the register closes back to the plant list', s.register.view === 'list', s.register.view);
+    await tap('x'); await page.waitForTimeout(200);
+    s = await S();
+    check('berrydex: register B returns to overworld', s.mode === 'overworld', s.mode);
+  }
+
   // FULLSCREEN FILL (Daniel, Nov 26, 2026): the stage fills the available
   // browser area — always the EXACT fit at the unchanged 160:144 aspect,
   // so the stage touches the limiting edge of the window at every size.
