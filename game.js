@@ -5830,8 +5830,14 @@ function fitStage() {
   const portrait = window.innerHeight > window.innerWidth;
   const fill = portrait && !deckEl.hidden;
   consoleEl.classList.toggle('fill', fill);
-  if (fill) { consoleEl.style.width = window.innerWidth + 'px'; return; }
-  const deckH = deckEl.hidden ? 0 : deckEl.offsetHeight;
+  if (fill) { consoleEl.classList.toggle('deck-overlay', false); consoleEl.style.width = window.innerWidth + 'px'; return; }
+  // Landscape with the deck in play (Daniel, Nov 27, 2026): the deck
+  // overlays the viewport's bottom corners (the .deck-overlay CSS)
+  // instead of reserving a slab under the screen, so the screen scales
+  // to the full viewport height.
+  const overlay = !deckEl.hidden;
+  consoleEl.classList.toggle('deck-overlay', overlay);
+  const deckH = overlay ? 0 : deckEl.offsetHeight;
   const availW = window.innerWidth - 8, availH = window.innerHeight - deckH - 8; // 8: the console's borders
   const scale = Math.min(availW / 160, availH / 144);
   consoleEl.style.width = (Math.max(160, Math.floor(160 * scale)) + 8) + 'px'; // +8 so the SCREEN is exactly 160 x scale

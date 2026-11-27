@@ -58,6 +58,27 @@ canvas#game {
   box-shadow: 0 2px 0 #0a140d;
 }
 #audibleBtn:hover, #bookBtn:hover { background: #274e13; color: #ffffff; }
+/* Landscape deck overlay (Daniel, Nov 27, 2026): on a wide screen the
+   deck no longer parks in a tall slab under the game. fitStage() adds
+   .deck-overlay when the deck is in play in landscape: the screen then
+   scales to the full viewport height, and the deck floats over the
+   viewport's bottom corners — in the side bands beside the 10:9 picture
+   on a 16:9 window. The deck container lets clicks pass through; only
+   the controls themselves take them. Portrait keeps the in-flow deck
+   (the .fill rules above); this applies everywhere else. */
+#console.deck-overlay #deck {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  height: auto; padding: 12px 18px;
+  background: transparent; border-top: none;
+  pointer-events: none;
+}
+#console.deck-overlay #stick,
+#console.deck-overlay #btnMenu,
+#console.deck-overlay #touchBtns { pointer-events: auto; }
+/* MENU leaves the bottom-centre in overlay mode: the title/pause book
+   plaques live there, centred on the screen, and the pill covered them.
+   It retires to the viewport's top-right corner instead. */
+#console.deck-overlay #btnMenu { position: fixed; top: 12px; right: 16px; }
 /* control deck: lives in the page frame below the screen, so the on-screen
    controls never cover the game's dialogue box */
 #deck {

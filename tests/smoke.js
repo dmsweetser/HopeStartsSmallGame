@@ -1779,6 +1779,36 @@ function findChromium() {
       'top=' + Math.round(m.console.top) + ' bottomGap=' + Math.round(m.ih - m.console.bottom) + ' deckTop=' + Math.round(m.deck.top) + ' screenBottom=' + Math.round(m.screen.bottom));
   }
 
+  /* Desktop landscape (Daniel, Nov 27, 2026): with the deck forced
+     visible (STICK: ALWAYS — his desktop case), the canvas takes the
+     full viewport height and the deck overlays the bottom corners in
+     the side bands instead of reserving a slab under the game. */
+  const desktopAt = async (w, h) => {
+    const c2 = await browser.newContext({ viewport: { width: w, height: h } });
+    const p2 = await c2.newPage();
+    await p2.goto('http://127.0.0.1:8907/index.html', { waitUntil: 'load' });
+    await p2.evaluate(() => localStorage.setItem('hss-settings-v1', JSON.stringify({ stick: 'always', music: true })));
+    await p2.reload({ waitUntil: 'load' });
+    await p2.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+    await p2.waitForTimeout(500);
+    const m = await p2.evaluate(() => {
+      const R = id => { const r = document.getElementById(id).getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; };
+      return { iw: window.innerWidth, ih: window.innerHeight, canvas: R('game'), deck: R('deck'), stick: R('stickBase'), btnA: R('btnA'), btnMenu: R('btnMenu'), deckHidden: document.getElementById('deck').hidden, pad: window.__hss.state().padVisible };
+    });
+    await c2.close();
+    return m;
+  };
+  {
+    const m = await desktopAt(1600, 900);
+    check('desktop 1600x900: canvas fills the viewport height, deck overlays the side bands',
+      m.pad === true && !m.deckHidden &&
+      (m.canvas.bottom - m.canvas.top) >= m.ih - 24 && m.canvas.top <= 12 && (m.ih - m.canvas.bottom) <= 12 &&
+      m.stick.left >= 0 && (m.ih - m.stick.bottom) <= 16 && m.stick.right <= m.canvas.left + 24 &&
+      m.btnA.right <= m.iw && (m.ih - m.btnA.bottom) <= 40 && m.btnA.left >= m.canvas.right - 24 &&
+      m.btnMenu.top <= 24 && m.btnMenu.right <= m.iw,
+      'canvasH=' + Math.round(m.canvas.bottom - m.canvas.top) + ' canvasTop=' + Math.round(m.canvas.top) + ' stickRight=' + Math.round(m.stick.right) + ' canvasLeft=' + Math.round(m.canvas.left));
+  }
+
   await browser.close();
   if (ownServer) server.close();
   log('SMOKE DONE');
