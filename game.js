@@ -5236,27 +5236,44 @@ function drawAreaTile(ch, sx, sy, tx, ty) {
   ctx.fillStyle = '#2a2f26'; ctx.fillRect(sx, sy, TILE, TILE);
 }
 function drawGreenTile(ch, sx, sy, tx, ty) {
-  ctx.drawImage(TILES.soil, sx, sy); // gravel-and-earth floor
-  ctx.fillStyle = 'rgba(120,90,60,0.25)'; ctx.fillRect(sx, sy + 12, TILE, 1);
-  if (ch === 'z' || ch === 'D') { if (ch === 'D') { ctx.fillStyle = '#5e7a4a'; ctx.fillRect(sx + 1, sy + 4, 14, 9); } return; }
+  // gravel-and-earth floor: furrowed soil tones with pebble flecks
+  ctx.drawImage(TILES.soil, sx, sy);
+  ctx.fillStyle = 'rgba(60,35,10,0.28)'; ctx.fillRect(sx, sy + 12, TILE, 1);
+  ctx.fillStyle = 'rgba(255,240,200,0.20)'; ctx.fillRect(sx + 3, sy + 4, 2, 1); ctx.fillRect(sx + 10, sy + 9, 2, 1);
+  if (ch === 'z' || ch === 'D') { if (ch === 'D') { // the door mat, woven green
+    ctx.fillStyle = '#5e7a4a'; ctx.fillRect(sx + 1, sy + 4, 14, 9);
+    ctx.fillStyle = '#6d8a56'; ctx.fillRect(sx + 2, sy + 5, 12, 7);
+    ctx.fillStyle = '#4a6339'; ctx.fillRect(sx + 3, sy + 6, 10, 5);
+    ctx.fillStyle = '#3d552e'; ctx.fillRect(sx + 1, sy + 4, 14, 1); ctx.fillRect(sx + 1, sy + 12, 14, 1);
+  } return; }
   if (ch === 'H') { // glass: pale panes in a white frame, sky showing through
-    ctx.fillStyle = '#bcd9f2'; ctx.fillRect(sx, sy, TILE, TILE);
-    ctx.fillStyle = '#dceefb'; ctx.fillRect(sx + 2, sy + 2, 5, 5);
+    const grad = ctx.createLinearGradient(sx, sy, sx, sy + 16); grad.addColorStop(0, '#dceefb'); grad.addColorStop(1, '#a8cdea');
+    ctx.fillStyle = grad; ctx.fillRect(sx, sy, TILE, TILE);
+    ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(sx + 2, sy + 2, 5, 5); ctx.fillRect(sx + 3, sy + 3, 2, 2); // sky shine
+    ctx.fillStyle = 'rgba(127,178,232,0.5)'; ctx.fillRect(sx + 9, sy + 10, 5, 4); // reflected green depths
     ctx.fillStyle = '#f4f8fc'; ctx.fillRect(sx, sy, TILE, 1); ctx.fillRect(sx, sy + 15, TILE, 1); ctx.fillRect(sx, sy, 1, TILE); ctx.fillRect(sx + 15, sy, 1, TILE);
+    ctx.fillStyle = '#c8d6e2'; ctx.fillRect(sx, sy + 15, TILE, 1);
     return;
   }
-  if (ch === 'a') { // a bench: slatted wood at working height
+  if (ch === 'a') { // a bench: slatted wood at working height, shaded legs
+    ctx.fillStyle = 'rgba(60,35,10,0.25)'; ctx.fillRect(sx + 1, sy + 13, 14, 2);
     ctx.fillStyle = '#8a6f45'; ctx.fillRect(sx, sy + 6, TILE, 4);
-    ctx.fillStyle = '#a8895c'; ctx.fillRect(sx, sy + 6, TILE, 1);
+    ctx.fillStyle = '#c9a86a'; ctx.fillRect(sx, sy + 6, TILE, 1);
+    ctx.fillStyle = '#6e5836'; ctx.fillRect(sx, sy + 8, TILE, 1);
     ctx.fillStyle = '#5e4c36'; ctx.fillRect(sx + 2, sy + 10, 2, 6); ctx.fillRect(sx + 12, sy + 10, 2, 6);
     return;
   }
-  if (ch === 'h') { // the little stove
+  if (ch === 'h') { // the little stove: iron body, pipe, a fire door that glows when lit
+    ctx.fillStyle = 'rgba(60,35,10,0.30)'; ctx.fillRect(sx + 2, sy + 14, 12, 2);
     ctx.fillStyle = '#3a3f4a'; ctx.fillRect(sx + 2, sy + 5, 12, 11);
+    ctx.fillStyle = '#565e6c'; ctx.fillRect(sx + 2, sy + 5, 12, 2); ctx.fillRect(sx + 2, sy + 5, 2, 11); // lit top + edge
+    ctx.fillStyle = '#20242a'; ctx.fillRect(sx + 2, sy + 15, 12, 1);
     ctx.fillStyle = '#2a2d33'; ctx.fillRect(sx + 7, sy - 4, 3, 9);
+    ctx.fillStyle = '#454b58'; ctx.fillRect(sx + 7, sy - 4, 1, 9);
     const lit = G.save.world.flags.heaterLit;
     ctx.fillStyle = lit ? '#e07b2a' : '#20242a'; ctx.fillRect(sx + 5, sy + 9, 6, 4);
-    if (lit) { ctx.fillStyle = '#ffd94a'; ctx.fillRect(sx + 7, sy + 10, 2, 2); }
+    if (lit) { ctx.fillStyle = '#ffd94a'; ctx.fillRect(sx + 7, sy + 10, 2, 2); ctx.fillStyle = '#fff3b0'; ctx.fillRect(sx + 7, sy + 10, 1, 1); }
+    ctx.fillStyle = '#8a919c'; ctx.fillRect(sx + 10, sy + 10, 1, 2); // latch
     return;
   }
 }
