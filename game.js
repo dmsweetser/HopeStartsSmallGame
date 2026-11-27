@@ -3404,7 +3404,10 @@ function snowify(img, alpha) {
 const SNOW_TILES = {};
 let SNOW_TREE = null;
 function buildSnow() {
-  for (const k of ['grass', 'grass2', 'grass3', 'grass4', 'tuft', 'tuftB', 'flower', 'flowerB', 'flower2', 'flower3', 'path', 'pathStone', 'soil', 'bedA', 'bedB', 'fenceBloom']) if (TILES[k]) SNOW_TILES[k] = snowify(TILES[k], 0.66);
+  for (const k of ['grass', 'grass2', 'grass3', 'grass4', 'tuft', 'tuftB', 'flower', 'flowerB', 'flower2', 'flower3', 'path', 'pathStone', 'soil', 'bedA', 'bedB', 'fenceBloom', 'can']) if (TILES[k]) SNOW_TILES[k] = snowify(TILES[k], 0.66);
+  /* the overhaul's saturated props take a lighter frost dusting, so a
+     winter scene holds together (art overhaul, Nov 27, 2026) */
+  for (const k of ['bench', 'compost', 'bush', 'crate', 'can', 'mailbox', 'birdbath', 'gate', 'fenceH', 'fenceV', 'fenceVine', 'porch', 'lawn', 'soilSprout']) if (TILES[k] && !SNOW_TILES[k]) SNOW_TILES[k] = snowify(TILES[k], 0.38);
   SNOW_TREE = snowify(TREE, 0.45);
 }
 const TILEMAP = { n: 'lawn', f: 'fenceV', v: 'fenceVine', H: 'fenceH', F: 'fenceBloom', G: 'gate', R: 'roof', c: 'chimney', W: 'wall', E: 'wallBase', i: 'window', D: 'door', g: 'grass', u: 'grass2', o: 'flower', O: 'flower2', Q: 'flower3', p: 'path', j: 'pathStone', P: 'porch', B: 'bench', C: 'compost', T: 'grass', s: 'soil', S: 'soilSprout', U: 'bush', b: 'birdbath', M: 'mailbox', K: 'crate', w: 'can', A: 'bedA', Y: 'bedB' };
@@ -5040,6 +5043,49 @@ function renderArea() {
   ctx.fillStyle = '#ffd94a'; ctx.fillRect(2, 10, 34, 1);
   drawText(F(TEXT.hud.dayDay, { day: G.save.day }), 4, 4, '#ffffff', 1);
 }
+/* field bushes and goats for the Berryhill overlay (art overhaul,
+   Nov 27, 2026): little shaded sprites where flat rects used to be */
+const FIELD_BUSH = tileCanvas(c => {
+  c.fillStyle = 'rgba(30,60,25,0.30)'; c.fillRect(2, 13, 12, 2);
+  c.fillStyle = '#2c6e24'; c.fillRect(3, 5, 10, 8); c.fillRect(2, 7, 12, 5);
+  c.fillStyle = '#3f9433'; c.fillRect(4, 4, 8, 7); c.fillRect(3, 6, 10, 4);
+  c.fillStyle = '#57b84a'; c.fillRect(5, 5, 4, 3); c.fillRect(9, 7, 3, 2);
+  c.fillStyle = '#83d95f'; c.fillRect(6, 5, 2, 1); c.fillRect(10, 6, 1, 1);
+});
+const FIELD_BUSH_DRY = tileCanvas(c => {
+  c.fillStyle = 'rgba(30,60,25,0.30)'; c.fillRect(2, 13, 12, 2);
+  c.fillStyle = '#5d6e2a'; c.fillRect(3, 5, 10, 8); c.fillRect(2, 7, 12, 5);
+  c.fillStyle = '#7a8a3a'; c.fillRect(4, 4, 8, 7); c.fillRect(3, 6, 10, 4);
+  c.fillStyle = '#9aa84e'; c.fillRect(5, 5, 4, 3); c.fillRect(9, 7, 3, 2);
+  c.fillStyle = '#c2cc74'; c.fillRect(6, 5, 2, 1); c.fillRect(10, 6, 1, 1);
+});
+const GOAT_PAL = { k: '#33302a', w: '#f2ede0', W: '#d8d2c0', e: '#26221e', h: '#c9bfa8' };
+const GOAT = makeSprite([
+'..............',
+'.kk...........',
+'kwwk..........',
+'kweewk.kkkk...',
+'.kwwwwwwwwwk..',
+'..kwwwwwwwwk..',
+'..kwwWWwwwwk..',
+'..kwk.kw.kwk..',
+'..kwk.kw.kwk..',
+'..kkk.kk.kkk..',
+'..............',
+], GOAT_PAL);
+const GOAT_GRAZE = makeSprite([
+'..............',
+'..............',
+'..kkkk........',
+'.kwwwwkkk.....',
+'.kwwwwwwwwwk..',
+'..kwwwwwwwwk..',
+'..kwwWWwwwwk..',
+'..kwk.kw.kwk..',
+'..kwk.kw.kwk..',
+'..kkk.kk.kkk..',
+'....kwek......',
+], GOAT_PAL);
 function renderBerry() {
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VW, VH);
   camX = Math.round(Math.max(0, Math.min(AW * TILE - VW, player.px + 8 - VW / 2)));
@@ -5073,33 +5119,49 @@ function renderBerry() {
       const bands = [[1, 5], [6, 10], [11, 15], [16, 19], [20, 24]];
       bands.forEach(([x0, x1], bi) => {
         const st = s6.field.tarp[bi] || 0;
-        if (st === 1 || st === 4) { ctx.fillStyle = 'rgba(32,36,42,0.55)'; ctx.fillRect(x0 * TILE - camX, 13 * TILE - camY, (x1 - x0 + 1) * TILE, 4 * TILE); }
+        if (st === 1 || st === 4) { ctx.fillStyle = 'rgba(32,36,42,0.55)'; ctx.fillRect(x0 * TILE - camX, 13 * TILE - camY, (x1 - x0 + 1) * TILE, 4 * TILE); ctx.fillStyle = 'rgba(200,210,225,0.35)'; ctx.fillRect(x0 * TILE - camX, 13 * TILE - camY, (x1 - x0 + 1) * TILE, 1); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(x0 * TILE - camX, 17 * TILE - camY - 1, (x1 - x0 + 1) * TILE, 1); }
         if (st === 2) { ctx.fillStyle = 'rgba(32,36,42,0.3)'; ctx.fillRect(x0 * TILE - camX, 13 * TILE - camY, (x1 - x0 + 1) * TILE, 4 * TILE); ctx.fillStyle = '#e8e2d2'; ctx.fillRect(x0 * TILE - camX + 2, 13 * TILE - camY + 2, 6, 2); }
         if (st === 3) { ctx.fillStyle = 'rgba(122,90,160,0.25)'; ctx.fillRect(x0 * TILE - camX, 13 * TILE - camY, (x1 - x0 + 1) * TILE, 4 * TILE); }
       });
+      ctx.fillStyle = 'rgba(60,35,10,0.30)'; ctx.fillRect(1 * TILE - camX + 2, 13 * TILE - camY + 20, 12, 2); // the mulch pile's shade
       ctx.fillStyle = '#8a6f45'; ctx.fillRect(1 * TILE - camX + 3, 13 * TILE - camY + 14, 10, 8); // the mulch pile
+      ctx.fillStyle = '#a8895c'; ctx.fillRect(1 * TILE - camX + 4, 13 * TILE - camY + 13, 6, 3);
       ctx.fillStyle = '#5d4a30'; ctx.fillRect(1 * TILE - camX + 5, 13 * TILE - camY + 10, 6, 5);
+      ctx.fillStyle = '#c9a86a'; ctx.fillRect(1 * TILE - camX + 6, 13 * TILE - camY + 11, 2, 1); ctx.fillRect(1 * TILE - camX + 9, 13 * TILE - camY + 16, 2, 1);
       if (s6.world.flags.goats) { // the goats, in their pen by the good shed
-        ctx.fillStyle = '#e8e2d2'; ctx.fillRect(23 * TILE - camX + 3, 5 * TILE - camY + 8, 9, 7); ctx.fillRect(24 * TILE - camX + 6, 6 * TILE - camY + 6, 8, 6);
-        ctx.fillStyle = '#20242a'; ctx.fillRect(23 * TILE - camX + 4, 5 * TILE - camY + 9, 1, 1); ctx.fillRect(24 * TILE - camX + 12, 6 * TILE - camY + 7, 1, 1);
+        ctx.fillStyle = 'rgba(30,60,25,0.28)'; ctx.fillRect(23 * TILE - camX + 3, 5 * TILE - camY + 14, 11, 2); ctx.fillRect(24 * TILE - camX + 5, 6 * TILE - camY + 14, 11, 2);
+        ctx.drawImage(GOAT, 23 * TILE - camX + 2, 5 * TILE - camY + 4);
+        ctx.drawImage(GOAT_GRAZE, 24 * TILE - camX + 4, 6 * TILE - camY + 4);
       }
       if (s6.world.flags.proudShoot) { ctx.fillStyle = '#3f7a2e'; ctx.fillRect(24 * TILE - camX + 7, 11 * TILE - camY + 16, 2, 8); }
       if (s6.world.ch >= 8) { // the burn pile, and the proud weed while it stands
+        ctx.fillStyle = 'rgba(30,25,20,0.30)'; ctx.fillRect(4 * TILE - camX + 3, 10 * TILE - camY + 21, 12, 2);
         ctx.fillStyle = '#38322a'; ctx.fillRect(4 * TILE - camX + 4, 10 * TILE - camY + 16, 10, 6);
         ctx.fillStyle = '#5d4a30'; ctx.fillRect(4 * TILE - camX + 6, 10 * TILE - camY + 12, 6, 5);
+        ctx.fillStyle = '#9aa0a8'; ctx.fillRect(4 * TILE - camX + 7, 10 * TILE - camY + 12, 4, 2); // ash on top
+        ctx.fillStyle = '#c3c9d1'; ctx.fillRect(4 * TILE - camX + 8, 10 * TILE - camY + 12, 2, 1);
         if ((s6.world.step || 0) >= 2 && !s6.world.flags.proudBurned) {
           const pw = 24 * TILE - camX, ph = 11 * TILE - camY;
           ctx.fillStyle = '#2e5a22'; ctx.fillRect(pw + 7, ph + 2, 3, 28);
           ctx.fillStyle = '#3f7a2e'; ctx.fillRect(pw + 2, ph + 6, 13, 4); ctx.fillRect(pw + 3, ph + 14, 11, 4);
+          ctx.fillStyle = '#57b84a'; ctx.fillRect(pw + 3, ph + 6, 5, 2); ctx.fillRect(pw + 4, ph + 14, 5, 2); // lit leaf tops
+          ctx.fillStyle = '#2c6e24'; ctx.fillRect(pw + 1, ph + 20, 15, 5); ctx.fillRect(pw + 3, ph + 25, 11, 3); // its skirts
+          ctx.fillStyle = '#57b84a'; ctx.fillRect(pw + 2, ph + 20, 6, 2);
           ctx.fillStyle = '#c94a6b'; ctx.fillRect(pw + 6, ph, 5, 5); // one poisonous flower, showing off
         }
       }
       // the tumbledown bad shed at the field's back corner
       ctx.fillStyle = '#4a4238'; ctx.fillRect(23 * TILE - camX, 16 * TILE - camY + 6, 2 * TILE, 10);
+      ctx.fillStyle = '#38322a'; ctx.fillRect(23 * TILE - camX + 8, 16 * TILE - camY + 6, 1, 10); ctx.fillRect(23 * TILE - camX + 16, 16 * TILE - camY + 6, 1, 10); ctx.fillRect(23 * TILE - camX + 24, 16 * TILE - camY + 6, 1, 10); // plank seams
+      ctx.fillStyle = '#5d5347'; ctx.fillRect(23 * TILE - camX + 2, 16 * TILE - camY + 8, 5, 3); // one board still honest
       ctx.fillStyle = '#38322a'; ctx.fillRect(23 * TILE - camX - 2, 16 * TILE - camY + 2, 2 * TILE + 4, 5);
+      ctx.fillStyle = '#575046'; ctx.fillRect(23 * TILE - camX - 2, 16 * TILE - camY + 2, 2 * TILE + 4, 1); // roof lip, lit
       // the fence's second run, segment by segment
-      ctx.fillStyle = '#c9c2ae';
-      for (let sg = 0; sg < 4; sg++) if (s6.field.fenceSeg[sg]) ctx.fillRect((1 + sg * 6) * TILE - camX, 12 * TILE - camY + 12, 6 * TILE, 2);
+      for (let sg = 0; sg < 4; sg++) if (s6.field.fenceSeg[sg]) {
+        ctx.fillStyle = '#e3ddc9'; ctx.fillRect((1 + sg * 6) * TILE - camX, 12 * TILE - camY + 12, 6 * TILE, 2);
+        ctx.fillStyle = '#b3ab94'; ctx.fillRect((1 + sg * 6) * TILE - camX, 12 * TILE - camY + 13, 6 * TILE, 1);
+        ctx.fillStyle = '#8a6f45'; ctx.fillRect((1 + sg * 6) * TILE - camX + 2, 12 * TILE - camY + 10, 3, 6); ctx.fillRect((1 + sg * 6 + 5) * TILE - camX + 11, 12 * TILE - camY + 10, 3, 6); // its posts
+      }
       if (s6.world.ch === 9 && (s6.world.step === 1 || s6.world.step === 2)) { // bees, working the blossom
         ctx.fillStyle = '#ffd94a';
         for (let bi2 = 0; bi2 < 4; bi2++) {
@@ -5112,8 +5174,7 @@ function renderBerry() {
         if (p.memorial || !p.location.startsWith('ROW')) continue;
         const rn = p.row || 1, idx = s6.plants.filter(q => q.row === rn && !q.memorial).indexOf(p);
         const px = (2 + (rn - 1) % 3 * 8 + (idx % 6)) * TILE - camX, py = (13 + Math.floor((rn - 1) / 3) + Math.floor(idx / 6) * 0) * TILE - camY;
-        ctx.fillStyle = p.health >= 2 ? '#7a8a3a' : '#3f7a2e'; ctx.fillRect(px + 4, py + 6, 8, 6);
-        ctx.fillStyle = '#2e5a22'; ctx.fillRect(px + 6, py + 3, 4, 4);
+        ctx.drawImage(p.health >= 2 ? FIELD_BUSH_DRY : FIELD_BUSH, px, py);
       }
       // the rows' counted bushes draw after their Favorites
       for (let rn2 = 1; rn2 <= 12; rn2++) {
@@ -5123,8 +5184,7 @@ function renderBerry() {
         for (let bi3 = 0; bi3 < row2.bushCount; bi3++) {
           const idx = favN + bi3;
           const px = (2 + (rn2 - 1) % 3 * 8 + (idx % 6)) * TILE - camX, py = (13 + Math.floor((rn2 - 1) / 3)) * TILE - camY;
-          ctx.fillStyle = (row2.rowHealth || 0) >= 2 ? '#7a8a3a' : '#3f7a2e'; ctx.fillRect(px + 4, py + 6, 8, 6);
-          ctx.fillStyle = '#2e5a22'; ctx.fillRect(px + 6, py + 3, 4, 4);
+          ctx.drawImage((row2.rowHealth || 0) >= 2 ? FIELD_BUSH_DRY : FIELD_BUSH, px, py);
         }
       }
     }
@@ -5137,13 +5197,16 @@ function renderBerry() {
   }
   if (G.save.world.ch >= 4) { // the inherited irises by the barn wall
     const ix = 6 * TILE - camX, iy = 5 * TILE - camY;
-    ctx.fillStyle = '#3f7a2e'; ctx.fillRect(ix + 2, iy + 8, 12, 6); ctx.fillRect(ix + 18, iy + 8, 12, 6);
-    ctx.fillStyle = '#7a5aa0'; ctx.fillRect(ix + 4, iy + 3, 3, 5); ctx.fillStyle = '#e8e2d2'; ctx.fillRect(ix + 20, iy + 3, 3, 5); ctx.fillStyle = '#ffd94a'; ctx.fillRect(ix + 12, iy + 4, 3, 4);
+    ctx.fillStyle = '#2c6e24'; ctx.fillRect(ix + 2, iy + 8, 12, 6); ctx.fillRect(ix + 18, iy + 8, 12, 6);
+    ctx.fillStyle = '#57b84a'; ctx.fillRect(ix + 3, iy + 8, 4, 2); ctx.fillRect(ix + 19, iy + 8, 4, 2); ctx.fillRect(ix + 8, iy + 9, 3, 2); ctx.fillRect(ix + 24, iy + 9, 3, 2); // lit leaf blades
+    ctx.fillStyle = '#7a5aa0'; ctx.fillRect(ix + 4, iy + 3, 3, 5); ctx.fillStyle = '#9a7cc0'; ctx.fillRect(ix + 4, iy + 3, 3, 1); ctx.fillStyle = '#e8e2d2'; ctx.fillRect(ix + 20, iy + 3, 3, 5); ctx.fillStyle = '#ffd94a'; ctx.fillRect(ix + 12, iy + 4, 3, 4); ctx.fillStyle = '#fff3b0'; ctx.fillRect(ix + 12, iy + 4, 3, 1);
   }
   if (G.save.world.ch === 5 && (G.save.world.step || 0) >= 2 && !G.save.world.flags.patchCleared) { // the bramble patch
     const bx = 23 * TILE - camX, by = 6 * TILE - camY;
     ctx.fillStyle = '#2e4a26'; ctx.fillRect(bx + 1, by + 4, 30, 26);
     ctx.fillStyle = '#3f7a2e'; for (let i = 0; i < 6; i++) ctx.fillRect(bx + 3 + i * 5, by + 2 + (i % 3) * 3, 3, 8);
+    ctx.fillStyle = '#57b84a'; for (let i = 0; i < 5; i++) ctx.fillRect(bx + 4 + i * 6, by + 8 + (i % 2) * 7, 4, 3); // lit leaf clusters
+    ctx.fillStyle = '#24591d'; for (let i = 0; i < 4; i++) ctx.fillRect(bx + 5 + i * 7, by + 22 + (i % 2) * 3, 5, 3); // shaded depths
     ctx.fillStyle = '#20242a'; for (let i = 0; i < 4; i++) ctx.fillRect(bx + 6 + i * 7, by + 20 + (i % 2) * 4, 2, 2); // old berries, watching
   }
   // the greenhouse, in its three acts: site, frame and shell, glass house
@@ -5151,8 +5214,8 @@ function renderBerry() {
   if (G.save.world.ch >= 3) {
     const gx = 18 * TILE - camX, gy = 8 * TILE - camY;
     if (bs === 1) { ctx.strokeStyle = '#8a6f45'; ctx.fillStyle = '#8a6f45'; for (let i = 0; i < 5; i++) ctx.fillRect(gx + i * 16 + 2, gy + 2, 3, 44); ctx.fillRect(gx + 2, gy + 2, 78, 3); }
-    else if (bs === 2) { ctx.fillStyle = 'rgba(190,220,245,0.5)'; ctx.fillRect(gx + 2, gy + 2, 76, 44); ctx.fillStyle = '#8a6f45'; for (let i = 0; i < 5; i++) ctx.fillRect(gx + i * 16 + 2, gy + 2, 3, 44); ctx.fillRect(gx + 2, gy + 2, 78, 3); ctx.fillRect(gx + 2, gy + 24, 78, 2); }
-    else if (bs >= 3) { ctx.fillStyle = 'rgba(190,220,245,0.65)'; ctx.fillRect(gx + 2, gy + 2, 76, 44); ctx.fillStyle = '#e8f4fc'; for (let i = 0; i < 5; i++) ctx.fillRect(gx + i * 16 + 2, gy + 2, 2, 44); ctx.fillRect(gx + 2, gy + 2, 78, 2); ctx.fillStyle = '#5e4c36'; ctx.fillRect(gx + 36, gy + 34, 10, 12); }
+    else if (bs === 2) { ctx.fillStyle = 'rgba(190,220,245,0.5)'; ctx.fillRect(gx + 2, gy + 2, 76, 44); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(gx + 8, gy + 6, 10, 3); ctx.fillRect(gx + 22, gy + 12, 8, 2); ctx.fillStyle = '#8a6f45'; for (let i = 0; i < 5; i++) ctx.fillRect(gx + i * 16 + 2, gy + 2, 3, 44); ctx.fillRect(gx + 2, gy + 2, 78, 3); ctx.fillRect(gx + 2, gy + 24, 78, 2); }
+    else if (bs >= 3) { ctx.fillStyle = 'rgba(190,220,245,0.65)'; ctx.fillRect(gx + 2, gy + 2, 76, 44); ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(gx + 8, gy + 6, 12, 3); ctx.fillRect(gx + 26, gy + 14, 9, 2); ctx.fillRect(gx + 52, gy + 8, 10, 3); ctx.fillStyle = '#e8f4fc'; for (let i = 0; i < 5; i++) ctx.fillRect(gx + i * 16 + 2, gy + 2, 2, 44); ctx.fillRect(gx + 2, gy + 2, 78, 2); ctx.fillStyle = 'rgba(90,110,130,0.35)'; ctx.fillRect(gx + 2, gy + 40, 78, 6); ctx.fillStyle = '#5e4c36'; ctx.fillRect(gx + 36, gy + 34, 10, 12); ctx.fillStyle = '#8a6f45'; ctx.fillRect(gx + 36, gy + 34, 10, 2); }
   }
   const spk = (mode === 'dialogue' && dlg) ? dlg.lines[dlg.idx] : null;
   const spkName = spk && dlg.chars < spk.text.length ? spk.name : null;
