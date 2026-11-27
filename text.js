@@ -98,6 +98,21 @@ const TEXT = {
     twoSmallLeavesIn: "TWO SMALL LEAVES IN THE NIGHT! COME AND SEE!",
     // game.js line 6442 · dawn
     aSproutBecameA: "A SPROUT BECAME A SEEDLING OVERNIGHT. LEAVES AND EVERYTHING.",
+    // REVISION (Nov 27, 2026) — dawn lines for collective losses: counted,
+    // not named, and never silent.
+    companyLost: "IN THE NIGHT, QUIETLY, THE COMPANY LOST {n}. THEY ARE COUNTED, IF NOT NAMED — AND THEY COUNT.",
+    rowFailing: "ROW {rn} IS FAILING — WATER, OR IT PAYS IN BUSHES.",
+    companyFailing: "THE COMPANY IS FAILING — WATER, AND TIME, AND SOON.",
+    nurseryFailing: "THE NURSERY IS FAILING — WATER, AND SOON.",
+    companySlipped: "THE COMPANY SLIPPED IN THE HEAT.",
+    nurseryShorn: "AND IN THE NURSERY, ONE OF THE STOCK IS SHORN CLEAN TO A STUB. NO NAME. A NUMBER, GONE.",
+    stockLost: "IN THE NIGHT, QUIETLY, THE NURSERY LOST {n}. COUNTED, IF NOT NAMED — AND THEY COUNT.",
+    shornAgainNursery: "SHORN AGAIN — THE NURSERY STOCK, THIS TIME. IT WILL COME AGAIN.",
+    rowLostBush: "ROW {rn} LOST A BUSH TO {cause}. IT IS WRITTEN IN THE ROW'S OWN PAGE.",
+    gardenGoneLine: "{name} IS GONE. IT IS WRITTEN ON THE GARDEN PAGE, PLAINLY, THE WAY GARDENS KEEP THEIR NEWS.",
+    aDrySpell: "A DRY SPELL",
+    theWeeds: "THE WEEDS",
+    theLateFrostRow: "THE LATE FROST",
   },
 
   // ======================================================================
@@ -188,6 +203,7 @@ const TEXT = {
       "THE TENTH PLANT. SHE LOOKS AT IT A LONG TIME — A THISTLE, PROUD AS A FLAG, BY THE FENCE.",
       "MOM: THAT ONE STAYS. EVERY GARDEN KEEPS ONE THING IT DID NOT PLANT, TO REMIND IT WHO WAS HERE FIRST. YOU WILL KNOW WHEN IT IS TIME. THEY ALWAYS TELL YOU.",
       "SHE LEAVES BEFORE LUNCH, WITH BERRIES, AND THE DRIVEWAY IS A BETTER PLACE THAN SHE FOUND IT. IT USUALLY IS, WHERE SHE HAS BEEN.",
+      "FRANK, WATCHING THE THISTLE STAND: SOME OF THE SORTING IS NOT MINE, MOM. SOME THINGS GROW TOGETHER UNTIL A HARVEST I WILL NOT SUPERVISE. I AM LEARNING TO LEAVE THAT ONE ALONE.",
     ],
     // game.js line 3968 · npcTalk
     plantNOf10: "PLANT {n} OF 10: {v} — MOM: KEEP OR PULL, FRANK? (SHE WILL FORGIVE EITHER ANSWER. THE PLANTS ARE A LESSON; THE LESSON IS THE POINT.)",
@@ -217,6 +233,7 @@ const TEXT = {
       "OMA: I WILL STAY. HERE, IN MY ROOM WITH ITS OWN DOOR, UNTIL I TASTE THE FIRST WINE MADE FROM THIS FIELD'S FRUIT. THAT IS MY PROMISE. WRITE IT IN YOUR BOOK.",
       "FRANK WRITES IT IN THE REGISTER, IN HIS BEST HAND: OMA'S PROMISE. THE JAR, FOR NOW, IS EMPTY.",
       "OMA: NOW GO AND GROW ME A FIELD. I WILL BE HERE. I HAVE DECIDED.",
+      "OMA: AND HEAR ME — I MAKE IT IN HOPE, NOT IN ARROGANCE. THE YEARS ARE HIS TO GIVE, FRANK. I AM ONLY SAYING WHERE I MEAN TO SPEND MINE.",
     ],
     // game.js line 3981 · npcTalk
     omaTheForsythiaFrank: [
@@ -350,7 +367,7 @@ const TEXT = {
     // game.js line 5081 · houseInteract
     theFridgeHumsInside: "THE FRIDGE HUMS. INSIDE: LEFTOVERS, AND PLANS.",
     // game.js line 5086 · houseInteract
-    theTrayNSprouts: "THE TRAY: {n} SPROUTS, ALL UPRIGHT, ALL UNNAMED. THIS WILL NOT STAND.",
+    theTrayNSprouts: "THE TRAY: {n} SPROUTS, ALL UPRIGHT, ALL UNNAMED — FOR NOW. NAMES FOLLOW KNOWLEDGE.",
     // game.js line 5089 · houseInteract
     potUpASprout: [
       "POT UP A SPROUT",
@@ -409,6 +426,7 @@ const TEXT = {
       "FRANK: SLEEP WELL, SMALL ONES. DREAM OF APRIL.",
       "CONSTANCE: THEY ARE SEEDS, FRANK.",
       "FRANK: AND APRIL IS COMING ANYWAY.",
+      "FRANK: A SEED SLEEPS IN THE DARK AND COMES UP IN ITS SEASON. THERE ARE WORSE PLANS FOR A WINTER. THERE ARE WORSE PLANS FOR ANYTHING.",
     ],
     // game.js line 5136 · storageTrip
     theLastLoadGoes: [
@@ -431,7 +449,7 @@ const TEXT = {
     // game.js line 5162 · finishPotting
     theLastOneIs: "THE LAST ONE IS POTTED. THE BENCH COMES IN FROM THE COLD TOO — THE SIX TAKE THE WINDOW IN ORDER, LIKE A ROLL CALL.",
     // game.js line 5162 · finishPotting
-    theRegisterRecordsThe: "THE REGISTER RECORDS THE GERMINATION: 96 SOWN, {pottedTotal} POTTED UP, EVERY ONE NAMED.",
+    theRegisterRecordsThe: "THE REGISTER RECORDS THE GERMINATION: 96 SOWN, {pottedTotal} POTTED UP — THE COMPANY, ALL TOLD, AND THE SIX BY NAME.",
     // game.js line 5162 · finishPotting
     constanceNowTheHouse: "CONSTANCE: NOW THE HOUSE, FRANK. THE PAPERS ARE ON THE TABLE. THE LAND IS WAITING SOMEWHERE.",
     // game.js line 5166 · signSale
@@ -450,6 +468,8 @@ const TEXT = {
       "FRANK: ADMIRAL! CAPTAIN! GENERAL! HOPE! PATIENCE! PROFESSOR! ROLL CALL COMPLETE.",
       "CONSTANCE: HE NAMED THE SEEDS, ALVIN. ALPHABETICALLY. THERE WAS A ROSTER.",
       "NOW, A DRINK FOR EACH NEW FRIEND. PRESS A AT A POT TO WATER.",
+      "FRANK: I CAN PUT A SEED IN THE GROUND. THE LIFE IN IT IS NOT MINE TO COMMAND — THAT PART SITS ON A HIGHER DESK THAN MINE, AND I KNOW WHOSE DESK IT IS.",
+      "CONSTANCE: THEN WE WATER WHAT IS OURS TO WATER, LOVE. THAT PART, AT LEAST, IS IN OUR DEPARTMENT.",
     ],
     // game.js line 6290 · potInteract
     anotherSeedTuckedInto: "ANOTHER SEED TUCKED INTO PEAT. SMALL AS A SECRET.",
@@ -475,6 +495,14 @@ const TEXT = {
     goodDirtForName: "GOOD DIRT FOR {name}. +8 VIGOR, AND THE NEXT STAGE COMES A DAY SOONER.",
     // game.js line 6308 · potInteract
     alreadyWateredTodayWaiting: "ALREADY WATERED TODAY. WAITING IS MOST OF THE WORK.",
+    // REVISION (Nov 27, 2026) — potting-up makes the Company, not a census.
+    // The naming scene: names follow knowledge.
+    companyFirst: "POTTING UP: ONE SPROUT, ONE POT. FRANK OPENS HIS MOUTH TO NAME IT — GRANDLY, THE WAY HE BEGINS EVERYTHING —",
+    companyFirst2: "CONSTANCE: YOU DO NOT KNOW THAT ONE YET, FRANK.",
+    companyFirst3: "FRANK LOOKS AT THE SHELF, WHERE THE SIX HE DOES KNOW ARE SITTING. FRANK: ...NO. I KNOW SIX. THE REST — THE FIELD WILL TEACH ME WHO THEY ARE. ONE AT A TIME, AS THINGS HAPPEN TO THEM.",
+    companyFirst4: "THE SPROUT GOES INTO THE POT UNNAMED, IN GOOD COMPANY. THERE ARE {n} MORE IN THE TRAY.",
+    companyToast: "POTTED UP · THE COMPANY GROWS · {n} TO GO",
+    companyLast: "THE LAST ONE IS POTTED. THE COMPANY STANDS ON THE SHELF — FORTY STRONG, AND UNNAMED, AND IN NO HURRY TO BE OTHERWISE. THE BENCH COMES IN FROM THE COLD TOO: THE SIX TAKE THE WINDOW IN ORDER, LIKE A ROLL CALL.",
   },
 
   // ======================================================================
@@ -805,6 +833,9 @@ const TEXT = {
       "FEED THE WEAKEST",
       "JUST LOOK",
     ],
+    // REVISION (Nov 27, 2026) · greenInteract — the Company's dirt option
+    feedTheCompany: "FEED THE COMPANY",
+    goodDirtForTheCompany: "GOOD DIRT FOR THE COMPANY — WORKED THROUGH THE BENCHES, A LITTLE FOR EVERYONE. THE BAND BREATHES EASIER.",
     // game.js line 4224 · greenInteract
     noOneHereTo: "NO ONE HERE TO FEED.",
     // game.js line 4225 · greenInteract
@@ -1104,6 +1135,7 @@ const TEXT = {
     theBurnPileAt: [
       "THE BURN PILE AT DUSK: THE PROUD WEED GOES IN WITH ITS ROOTS, AND THE FAMILY WATCHES THE WAY YOU WATCH WEATHER LEAVE.",
       "THE ROOTS' PLACE BY THE FENCE IS MARKED IN THE REGISTER. THINGS THAT ARE ANSWERED CAN STILL BE REMEMBERED.",
+      "FRANK, INTO THE DUSK: THE GROUND GIVES THORNS AS WELL AS FRUIT. IT ALWAYS HAS. THE WORK IS STILL GOOD.",
       "CONSTANCE: STRAWBERRIES NEXT, FRANK. SOMETHING SWEET, AFTER ALL THAT.",
     ],
     // game.js line 4699 · burnPileInteract
@@ -1133,7 +1165,7 @@ const TEXT = {
     // game.js line 4893 · plantNurseryRow
     theNurseryShelfHolds: "THE NURSERY SHELF HOLDS NO ONE READY FOR REAL GROUND.",
     // game.js line 4896 · plantNurseryRow
-    lengthBushesGoInto: "{length} BUSHES GO INTO ROW {rn}, NAMES SPOKEN OVER EVERY HOLE: {joinVal}{v}. THE FIELD FILLS THE WAY A FAMILY DOES: ONE NAME AT A TIME.",
+    lengthBushesGoInto: "{length} BUSHES GO INTO ROW {rn} FROM THE NURSERY STOCK. THE ROW FILLS THE WAY A FAMILY DOES: QUIETLY, AND THEN ALL AT ONCE.",
     // game.js line 4900 · sowTrayLT
     theTrayIsAlready: "THE TRAY IS ALREADY SOWN. WINTER WILL DO ITS SLOW WORK.",
     // game.js line 4901 · sowTrayLT
@@ -1141,7 +1173,7 @@ const TEXT = {
     // game.js line 4903 · sowTrayLT
     fortySeedsIntoThe: "FORTY SEEDS INTO THE TRAY, AND THE TRAY INTO THE FRIDGE, TO DREAM OF WINTER FROM INSIDE IT. THE PIPELINE RUNS FOREVER NOW. THAT IS THE POINT OF IT.",
     // game.js line 4917 · potUpLT
-    madePottedUpAnd: "{made} POTTED UP AND NAMED: {joinVal}{v}. THE NURSERY SHELF FILLS AGAIN. IT ALWAYS FILLS AGAIN.",
+    madePottedUpAnd: "{made} POTTED UP AND SET ON THE BENCH — NURSERY STOCK, IN THE COMPANY'S WAY. THE SHELF FILLS AGAIN. IT ALWAYS FILLS AGAIN.",
     // game.js line 4921 · shareStand
     theStandHasShared: "THE STAND HAS SHARED THIS YEAR'S SURPLUS ALREADY. THE ROAD EATS WELL. THE SIGN BY THE GATE SAYS SO, IN FRANK'S BEST PAINT.",
     // game.js line 4923 · shareStand
@@ -1166,6 +1198,13 @@ const TEXT = {
     frankAtTheFence: "FRANK, AT THE FENCE, DOING ARITHMETIC THE WAY OTHER MEN DO PRAYER: NINE HUNDRED POUNDS. THE BOOK SAYS A WINEMAKER WANTS NINE HUNDRED POUNDS.",
     // game.js line 6570 · harvestRow
     atThisManyBushes: "AT THIS MANY BUSHES, AT THIS WEIGHT APIECE — NOT THIS YEAR. NOT YET. THE FIELD IS YOUNG, THE ROWS ARE NOT ALL PLANTED, AND THE BUSHES ARE STILL BECOMING. BUT THE NUMBER IS WRITTEN DOWN NOW, WHERE NUMBERS BECOME PLANS.",
+    // REVISION (Nov 27, 2026) — rows counted, and the event-Favorites
+    // named out of them at their beats.
+    rowCountHead: "ROW {rn}: {n} BUSHES.{v}{v2}",
+    firstFruitNamed: "FRANK STOPS, MID-PICKING, WITH THE FIRST BERRY OF THE ROW IN HIS HAND — AND NAMES THE BUSH IT CAME FROM: {name}. IT FED THEM FIRST. INTO THE BOWL, AND INTO THE BOOK.",
+    frostSurvivorNamed: "AT THE RECKONING, FRANK WALKS ROW {rn} AND STOPS AT THE BUSH THAT WENT INTO THE FROST HURTING AND CAME OUT THE OTHER SIDE. HE NAMES IT ON THE SPOT: {name}. IT SUFFERED, AND IT LIVED.",
+    alvinPlantNamed: "ALVIN HAS SAT BESIDE ONE BUSH IN ROW {rn} SO MANY MORNINGS THAT THE GRASS THERE IS FLAT. FRANK FINALLY NOTICES, AND NAMES THE BUSH HIS DOG CHOSE: {name}. THE DOG GETS THE LAST VOTE.",
+    rowHarvestedCount: "ROW {rn}'S BUSHES GIVE {toFixedVal} LBS BETWEEN THEM.",
   },
 
   // ======================================================================
@@ -1204,7 +1243,7 @@ const TEXT = {
     // game.js line 4500 · doPlanting
     theGeneralGoesIn: "THE GENERAL GOES IN FIRST, AT THE HEAD OF ROW 1 — THE BOOKEND, WHERE HE HAS ALWAYS STOOD IN EVERY LINE THIS FAMILY MAKES.",
     // game.js line 4512 · doPlanting
-    theCompanyGoesInto: "THE COMPANY GOES INTO ROWS 2 THROUGH 7, BY VARIETY, IN THE ORDER OF THEIR STRENGTH. EVERY HOLE GETS A NAME SPOKEN OVER IT. EVERY NAME GETS WRITTEN DOWN.",
+    theCompanyGoesInto: "THE COMPANY GOES INTO ROWS 2 THROUGH 7, BY VARIETY, IN THE ORDER OF THEIR STRENGTH. THEY GO IN AS COMPANIES, NOT AS NAMES — THE FIELD WILL TEACH FRANK WHO THEY ARE, ONE AT A TIME, AS THINGS HAPPEN TO THEM.",
     // game.js line 4513 · doPlanting
     andInTheHeat: "AND IN THE HEAT OF THE AFTERNOON FRANK NEARLY INSISTS JEREMIAH STAY AND FINISH — AND CATCHES HIMSELF, MID-SENTENCE, LIKE A MAN STEPPING BACK FROM A LEDGE HE BUILT.",
     // game.js line 4513 · doPlanting
@@ -1219,6 +1258,11 @@ const TEXT = {
     andBeforeTheFriend: "AND BEFORE THE FRIEND LEAVES: A BUSH FROM HIS OWN FIELD, IN A BUCKET, WITH ITS NAME ALREADY ON IT — {name}. SOME GIFTS YOU DO NOT ARGUE WITH. YOU WATER THEM.",
     // game.js line 4540 · repot
     theGlassHouseBreathes: "THE GLASS HOUSE BREATHES DIFFERENTLY BY EVENING. NOW: FIVE DAYS OF FEEDING AND WATER, WHILE THE FIELD GETS ITS TARP, ITS PIPE, ITS MULCH, ITS FENCE. THEN — PLANTING.",
+    // REVISION (Nov 27, 2026) — the crisis takes the Company by count.
+    companyToll: "THE COMPANY PAYS THE HARD SPRING'S TOLL: {n} LOST, {left} LEFT. THEY ARE COUNTED IN THE BOOK, IF NOT NAMED — AND THEY COUNT.",
+    companyTollRescued: "THE COMPANY WAS CARRIED THROUGH THE HARD SPRING: {n} LOST, {left} LEFT — AND EVERY SURVIVOR OWED TO DIRT, WATER, AND CONSTANCE'S HANDS.",
+    companyDeclining: "THE COMPANY IS STILL DECLINING — WATER, AND TIME",
+    companyTooYoung: "THE COMPANY IS NOT SEEDLINGS YET — WATER AND TIME",
   },
 
   // ======================================================================
@@ -1382,7 +1426,7 @@ const TEXT = {
     // game.js line 4950 · ltDawn
     theAppealSucceedsTwo: "THE APPEAL SUCCEEDS. TWO GOATS ARRIVE BY TRAILER, SURVEY THE PEN BY THE GOOD SHED LIKE SMALL LANDLORDS, AND APPROVE IT. THEY GET A PAGE IN THE REGISTER, UNDER GARDEN, WHERE THE JOY IS KEPT.",
     // game.js line 4962 · ltDawn
-    theYearSWine: "THE YEAR'S WINE IS TASTED AT THE TABLE IN THE EVENING — OMA'S GLASS, THE PASTOR'S WORD IF HE PASSES BY, AND THE CELLAR PAGE'S VERDICT, KEPT.",
+    theYearSWine: "THE YEAR'S WINE IS TASTED AT THE TABLE IN THE EVENING — THE PASTOR AND CONSTANCE AT THE TABLE, OMA'S GLASS SET OUT IN HER MEMORY, AND THE CELLAR PAGE'S VERDICT, KEPT.",
     // game.js line 6603 · ch10Dawn
     rowRnSFruit: "ROW {rn}'S FRUIT, UNHARVESTED, LET GO IN THE NIGHT AND FELL. IT IS NOTED WITHOUT GUILT. THE GROUND KEEPS WHAT THE GROUND IS GIVEN.",
     // game.js line 6606 · ch10Dawn
@@ -1428,6 +1472,7 @@ const TEXT = {
       "OMA SEES IT FIRST — FROM HER WINDOW, BEFORE ANYONE IS AWAKE TO BE TOLD: THE FORSYTHIA, LIT LIKE A LAMP SOMEONE LEFT ON FOR A TRAVELLER.",
       "AND THEN, ROW BY ROW, THE FIELD ANSWERS: CLIMAX FIRST, THEN ECHO, THEN CHANDLER — BLOSSOM, ALL OVER, ALL AT ONCE, LIKE THE WHOLE FIELD EXHALED.",
       "BEES ARRIVE FROM NOWHERE IN PARTICULAR AND GET STRAIGHT TO WORK. WATER THE ROWS THIS WEEK. BLOSSOM IS THIRSTY WORK.",
+      "OMA, FROM HER WINDOW, TO THE YARD AT LARGE: IT KEPT ITS APPOINTMENT. IN THE COLD. ON TIME. (SHE SAYS IT LIKE A WEATHER REPORT. SHE MEANS IT LIKE A CREED.)",
     ],
     // game.js line 4854 · ch9Dawn
     nightNightOfThe: "NIGHT {night} OF THE FROST, AND NO WATCH SET. THE COLD WALKS THE ROWS UNCHALLENGED, CHOOSING LIKE A SHOPPER.",
@@ -1440,6 +1485,8 @@ const TEXT = {
     // game.js line 4969 · ltDawn
     winterTheFieldSleeps: [
       "WINTER. THE FIELD SLEEPS IN ROWS. PRUNE WHEN YOU ARE READY — SEVEN TO TEN CANES, THE CROSSING WOOD FIRST — AND LET THE TRAY DREAM IN THE FRIDGE.",
+      "REST IS TENDING TOO. THE FIELD IS NOT BEING LAZY UNDER ITS BREATH, AND NEITHER, MOST YEARS NOW, IS FRANK.",
+      "WHAT IS HIS WILL GROW IN ITS SEASON. WHAT IS FRANK'S IS TO WAIT WITHOUT SULKING. HE IS PRACTICING. HE IS, SLOWLY, GETTING BETTER AT IT.",
     ],
     // game.js line 4988 · ltDawn
     nineHundredPoundsThe: [
@@ -1461,6 +1508,7 @@ const TEXT = {
       "CONSTANCE: THE BARN, FRANK.",
       "FRANK: THE BARN WAS NEVER THE PLAN. THE FIELD WAS.",
       "CONSTANCE: THEY COME AS A SET. THEY ALWAYS DID. THIS WEEKEND, THEN. THE TRUCK COMES SATURDAY. THE HOUSE DOOR, BACK IN DEERBROOK, WHEN YOU ARE READY.",
+      "CONSTANCE: AND HEAR THIS, FRANK — WE ASKED FOR A PLACE, AND THIS IS THE ANSWER. IT HAS A BARN IN IT. ANSWERS ARE ALLOWED TO SURPRISE US.",
     ],
     // game.js line 5036 · ch3Dawn
     thePlantsSpentThe: [
@@ -1495,6 +1543,7 @@ const TEXT = {
     theSecondHouseHad: [
       "THE SECOND HOUSE HAD LAND ENOUGH FOR A GOAT AND STRONG OPINIONS ABOUT BOTH. THE HOUSE ITSELF WAS LEANING. IT HAD A SLOPE AND A SMELL.",
       "CONSTANCE: NEXT.",
+      "CONSTANCE: WE ASKED FOR A PLACE, FRANK. WE WILL TRUST THE TIMING OF THE ANSWER. ASKING WAS OUR PART. IT STILL IS.",
     ],
     // game.js line 6656 · ch2Dawn
     theThirdHousePerfect: [
@@ -1667,6 +1716,7 @@ const TEXT = {
     itIsGoneOver: [
       "IT IS GONE — OVER THE FENCE, UNDER THE GATE, SOMEWHERE SMALL AND PRECISE AND ELSEWHERE. ALVIN NEVER GOT A NAME FOR IT, OR A LOOK WORTH DESCRIBING.",
       "IT WILL BE IN THE REGISTER ANYWAY, IN THE BACK: UNKNOWN — SMALL — PRECISE. SOME ENTRIES ARE WARNINGS. SOME ARE JUST TRUE.",
+      "FRANK, TO JEREMIAH, ON THE WALK BACK: SOME THINGS ARE NOT GIVEN TO US TO PREVENT, SON. WE TEND WHAT IS OURS. WE WATCH WHAT WE CAN. THE REST IS NOT OURS TO CARRY.",
     ],
     // game.js line 4658 · TRIAL_OUTCOMES.barber.lose
     leavingNameShornBehind: ", LEAVING {name} SHORN BEHIND IT",
@@ -1708,6 +1758,7 @@ const TEXT = {
     theGlassHoldsThe: [
       "THE GLASS HOLDS. THE STOVE TICKS. BY MORNING THERE IS FROST ON THE OUTSIDE OF THE PANES AND NONE — NONE — ON THE INSIDE.",
       "THE PLANTS HAVE A HOUSE. THE FAMILY HAS A BARN. THE FIELD HAS A FUTURE. EVERYONE SLEEPS.",
+      "FRANK, QUIETLY, TO NO ONE IN PARTICULAR: THANK YOU. (IT HAS BEEN THAT KIND OF NIGHT. IT HAS BEEN THAT KIND OF YEAR.)",
     ],
     // game.js line 5059 · TRIAL_OUTCOMES.frostGlass.lose
     alvinBacksOffThe_2: "ALVIN BACKS OFF. THE COLD KEEPS THE NIGHT; THE WAR CONTINUES TOMORROW.",
@@ -1728,6 +1779,8 @@ const TEXT = {
       "THE COLD GOT IN. LEAVES CURL, SHOULDERS HUNCH — A STEP BACK FOR THE WHOLE SHELF, AND THE SIX FEEL IT TOO.",
       "CONSTANCE: THEY ARE ALIVE, FRANK. SORE, AND ALIVE. WE WATER, WE WAIT, WE LEARN WHERE THE DRAFT LIVES.",
     ],
+    // REVISION (Nov 27, 2026) — the frost tutorial costs the Company a count.
+    companyColdLoss: "THE COMPANY LOSES {n} TO THE COLD. THEY ARE COUNTED AT DAWN, PLAINLY, THE WAY FRANK COUNTS EVERYTHING THAT MATTERS.",
     // game.js line 6869 · trialChoose
     youBackAwaySlowly: "YOU BACK AWAY SLOWLY. THE DEER WINS THIS ROUND OF STARING.",
     // game.js line 6869 · trialChoose
@@ -1926,6 +1979,79 @@ const TEXT = {
     ],
     // game.js line 6335 · killPlant
     itWasNotWatered: "IT WAS NOT WATERED IN TIME",
+    // REVISION (Nov 27, 2026) — the two tiers: collective names and the
+    // history lines an event-Favorite is born with.
+    theCompany: "THE COMPANY",
+    theNursery: "THE NURSERY",
+    namedAtTheReckoning: [
+      "NAMED AT THE RECKONING — THE FROST SPARED IT",
+    ],
+    namedAtFirstPicking: [
+      "NAMED AT THE FIRST PICKING — IT FED THEM FIRST",
+    ],
+    namedByAlvin: [
+      "NAMED BY ALVIN, WHO SAT BESIDE IT UNTIL FRANK NOTICED",
+    ],
+  },
+
+  // ======================================================================
+  // THE FAITH THREAD (REVISION, Nov 27, 2026) — woven, allusive, in the
+  // characters' own words. No line here quotes Scripture; Daniel's pencil
+  // is the final review, like everywhere else in this file.
+  // ======================================================================
+  faith: {
+    // ch. 1: the first sprout's morning line (dawn, once)
+    firstSprout: "FRANK THANKS GOD FOR THE SPROUT OUT LOUD, AT A VOLUME THE SPROUT COULD NOT POSSIBLY REQUIRE. THE NEIGHBOURS' DOG ANSWERS. IT COUNTS.",
+    // ch. 1: after the deer trial — the tenant line (endTrial, win)
+    tenantYard: "FRANK: THIS YARD IS NOT MY KINGDOM. I AM A TENANT HERE, WITH A DOG FOR A NIGHT WATCHMAN. THE LANDLORD IS FAIR.",
+    // ch. 6: the crisis diagnosis arrives by ordinary means (repot)
+    crisisDiagnosis: "THE DIAGNOSIS ARRIVES THE WAY MERCY USUALLY DOES IN THIS FAMILY: BY ORDINARY MEANS, IN A FRIEND'S MOUTH, WITH HIS SLEEVES ALREADY ROLLED UP.",
+    // ch. 6: Frank receives the gift bush (repot)
+    giftThanks: "FRANK: I DID NOT EARN THIS ONE AND I CANNOT REPAY IT. IT JUST — STANDS THERE, HEALTHY, AMONG MY STARVING PLANTS. THANK YOU IS TOO SMALL, AND IT IS ALL I HAVE.",
+    // ch. 6: Planting Day — the handover at the head of Row 1 (doPlanting)
+    plantingHandover: [
+      "FRANK STANDS AT THE HEAD OF ROW 1 A MOMENT, WITH DIRT ON HIS HANDS AND NOTHING LEFT TO DO THAT IS HIS TO DO.",
+      "FRANK: THERE. HOLES DUG, WATER IN, MULCH DOWN, A FENCE AGAINST DEER. THE GROWING IS NOT MINE, CONSTANCE. IT NEVER WAS. THEY ARE HANDED OVER — WHATEVER COMES.",
+      "FRANK: AND THE SMALL GARDENERS IN THE NEXT ROW ARE NOT MINE EITHER, NOT REALLY. I AM THEIR CARETAKER. I AM CONTENT TO BE ONLY THAT.",
+      "ZOEY NEEDS HELP WITH A BUCKET. THE MOMENT ENDS THE WAY FRANK'S MOMENTS END.",
+    ],
+    // ch. 4: the irises — the creation beat (irisInteract, first viewing)
+    irisGlory: [
+      "FRANK: I DID NOT PLANT THESE. I CANNOT EAT THEM. AND THEY ARE SHOUTING.",
+      "CONSTANCE: SHOUTING, FRANK?",
+      "FRANK: ABOUT THEIR MAKER. PURPLE, AND BLUE, AND BLACK AS A WELL — IN A YARD I THOUGHT WAS ONLY FOR USEFUL THINGS. EVERYTHING HERE IS SAYING SOMETHING, CONSTANCE. I HAVE BEEN TOO BUSY TO HEAR MOST OF IT.",
+      "CONSTANCE: THEN HEAR THIS: THEY NEED A STAKE BEFORE THE WIND DOES. (SHE HANDS HIM ONE. SHE IS SMILING.)",
+    ],
+    // ch. 4: the ordinance refusal — Constance's clause (ch4, the verdict)
+    ordinanceClause: "CONSTANCE: SOME NO'S ARE ALSO ANSWERS, FRANK. WRITE THAT IN THE BOOK TOO.",
+    // ch. 5: Oma's faith, told as a story (npcTalk rotation)
+    omaTightMonth: [
+      "OMA: ONE WINTER THE MONEY RAN OUT BEFORE THE MONTH DID. I ASKED — OUT LOUD, IN THE KITCHEN, LIKE A FOOL — AND BY SUPPER THERE WAS A BAG ON THE STEP WITH NO NAME ON IT. FLOUR. COFFEE. A HAM.",
+      "OMA: I NEVER DID LEARN WHOSE HANDS THEY WERE. I STOPPED NEEDING TO. THE HANDS ARE THE POINT, FRANK. THEY ARE ALWAYS THE POINT.",
+    ],
+    // ch. 5: Opa, in memory — the thread's most delicate beat (npcTalk, once)
+    opaExchange: [
+      "CONSTANCE: YOUR FATHER PRAYED, AND READ, AND TOOK YOU TO CHURCH, OMA. AND HE WAS A HARD MAN. I HAVE NEVER KNOWN HOW TO HOLD BOTH OF THOSE.",
+      "OMA: YOU HOLD THEM THE WAY YOU HOLD A CAT, CONSTANCE. GENTLY, AND WITHOUT EXPECTING IT TO MAKE SENSE ON COMMAND.",
+      "FRANK: THE GOD HE HANDED YOU TURNED OUT KINDER THAN THE MAN WHO HANDED HIM OVER. AND A MERCIFUL GOD IS GENEROUS TO UNIMPRESSIVE PEOPLE — I AM COUNTING ON IT PERSONALLY.",
+      "CONSTANCE: SUPPER IS AT SIX. THAT IS THE WHOLE SERMON. (SHE SAYS IT FONDLY, AND EVERYONE COMES TO THE TABLE.)",
+    ],
+    // ch. 9: the frost reckoning — trust shown as a man picking up the can
+    reckoningWater: "AND THEN FRANK PICKS UP THE WATERING CAN AND WATERS WHAT REMAINS. IT IS NOT A SPEECH. IT IS BETTER THAN A SPEECH.",
+    // ch. 9: the spectacular one, if it carries THE HARD SPRING
+    spectacularClause: "CONSTANCE: THE ONE THAT SUFFERED MOST, BLOOMING HARDEST. THAT IS NOT AN ACCIDENT IN MY FATHER'S WORLD, FRANK. (SHE SAYS IT TO THE BUSH. SHE MEANS IT AT HIM.)",
+    // ch. 10: the harvest — thanks before the weighing (harvestRow, Row 1, once)
+    harvestThanks: "FRANK, BEFORE THE WEIGHING: THANK YOU. (THE FIELD SENT FRUIT. THE LEAST A MAN CAN DO IS SAY SO BEFORE HE MAKES IT ARITHMETIC.)",
+    // ch. 10: the tasting — what was given away counts as yield
+    sharedCounts: "WHAT WAS GIVEN AWAY COUNTS AS YIELD IN THIS HOUSE. THE CELLAR PAGE HAS ALWAYS KEPT IT THAT WAY.",
+    // ch. 2: the great emptying — gratitude under load (storageTrip)
+    greatEmptying: "MID-LIFT, ARMS FULL, FRANK SAYS THANK YOU TO NO ONE VISIBLE. CONSTANCE, HOLDING THE DOOR, DOES NOT ASK. SHE KNOWS THE ADDRESS.",
+    // ch. 3: moving weekend — mercy wears work gloves (carryPlants)
+    movingHands: "THE SECOND LOAD IS CARRIED BY FRIENDS FROM CHURCH, WHO ARRIVED WITH GLOVES AND LEFT WITH PIE. MERCY, IN THIS FAMILY, WEARS WORK GLOVES.",
+    // ch. 10: the tasting — Frank's settlement (tasting)
+    settlement: "FRANK: I DID MY PART AND SEALED IT, AND THEN I WAITED ON WHAT I COULD NOT HURRY. THE WINE IS THE ANSWER THAT KEEPS. (A BEAT.) SO, IT TURNS OUT, AM I.",
+    // the Long Tending: at a Favorite's husk, cleared to the compost
+    huskHope: "FRANK: NOTHING HERE IS WASTED. A SEED GOES INTO THE GROUND IN HOPE IN THIS YARD — NOT IN DESPAIR. THE GROUND HAS NEVER ONCE BEEN THE END OF THE STORY.",
   },
 
   // ======================================================================
@@ -2223,7 +2349,7 @@ const TEXT = {
     // game.js line 7781 · renderRegister
     theRegister: "THE REGISTER",
     // game.js line 7782 · renderRegister
-    everyPlantByName: "EVERY PLANT, BY NAME",
+    everyPlantByName: "THE NAMED, AND THE ROWS",
     // game.js line 7791 · renderRegister
     nameIndex: "NAME INDEX",
     // game.js line 7798 · renderRegister
@@ -2281,7 +2407,7 @@ const TEXT = {
     // game.js line 7858 · regPageLines
     sownSownSeedsLate: "SOWN: {sown} SEEDS, LATE FALL.",
     // game.js line 7858 · regPageLines
-    pottedUpPottedEvery: "POTTED UP: {potted}, EVERY ONE NAMED.",
+    pottedUpPottedEvery: "POTTED UP: {potted} — THE COMPANY, ALL TOLD.",
     // game.js line 7858 · regPageLines
     lostAlongTheWay: "LOST ALONG THE WAY: {lost}.",
     // game.js line 7858 · regPageLines
@@ -2293,7 +2419,10 @@ const TEXT = {
     // game.js line 7859 · regPageLines
     madeFromThisField: "MADE FROM THIS FIELD'S FRUIT.",
     // game.js line 7859 · regPageLines
-    theJarIsFilled: "THE JAR IS FILLED. SHE TASTED IT.",
+    theJarIsFilled: "THE JAR IS FILLED AT LAST. AT THE TABLE HER GLASS IS SET OUT AND REMEMBERED — THE PROMISE KEPT, IN THE KEEPING.",
+    // Decision 10 (Nov 27, 2026): a lesser verdict gets a soberer line — the
+    // page no longer stamps the same triumph regardless of the wine.
+    theJarIsFilledLesson: "THE JAR IS FILLED, AND IT IS A LESSON IN A JAR. HER GLASS WAITS FOR A KINDER YEAR — PROMISES IN THIS HOUSE ARE PATIENT.",
     // game.js line 7859 · regPageLines
     theJarWaitsEmpty: "THE JAR WAITS, EMPTY, PATIENT AS SHE IS.",
     // game.js line 7860 · regPageLines
@@ -2309,9 +2438,9 @@ const TEXT = {
     // game.js line 7860 · regPageLines
     markvalEveryGardenEntry: "{markVal}EVERY GARDEN ENTRY FLOURISHING",
     // game.js line 7860 · regPageLines
-    markvalRow1Accounted: "{markVal}ROW 1 ACCOUNTED FOR",
+    markvalRow1Accounted: "{markVal}THE FAVORITES ACCOUNTED FOR",
     // game.js line 7860 · regPageLines
-    markvalRollCallLength: "{markVal}ROLL CALL: {length}/100 NAMED",
+    markvalRollCallLength: "{markVal}THE FIELD AT FULL STRENGTH: {length}/120 BUSHES",
     // game.js line 7860 · regPageLines
     theFieldIsYoung: "THE FIELD IS YOUNG. TEND IT.",
     // game.js line 7861 · regPageLines
@@ -2341,6 +2470,32 @@ const TEXT = {
     noBatchesYet: [
       "NO BATCHES YET.",
     ],
+    // REVISION (Nov 27, 2026) — the register reshaped: Favorites, rows,
+    // the Company and the Nursery.
+    favorites: "THE FAVORITES",
+    theCompanyNursery: "THE COMPANY & THE NURSERY",
+    theRows: "THE ROWS",
+    rowSummaryLine: "ROW {rn} — {variety}: {n} BUSHES",
+    rowDetailLine: "{stage} · {health} · YIELD {rating}",
+    rowPoundsLine: "{lbs} LBS LIFETIME · SET {fs}%",
+    rowPlantedLine: "PLANTED {v}",
+    rowFavNote: "A FAVORITE STANDS HERE: {name}",
+    rowFavNoteMany: "{n} FAVORITES STAND HERE",
+    inTheGround: "IN THE GROUND: {n} BUSHES",
+    companyCardN: "THE COMPANY: {n} STRONG",
+    companyCardStage: "{stage} · {health} · AT {loc}",
+    companyArchived: "THE COMPANY, DISSOLVED INTO",
+    companyArchived2: "THE ROWS AT PLANTING DAY.",
+    companyPlantedOut: "PLANTED OUT: {v}",
+    companyRollLine: "THE POTTING ROLL IS KEPT ON",
+    companyRollLine2: "THE GERMINATION PAGE.",
+    nurseryCard: "THE NURSERY: {n} IN STOCK",
+    nurseryCardStage: "{stage} · {health}",
+    shornLine: "SHORN IN THE NIGHT",
+    stockLostLine: "ONE LOST TO THE BARBER",
+    rowPlantedWith: "PLANTED WITH: {joinVal}",
+    nurseryStockedWith: "STOCKED FROM: {joinVal}",
+    companyPottedFrom: "POTTED UP, ONE BY ONE, FROM THE TRAY",
   },
 
   // ======================================================================
