@@ -69,6 +69,49 @@ function findChromium() {
 
   await page.goto('http://127.0.0.1:8907/index.html', { waitUntil: 'load' });
   await page.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+
+  /* ===== text.js resource checks (dialogue extraction, Nov 27, 2026) =====
+     (a) text.js loads and every TEXT.* key game.js requests resolves to a
+         defined, non-empty value (arrays: at least one entry, every entry
+         a string — two register pages carry an original blank spacer line,
+         which is an element, not a key value).
+     (b) A sample of extracted lines is provably absent from game.js.
+     (c) index.html loads text.js WITHOUT a cache-bust stamp, so Daniel's
+         edits apply on a normal refresh after Pages' ordinary cache. */
+  {
+    const REPO = '/home/hatch/workspace/hope-starts-small-game';
+    const vm = require('vm');
+    const gameSrc = fs.readFileSync(path.join(REPO, 'game.js'), 'utf8');
+    const textSrc = fs.readFileSync(path.join(REPO, 'text.js'), 'utf8');
+    const sandbox = {};
+    let textLoaded = true;
+    try { vm.createContext(sandbox); vm.runInContext(textSrc + '\n;this.__T = TEXT;', sandbox); } catch (e) { textLoaded = false; }
+    check('text.js loads as a script', textLoaded);
+    const T = sandbox.__T || {};
+    const refs = new Set();
+    for (const m of gameSrc.matchAll(/TEXT\.([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)/g)) refs.add(m[1]);
+    const bad = [];
+    for (const r of refs) {
+      let cur = T;
+      for (const part of r.split('.')) cur = cur == null ? cur : cur[part];
+      if (cur === undefined || cur === null) { bad.push(r + ' (missing)'); continue; }
+      if (typeof cur === 'string' && cur.length === 0) bad.push(r + ' (empty)');
+      else if (Array.isArray(cur) && cur.length === 0) bad.push(r + ' (empty array)');
+      else if (typeof cur !== 'string' && !Array.isArray(cur) && typeof cur !== 'object') bad.push(r + ' (odd type)');
+    }
+    check('every TEXT key game.js requests resolves non-empty (' + refs.size + ' refs)', bad.length === 0, bad.slice(0, 4).join('; '));
+    const sentinels = ['THE JAR IS FILLED', 'LONG BLUE STAND', 'SUITABLE HOUSING', 'PARADE ROUTE', 'NINETY-SIX SEEDS IN A DAMP PAPER TOWEL', 'THE REGISTER RECORDS THE GERMINATION', 'THERE IS NO LAST PAGE', 'THE SIGN HAS A BORDER', 'TUCKED. THEM. IN.', 'DREAM OF APRIL', 'ONE HUNDRED OF MY FEET', 'A PIPE FULL OF YEARS', 'SHE TASTED IT'];
+    const present = sentinels.filter(s => gameSrc.includes(s));
+    check('extracted lines are absent from game.js (sentinel sample)', present.length === 0, present.join('; '));
+    const indexSrc = fs.readFileSync(path.join(REPO, 'index.html'), 'utf8');
+    check('index.html loads text.js without a cache-bust stamp', indexSrc.includes('<script src="text.js"></script>'));
+    const liveCount = await page.evaluate(() => {
+      if (typeof TEXT === 'undefined') return -1;
+      let n = 0; const w = v => { if (typeof v === 'string') n++; else if (Array.isArray(v)) v.forEach(w); else if (v && typeof v === 'object') Object.values(v).forEach(w); };
+      w(TEXT); return n;
+    }).catch(() => -1);
+    check('live page TEXT carries the writing (>1000 strings)', liveCount > 1000, 'count=' + liveCount);
+  }
   await page.waitForTimeout(400);
   let s = await S();
   check('boots to title', s.mode === 'title', s.mode);
