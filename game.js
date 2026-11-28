@@ -4167,6 +4167,15 @@ function moveTarp(bi) {
   s.field.tarp[bi] = 3; saveGame();
   say(F(TEXT.tarp.tarpMovedAndFolded, { bi: bi, length: s.field.tarp.filter(t => t === 3).length }));
 }
+/* VERTICAL ROWS (Nov 28, 2026): the field's twelve rows run north–south.
+   Row rn's crop column is x = 2*rn-1; the lane to its east, x = 2*rn, is
+   the walking strip between this row and the next — and the strip where
+   weed patches grow. A row's bushes stand down its column, four to a
+   column, then spill into the lane. */
+function rowCropX(rn) { return 2 * rn - 1; }
+function rowLaneX(rn) { return 2 * rn; }
+function fieldRowAt(x, y) { if (y < 13 || y > 16 || x < 1 || x > 24) return 0; return Math.ceil(x / 2); }
+function rowBushPos(rn, idx) { const col = idx < 4 ? rowCropX(rn) : rowLaneX(rn); return { x: col, y: 13 + (idx % 4) }; }
 function fieldInteract(f) {
   const s = G.save, w = s.world;
   if (w.ch === 6 && w.step < 5) return say(TEXT.field.theFieldWaitingOn);
@@ -4181,9 +4190,13 @@ function fieldInteract(f) {
     if (!w.flags.mulchComing && s.field.mulch < 3) return say(TEXT.field.theMulchPileIs, which => { if (which === 0) orderMulch(); }, TEXT.field.arrangeADelivery);
     return say(F(TEXT.field.theMulchPileMulch, { mulch: s.field.mulch }));
   }
+  const fw0 = weedAt(f.x, f.y, 'field'); // a weed patch in the lane ahead: pull it
+  if (fw0) return pullWeed(fw0);
+  const uw0 = weedAt(player.tx, player.ty, 'field'); // or one under Frank's own boots
+  if (uw0) return pullWeed(uw0);
   const bands = [[1, 5], [6, 10], [11, 15], [16, 19], [20, 24]];
   const bi = bands.findIndex(([a, b]) => f.x >= a && f.x <= b);
-  const rn = 1 + (f.y - 13) * 3 + Math.floor((f.x - 2) / 8); // the row this tile belongs to (1..12)
+  const rn = fieldRowAt(f.x, f.y) || 1; // the row this tile belongs to (1..12) — rows run vertically
   const row = s.cropRows[rn - 1];
   const inRow = s.plants.filter(p => !p.memorial && !p.gone && p.row === rn);
   const sec = Math.floor((rn - 1) / 2), lv = s.field.weedLv[sec] || 0;
@@ -5200,7 +5213,8 @@ function renderBerry() {
       for (const p of s6.plants) {
         if (p.memorial || !p.location.startsWith('ROW')) continue;
         const rn = p.row || 1, idx = s6.plants.filter(q => q.row === rn && !q.memorial).indexOf(p);
-        const px = (2 + (rn - 1) % 3 * 8 + (idx % 6)) * TILE - camX, py = (13 + Math.floor((rn - 1) / 3) + Math.floor(idx / 6) * 0) * TILE - camY;
+        const bp = rowBushPos(rn, idx);
+        const px = bp.x * TILE - camX, py = bp.y * TILE - camY;
         ctx.drawImage(p.health >= 2 ? FIELD_BUSH_DRY : FIELD_BUSH, px, py);
       }
       // the rows' counted bushes draw after their Favorites
@@ -5210,17 +5224,25 @@ function renderBerry() {
         const favN = s6.plants.filter(q => q.row === rn2 && !q.memorial).length;
         for (let bi3 = 0; bi3 < row2.bushCount; bi3++) {
           const idx = favN + bi3;
-          const px = (2 + (rn2 - 1) % 3 * 8 + (idx % 6)) * TILE - camX, py = (13 + Math.floor((rn2 - 1) / 3)) * TILE - camY;
+          const bp = rowBushPos(rn2, idx);
+          const px = bp.x * TILE - camX, py = bp.y * TILE - camY;
           ctx.drawImage((row2.rowHealth || 0) >= 2 ? FIELD_BUSH_DRY : FIELD_BUSH, px, py);
         }
       }
     }
   }
+  // field weed patches: a decor layer in the lanes between the rows
+  for (const w of (G.save.weeds || [])) {
+    if ((w.area || 'yard') !== 'field') continue;
+    const sx = w.x * TILE - camX, sy = w.y * TILE - camY;
+    if (sx < -16 || sy < -16 || sx > VW || sy > VH) continue;
+    ctx.drawImage(w.deep ? WEED_DEEP : WEED_TUFT, sx, sy);
+  }
   if (G.save.world.flags.staked) { // corner stakes and string over the field
     ctx.fillStyle = '#e8e2d2';
     for (const [sx2, sy2] of [[1, 13], [24, 13], [1, 16], [24, 16]]) ctx.fillRect(sx2 * TILE - camX + 6, sy2 * TILE - camY + 2, 3, 8);
     ctx.fillStyle = 'rgba(232,226,210,0.5)';
-    for (let r2 = 0; r2 < 4; r2++) ctx.fillRect(1 * TILE - camX + 8, (13 + r2) * TILE - camY + 5, 23 * TILE - 8, 1);
+    for (let r2 = 0; r2 < 12; r2++) ctx.fillRect((2 * r2 + 1) * TILE - camX + 7, 13 * TILE - camY + 8, 1, 4 * TILE - 8); // strings run down the rows
   }
   if (G.save.world.ch >= 4) { // the inherited irises by the barn wall
     const ix = 6 * TILE - camX, iy = 5 * TILE - camY;
@@ -5676,7 +5698,7 @@ function ensureV2(s) {
   if (!Array.isArray(s.dex.blueberry)) s.dex.blueberry = [];
   if (!Array.isArray(s.dex.garden)) s.dex.garden = [];
   if (!Array.isArray(s.dex.cells)) s.dex.cells = [];
-  s.weeds = Array.isArray(s.weeds) ? s.weeds.filter(w => w && Number.isInteger(w.x) && Number.isInteger(w.y)).map(w => ({ x: w.x, y: w.y, deep: !!w.deep })) : [];
+  s.weeds = Array.isArray(s.weeds) ? s.weeds.filter(w => w && Number.isInteger(w.x) && Number.isInteger(w.y)).map(w => ({ x: w.x, y: w.y, deep: !!w.deep, area: w.area === 'field' ? 'field' : 'yard' })) : [];
   if (typeof s.compost !== 'number') s.compost = 0;
   if (typeof s.goodDirt !== 'number') s.goodDirt = 0;
   if (s.germ === undefined) s.germ = null;
@@ -6631,7 +6653,7 @@ function plantDawn(p, so, ev) {
   if (p.memorial || p.gone) return;
   const s = G.save, housing = housingOf(p);
   const winter = so.idx === 3;
-  const rowW = p.row != null && s.cropRows[p.row].watered;
+  const rowW = p.row != null && s.cropRows[p.row - 1].watered; // rows are 1-based; cropRows is not (fixed Nov 28, 2026)
   const wasWatered = p.watered || rowW;
   if (p.health === 3 && p.warnedDay != null && p.warnedDay < s.day && !wasWatered) {
     killPlant(p, (p.dryDays >= DRY_THRESH[housing][2] ? TEXT.plants.aDrySpellAnd : (p.cause || TEXT.plants.itFailedAndWas)));
@@ -6768,6 +6790,7 @@ function dawn() {
   const nurseryFailing = !!(s.nursery && s.nursery.stock > 0 && s.nursery.health === 3);
   if (nurseryFailing) s.nursery.warnedDay = s.day;
   if (w.ch <= 2) spawnWeeds(anyWatered ? 3 : 2);
+  if (w.ch >= 7 || (w.ch === 6 && w.step >= 6)) spawnFieldWeeds(2); // the lanes between the rows, once there are rows
   if (sixPlants().some(p => p.stage >= 2) && !s.deerBeaten && !s.deerPresent) s.deerPresent = true;
   let seasonLine = null;
   if (so.idx !== prev.idx) {
@@ -7102,7 +7125,7 @@ let cardSel = 0;
    never harmful: they cannot block a step or hurt a plant. */
 const WEED_CAP = 6;
 const WEED_TILES = new Set(['g', 'u']); // open grass only — never paths, the bench, the garden plot, flower beds, or the house apron (rows above 5)
-function weedAt(x, y) { return (G.save.weeds || []).find(w => w.x === x && w.y === y) || null; }
+function weedAt(x, y, area) { return (G.save.weeds || []).find(w => w.x === x && w.y === y && (w.area || 'yard') === (area || 'yard')) || null; }
 function spawnWeeds(count) {
   const s = G.save;
   if (!Array.isArray(s.weeds)) s.weeds = [];
@@ -7119,8 +7142,34 @@ function spawnWeeds(count) {
   for (let i = spots.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = spots[i]; spots[i] = spots[j]; spots[j] = t; }
   while (count > 0 && s.weeds.length < WEED_CAP && spots.length) {
     const sp = spots.pop();
-    s.weeds.push({ x: sp.x, y: sp.y, deep: Math.random() < 0.2 }); // about 1 in 5 is deep-rooted
+    s.weeds.push({ x: sp.x, y: sp.y, deep: Math.random() < 0.2, area: 'yard' }); // about 1 in 5 is deep-rooted
     count--;
+  }
+}
+/* Field weed patches (Nov 28, 2026): the lanes between the vertical
+   rows grow patches of their own, under the yard loop's rules — dawn
+   spawning, decor only, never solid, pulled for compost (deep-rooted
+   pays double). The bad shed's dig corner (24,16) is never seeded. */
+const FIELD_WEED_CAP = 8;
+function spawnFieldWeeds(count) {
+  const s = G.save;
+  if (!Array.isArray(s.weeds)) s.weeds = [];
+  const taken = new Set(s.weeds.filter(w => w.area === 'field').map(w => w.x + ',' + w.y));
+  const blocked = new Set();
+  if (area === 'barnOut') { blocked.add(player.tx + ',' + player.ty); blocked.add(alvin.tx + ',' + alvin.ty); }
+  const spots = [];
+  for (let x = 2; x <= 24; x += 2) for (let y = 13; y <= 16; y++) {
+    if (x === 24 && y === 16) continue;
+    const k = x + ',' + y;
+    if (taken.has(k) || blocked.has(k)) continue;
+    spots.push({ x, y });
+  }
+  for (let i = spots.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = spots[i]; spots[i] = spots[j]; spots[j] = t; }
+  let have = s.weeds.filter(w => w.area === 'field').length;
+  while (count > 0 && have < FIELD_WEED_CAP && spots.length) {
+    const sp = spots.pop();
+    s.weeds.push({ x: sp.x, y: sp.y, deep: Math.random() < 0.2, area: 'field' });
+    have++; count--;
   }
 }
 /* Pull feedback: the tuft arcs away and a "+N COMPOST" note floats up.
@@ -7643,6 +7692,7 @@ function renderOverworld() {
   }
   // weeds: a decor layer over the grass, under everything that walks
   for (const w of (G.save.weeds || [])) {
+    if ((w.area || 'yard') !== 'yard') continue;
     const sx = w.x * TILE - camX, sy = w.y * TILE - camY;
     if (sx < -16 || sy < -16 || sx > VW || sy > VH) continue;
     ctx.drawImage(w.deep ? WEED_DEEP : WEED_TUFT, sx, sy);
@@ -9174,7 +9224,10 @@ window.__hss = {
   ttLand(i) { return ttTimeline ? ttInstall(i) : false; },
   ttReset() { ttTimeline = null; ttBuild = null; ttStash = null; ttSel = 0; ttConfirm = false; ttGo = null; },
   ttSize() { return ttTimeline ? ttTimeline.reduce((a, snp) => a + snp.json.length, 0) : 0; },
-  setWeeds(list) { G.save.weeds = (list || []).map(w => ({ x: w.x, y: w.y, deep: !!w.deep })); saveGame(); },
+  setWeeds(list) { G.save.weeds = (list || []).map(w => ({ x: w.x, y: w.y, deep: !!w.deep, area: w.area === 'field' ? 'field' : 'yard' })); saveGame(); },
+  spawnFieldWeeds(n) { spawnFieldWeeds(n || 2); saveGame(); },
+  fieldRowAt(x, y) { return fieldRowAt(x, y); },
+  rowBushPos(rn, idx) { return rowBushPos(rn, idx); },
   giveCompost(n) { G.save.compost += n; saveGame(); },
   giveDirt(n) { G.save.goodDirt += n; saveGame(); },
   themeData() { return { bpm: THEME.bpm, beats: THEME.beats, melody: THEME.melody.map(e => e[0]), bass: THEME.bass.map(e => e[0]), chords: THEME.chords.map(e => e[0]) }; },

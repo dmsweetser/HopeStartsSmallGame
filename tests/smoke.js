@@ -3168,8 +3168,9 @@ function findChromium() {
   {
     const st = await S();
     const rn = [4, 5, 6, 7, 8, 9, 10, 11, 12].find(r => (st.rows[r - 1] && (st.rows[r - 1].bushCount || 0) > 0) || st.plants.some(p => p.row === r && !p.memorial && !p.gone));
-    const band = (rn - 1) % 3, fy = 13 + Math.floor((rn - 1) / 3);
-    await placeCF('barnOut', 4 + band * 8, fy - 1, 'down');
+    // vertical rows (Part 2, Nov 28, 2026): stand in row rn's lane
+    // (x = 2rn) at mid-field and face its crop column (x = 2rn-1)
+    await placeCF('barnOut', 2 * rn, 14, 'left');
     await openChoice();
     const d = await DS();
     check('choice fix: the row menu is a list of 3+ options', !!d && !!d.choice && d.choice.length >= 3, JSON.stringify(d && d.choice));
@@ -3320,6 +3321,76 @@ function findChromium() {
     const wr2 = await page.evaluate(() => G.save.world.watchRow);
     check('choice fix: NO WATCH clears the watch and the night passes', wr2 === null && s.day === day1 + 1, 'watchRow=' + wr2 + ' day=' + s.day);
   }
+
+  // ================================================================
+  // PART 2 (Nov 28, 2026) — VERTICAL FIELD ROWS + WEED PATCHES
+  // BETWEEN THE ROWS. The twelve rows run north–south: row rn's crop
+  // column is x = 2rn-1, the walking lane to its east is x = 2rn,
+  // and the lanes grow weed patches under the yard loop's rules.
+  // ================================================================
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(() => window.__hss, null, { timeout: 8000 });
+  await page.waitForTimeout(400);
+  const p2Calm = async () => { // tap through cards/dialogues to the overworld
+    for (let i = 0; i < 40; i++) { const st = await S(); if (st.mode === 'overworld') return true; await tap('z'); await page.waitForTimeout(130); }
+    return (await S()).mode === 'overworld';
+  };
+  const p2meta = await page.evaluate(() => { window.__hss.ttReset(); window.__hss.ttBuildSync(); return window.__hss.ttMeta(); });
+  const p2geo = await page.evaluate(() => {
+    const H = window.__hss, out = { rows: [], pos: [] };
+    for (const [x, y] of [[1, 13], [2, 13], [3, 13], [4, 15], [23, 16], [24, 16], [13, 12], [13, 17]]) out.rows.push(H.fieldRowAt(x, y));
+    for (let rn = 1; rn <= 12; rn++) { const a = H.rowBushPos(rn, 0), b = H.rowBushPos(rn, 3), c = H.rowBushPos(rn, 4); out.pos.push([a.x, a.y, b.x, b.y, c.x, c.y]); }
+    return out;
+  });
+  check('vertical rows: a field tile\'s row comes from its column', JSON.stringify(p2geo.rows) === JSON.stringify([1, 1, 2, 2, 12, 12, 0, 0]), JSON.stringify(p2geo.rows));
+  check('vertical rows: bushes stand down their column, then spill into the lane', p2geo.pos.every((p, i) => p[0] === 2 * (i + 1) - 1 && p[1] === 13 && p[2] === p[0] && p[3] === 16 && p[4] === 2 * (i + 1) && p[5] === 13), JSON.stringify(p2geo.pos[0]) + ' … ' + JSON.stringify(p2geo.pos[11]));
+  const p2idx = p2meta.findIndex(m => m.ch === 10 && m.step === 2);
+  check('vertical rows: a harvest-morning landing exists', p2idx >= 0, 'idx=' + p2idx);
+  await page.evaluate(i => window.__hss.ttLand(i), p2idx);
+  await page.waitForTimeout(300);
+  await p2Calm(); await settle();
+  await page.evaluate(() => window.__hss.gotoArea('barnOut', 13, 11));
+  await page.waitForTimeout(200); await settle();
+  await walkTo(13, 11);
+  await holdKey('ArrowDown', 70); await page.waitForTimeout(120); // face the gate
+  for (let i = 0; i < 10; i++) { const st = await S(); if (st.player.y >= 13) break; await tap('z'); await page.waitForTimeout(250); } // the gate dialogue -> ENTER THE FIELD
+  await settle();
+  s = await S();
+  check('vertical rows: Frank enters the field at the gate', s.world.area === 'barnOut' && s.player.x === 13 && s.player.y === 13, JSON.stringify(s.player));
+  // Row 1's menu, faced from its lane: the header names ROW 1
+  await walkTo(2, 14);
+  await holdKey('ArrowLeft', 70); await page.waitForTimeout(120); // face the crop column
+  await tap('z'); await page.waitForTimeout(350);
+  let p2dlg = await page.evaluate(() => window.__hss.dlgLines());
+  check('vertical rows: facing row 1\'s column opens the ROW 1 menu', p2dlg.length > 0 && p2dlg[0].text.indexOf('ROW 1:') === 0, p2dlg.length ? p2dlg[0].text : 'no dialogue');
+  // choose the first option — HARVEST THE ROW, at the harvest step
+  for (let i = 0; i < 6; i++) { const d = await page.evaluate(() => window.__hss.dlgState()); if (!d || d.chars >= d.total) break; await tap('z'); await page.waitForTimeout(150); }
+  await tap('z'); await page.waitForTimeout(400); // A on the first option
+  await dismissDialogue(25); await settle();
+  const p2harv = await page.evaluate(() => ({ hy: G.save.cropRows[0].harvestedYear, yr: seasonOf(G.save.day).year }));
+  check('vertical rows: row 1 harvests through its column menu', p2harv.hy === p2harv.yr, JSON.stringify(p2harv));
+  // weed patches spawn in the lanes, and only there
+  await page.evaluate(() => window.__hss.setWeeds([]));
+  await page.evaluate(() => window.__hss.spawnFieldWeeds(8));
+  const p2w = await page.evaluate(() => G.save.weeds.filter(w => w.area === 'field'));
+  check('field weeds: patches spawn only in the lanes between rows', p2w.length >= 4 && p2w.every(w => w.x % 2 === 0 && w.x >= 2 && w.x <= 24 && w.y >= 13 && w.y <= 16 && !(w.x === 24 && w.y === 16)), JSON.stringify(p2w));
+  // dawn itself seeds the lanes once the field is planted
+  await page.evaluate(() => window.__hss.setWeeds([]));
+  await page.evaluate(() => window.__hss.advanceDay());
+  await page.waitForTimeout(300); await p2Calm(); await settle();
+  const p2w2 = await page.evaluate(() => G.save.weeds.filter(w => w.area === 'field').length);
+  check('field weeds: dawn seeds the lanes once the field is planted', p2w2 > 0, 'field weeds after dawn=' + p2w2);
+  // Frank pulls a lane patch on foot, for compost
+  await page.evaluate(() => window.__hss.setWeeds([{ x: 6, y: 14, deep: false, area: 'field' }]));
+  const p2compost0 = await page.evaluate(() => G.save.compost);
+  await page.evaluate(() => window.__hss.gotoArea('barnOut', 13, 13));
+  await page.waitForTimeout(200); await settle();
+  await walkTo(6, 13); // the head of row 3's lane, on foot through the field
+  await holdKey('ArrowDown', 70); await page.waitForTimeout(120); // face the patch
+  await tap('z'); await page.waitForTimeout(200); await tap('z'); await page.waitForTimeout(300); // pull it (a held press, human timing)
+  await dismissDialogue(6); await settle();
+  const p2pull = await page.evaluate(() => ({ compost: G.save.compost, left: G.save.weeds.filter(w => w.area === 'field').length }));
+  check('field weeds: Frank pulls a lane patch on foot for compost', p2pull.compost === p2compost0 + 1 && p2pull.left === 0, JSON.stringify(p2pull) + ' compost0=' + p2compost0);
 
   await browser.close();
   if (ownServer) server.close();
