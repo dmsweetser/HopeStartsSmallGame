@@ -1617,9 +1617,10 @@ function findChromium() {
   };
   const enterBarnOnFoot = async () => {
     await faceUpAt(13, 5); // stand before the barn door, facing it
-    await tap('z'); await page.waitForTimeout(250); // the door dialogue
-    await tap('z'); await page.waitForTimeout(150); // complete the line
-    await tap('x'); await page.waitForTimeout(300); // B: GO INSIDE
+    await tap('z'); await page.waitForTimeout(250); // the door dialogue (a list: REST / GO INSIDE / NOT YET)
+    for (let i = 0; i < 30; i++) { const d = await page.evaluate(() => window.__hss.dlgState()); if (!d || (d.idx === d.lines - 1 && d.chars >= d.total)) break; await tap('z'); await page.waitForTimeout(110); }
+    await tap('ArrowDown'); await page.waitForTimeout(150); // the cursor to GO INSIDE
+    await tap('z'); await page.waitForTimeout(300); // A: GO INSIDE
     await settle();
     return (await S()).world.area === 'barnIn';
   };
@@ -2621,8 +2622,15 @@ function findChromium() {
       if (st.world.area !== before.world.area) { await auSettle(); return { ok: true, s: st }; } // no dialogue: straight through
       if (st.mode !== 'dialogue') return { ok: false, why: 'no dialogue, mode=' + st.mode, s: st };
       if (which === null) { await auDismiss(10); await auSettle(); return { ok: true, s: await S(), dialogueOnly: true }; }
-      await tap('z'); await page.waitForTimeout(200); // complete the line
-      await tap(which === 0 ? 'z' : 'x'); await page.waitForTimeout(400);
+      // complete the line by polling the dialogue state (a blind press
+      // that lands once the line is fully typed would fire a choice)
+      for (let i = 0; i < 30; i++) { const d = await page.evaluate(() => window.__hss.dlgState()); if (!d || (d.idx === d.lines - 1 && d.chars >= d.total)) break; await tap('z'); await page.waitForTimeout(110); }
+      // choose by index: a list (3+ options, the dialogue-choice fix)
+      // takes Down x which + A; a two-option footer still takes A / B
+      const dPick = await page.evaluate(() => window.__hss.dlgState());
+      if (dPick && dPick.choice && dPick.choice.length > 2) { for (let i = 0; i < which; i++) { await tap('ArrowDown'); await page.waitForTimeout(130); } await tap('z'); }
+      else await tap(which === 0 ? 'z' : 'x');
+      await page.waitForTimeout(400);
       await auDismiss(10);
       await auSettle();
       return { ok: true, s: await S() };
@@ -2934,6 +2942,383 @@ function findChromium() {
         auFailed.length === 0,
         landNote + ' | ' + auCols.map(c => c + '=' + (cells[c] || '?')).join(' ') + (notes.length ? ' | ' + notes.join(' ; ') : ''));
     }
+  }
+
+  /* ===== DIALOGUE CHOICE FIX (Nov 27, 2026) =====
+     The audit found the dialogue UI reaches only choices 0/1: a third
+     label renders in the line but can never be picked. Every dialogue
+     with 3+ options is opened below through the real player path and
+     its third (and further) options are picked with real inputs at
+     human timing — cursor keys, the canvas tap, the touch deck, and a
+     stubbed gamepad — and each pick's outcome is asserted. */
+  const DS = () => page.evaluate(() => window.__hss.dlgState());
+  const landCF = async (ch, step) => {
+    const meta = await page.evaluate(() => window.__hss.ttMeta());
+    const idx = meta.findIndex(m => m.ch === ch && m.step === step);
+    await page.evaluate(i => window.__hss.ttLand(i), idx);
+    await page.waitForTimeout(250);
+    await dismissDialogue(15);
+    await settle();
+  };
+  const placeCF = async (a, x, y, dir) => {
+    await page.evaluate(([a2, x2, y2, d2]) => { window.__hss.gotoArea(a2, x2, y2); if (d2) player.dir = d2; }, [a, x, y, dir || null]);
+    await page.waitForTimeout(180);
+    await dismissDialogue(15); // an arrival narration, if one fires
+    await settle();
+  };
+  const typeOut = async () => { // read the open dialogue to its choice point without choosing
+    for (let i = 0; i < 40; i++) {
+      const d = await DS();
+      if (!d) return false;
+      if (d.idx === d.lines - 1 && d.chars >= d.total) return true;
+      await tap('z'); await page.waitForTimeout(110);
+    }
+    return false;
+  };
+  const chooseIdx = async (n) => { // pick option n of the open choice dialogue, real inputs
+    const d = await DS();
+    if (!d || !d.choice) return false;
+    if (d.choice.length > 2) {
+      for (let i = 0; i < n + 2; i++) { const cur = await DS(); if (!cur) return false; if (cur.sel === n) break; if (cur.sel > n) return false; await tap('ArrowDown'); await page.waitForTimeout(130); }
+      const d2 = await DS();
+      if (!d2 || d2.sel !== n) return false;
+      await tap('z');
+    } else if (n === 0) await tap('z');
+    else if (n === 1) await tap('x');
+    else return false;
+    await page.waitForTimeout(350);
+    return true;
+  };
+  const openChoice = async () => { await tap('z'); await page.waitForTimeout(300); return typeOut(); }; // A on the faced tile, then read to the choice
+
+  /* the barn door: the list itself — cursor, wrap, B inert, NOT YET */
+  await landCF(3, 1);
+  await placeCF('barnOut', 13, 5, 'up');
+  {
+    const day0 = (await S()).day;
+    check('choice fix: the barn door opens its dialogue on foot', await openChoice());
+    let d = await DS();
+    check('choice fix: the barn door lists all three options, cursor at the first', !!d && Array.isArray(d.choice) && d.choice.length === 3 && d.sel === 0, JSON.stringify(d && d.choice));
+    await page.screenshot({ path: path.join(SHOTS, 'choice-list.png') });
+    await tap('x'); await page.waitForTimeout(250); // B must not fire GO INSIDE by reflex
+    d = await DS();
+    check('choice fix: B is inert in a list (no accidental second option)', !!d && d.sel === 0 && (await S()).world.area === 'barnOut');
+    check('choice fix: NOT YET (3rd) picked by cursor', await chooseIdx(2));
+    s = await S();
+    check('choice fix: NOT YET closes the door dialogue — no rest, no entry', s.mode === 'overworld' && s.world.area === 'barnOut' && s.day === day0, 'mode=' + s.mode + ' area=' + s.world.area + ' day=' + s.day);
+    await openChoice();
+    check('choice fix: GO INSIDE (2nd) picked by cursor', await chooseIdx(1));
+    s = await S();
+    check('choice fix: GO INSIDE enters the barn', s.world.area === 'barnIn' && s.player.x === 14 && s.player.y === 6, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+  }
+  /* the barn door by touch: a tap on the third row picks it */
+  await placeCF('barnOut', 13, 5, 'up');
+  {
+    const day0 = (await S()).day;
+    await openChoice();
+    const pt = await page.evaluate(() => {
+      const r = document.getElementById('game').getBoundingClientRect();
+      return { x: r.left + 80 / 160 * r.width, y: r.top + 92 / 144 * r.height }; // row 3's centre (panel y=60, bands from 62, pitch 12)
+    });
+    await page.mouse.click(pt.x, pt.y);
+    await page.waitForTimeout(350);
+    s = await S();
+    check('choice fix: tapping the third row picks NOT YET (touch)', s.mode === 'overworld' && s.world.area === 'barnOut' && s.day === day0, 'mode=' + s.mode + ' area=' + s.world.area);
+  }
+  /* the barn door by touch deck: stick down + the A button */
+  await placeCF('barnOut', 13, 5, 'up');
+  {
+    await openChoice();
+    await page.evaluate(() => { settings.stick = 'always'; applyStickPref(); });
+    await page.waitForTimeout(200);
+    const base = await page.evaluate(() => { const r = document.getElementById('stickBase').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+    await page.mouse.move(base.x, base.y); await page.mouse.down();
+    await page.mouse.move(base.x, base.y + 34, { steps: 5 }); await page.waitForTimeout(250); await page.mouse.up();
+    await page.waitForTimeout(200);
+    const d = await DS();
+    check('choice fix: the touch stick moves the cursor to GO INSIDE', !!d && d.sel === 1, 'sel=' + (d && d.sel));
+    const btn = await page.evaluate(() => { const r = document.getElementById('btnA').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+    await page.mouse.move(btn.x, btn.y); await page.mouse.down(); await page.waitForTimeout(120); await page.mouse.up();
+    await page.waitForTimeout(350);
+    s = await S();
+    check('choice fix: the deck A button confirms GO INSIDE', s.world.area === 'barnIn', 'area=' + s.world.area);
+    await page.evaluate(() => { settings.stick = 'auto'; applyStickPref(); });
+  }
+  /* the barn door by gamepad: d-pad down + button A (stubbed pad) */
+  await placeCF('barnOut', 13, 5, 'up');
+  {
+    await openChoice();
+    await page.evaluate(() => { window.__fakePad = { buttons: Array.from({ length: 17 }, () => ({ pressed: false })), axes: [0, 0] }; navigator.getGamepads = () => [window.__fakePad]; });
+    await page.evaluate(() => { window.__fakePad.buttons[13].pressed = true; });
+    await page.waitForTimeout(200);
+    await page.evaluate(() => { window.__fakePad.buttons[13].pressed = false; });
+    await page.waitForTimeout(150);
+    const d = await DS();
+    check('choice fix: the gamepad d-pad moves the cursor', !!d && d.sel === 1, 'sel=' + (d && d.sel));
+    await page.evaluate(() => { window.__fakePad.buttons[0].pressed = true; });
+    await page.waitForTimeout(150);
+    await page.evaluate(() => { window.__fakePad.buttons[0].pressed = false; navigator.getGamepads = undefined; });
+    await page.waitForTimeout(300);
+    s = await S();
+    check('choice fix: the gamepad A button confirms GO INSIDE', s.world.area === 'barnIn', 'area=' + s.world.area);
+  }
+  /* the house door in the truck step (4 options): GO INSIDE is third */
+  await landCF(3, 4);
+  await placeCF('yard', 11, 4, 'up');
+  {
+    const day0 = (await S()).day;
+    await openChoice();
+    const d = await DS();
+    check('choice fix: the truck-step door lists four options', !!d && !!d.choice && d.choice.length === 4, JSON.stringify(d && d.choice));
+    check('choice fix: NOT YET (4th) picked by cursor', await chooseIdx(3));
+    s = await S();
+    check('choice fix: NOT YET at the truck door — no rest, no entry', s.mode === 'overworld' && s.world.area === 'yard' && s.day === day0, 'mode=' + s.mode + ' day=' + s.day);
+    await openChoice();
+    check('choice fix: GO INSIDE (3rd) picked by cursor at the truck door', await chooseIdx(2));
+    s = await S();
+    check('choice fix: GO INSIDE at the truck door enters the house', s.world.area === 'house' && s.player.x === 10 && s.player.y === 11, 'area=' + s.world.area + ' pos=' + s.player.x + ',' + s.player.y);
+  }
+  /* the house door, an ordinary chapter: NOT YET is third */
+  await landCF(4, 0);
+  await placeCF('yard', 11, 4, 'up');
+  {
+    const day0 = (await S()).day;
+    await openChoice();
+    check('choice fix: NOT YET (3rd) picked at the house door', await chooseIdx(2));
+    s = await S();
+    check('choice fix: NOT YET at the house door — still in the yard, same day', s.mode === 'overworld' && s.world.area === 'yard' && s.day === day0, 'mode=' + s.mode + ' day=' + s.day);
+  }
+  /* the planting gate (ch.6 step 5, gate satisfied): NOT YET is third */
+  {
+    await landCF(6, 5);
+    const sv = await page.evaluate(() => window.__hss.debugSave());
+    delete sv.world.flags.repotDay;
+    sv.plants.forEach(p => { p.health = 0; });
+    if (sv.company) { sv.company.stage = 3; sv.company.health = 0; }
+    sv.field.tarp = sv.field.tarp.map(() => 3);
+    sv.field.fenceSeg = sv.field.fenceSeg.map(() => 1);
+    sv.cropRows.forEach((r, i) => { if (i < 7) r.mulched = true; });
+    await page.evaluate(s2 => window.__hss.setSave(s2), sv);
+    const gate = await page.evaluate(() => window.__hss.plantingGate());
+    check('choice fix: the planting scenario satisfies the gate', Array.isArray(gate) && gate.length === 0, JSON.stringify(gate));
+    const plantScenario = async () => { await page.evaluate(s2 => window.__hss.setSave(s2), JSON.parse(JSON.stringify(sv))); await placeCF('barnOut', 13, 13, 'up'); await openChoice(); };
+    await plantScenario();
+    check('choice fix: NOT YET (3rd) picked at the planting gate', await chooseIdx(2));
+    s = await S();
+    check('choice fix: NOT YET at the gate — still in the field, unplanted, step 5', s.mode === 'overworld' && s.world.step === 5 && !s.plants.some(p => p.row === 1), 'mode=' + s.mode + ' step=' + s.world.step);
+    await plantScenario();
+    check('choice fix: READ THE LIST (2nd) picked at the planting gate', await chooseIdx(1));
+    s = await S();
+    check('choice fix: READ THE LIST opens the list dialogue', s.mode === 'dialogue', 'mode=' + s.mode);
+    await dismissDialogue(10);
+    await plantScenario();
+    check('choice fix: PLANTING DAY (1st) picked at the planting gate', await chooseIdx(0));
+    await dismissDialogue(15); await settle();
+    s = await S();
+    check('choice fix: PLANTING DAY plants row 1 and moves the chapter on', s.world.step === 6 && s.plants.some(p => p.row === 1), 'step=' + s.world.step);
+  }
+  /* the greenhouse stove (3 options): LEAVE IT third, the vent second */
+  await landCF(6, 1);
+  {
+    await walkTo(10, 4); await holdKey('ArrowUp', 120); await page.waitForTimeout(150); await settle();
+    const vent0 = (await S()).field.vent, lit0 = (await S()).world.flags.heaterLit;
+    await openChoice();
+    const d = await DS();
+    check('choice fix: the stove lists three options', !!d && !!d.choice && d.choice.length === 3, JSON.stringify(d && d.choice));
+    check('choice fix: LEAVE IT (3rd) picked at the stove', await chooseIdx(2));
+    s = await S();
+    check('choice fix: LEAVE IT at the stove changes nothing', s.mode === 'overworld' && s.field.vent === vent0 && s.world.flags.heaterLit === lit0, 'vent=' + s.field.vent + ' lit=' + s.world.flags.heaterLit);
+    await openChoice();
+    check('choice fix: the vent (2nd) picked at the stove', await chooseIdx(1));
+    await dismissDialogue(6);
+    s = await S();
+    check('choice fix: the vent toggles from the list', s.field.vent === !vent0, 'vent=' + s.field.vent + ' was ' + vent0);
+  }
+  /* the greenhouse benches with the Company in (4 options) */
+  {
+    await page.evaluate(() => window.__hss.giveDirt(2));
+    await walkTo(3, 2); await holdKey('ArrowUp', 120); await page.waitForTimeout(150); await settle();
+    await openChoice();
+    const d = await DS();
+    check('choice fix: the benches list four options with the Company in', !!d && !!d.choice && d.choice.length === 4, JSON.stringify(d && d.choice));
+    const dirt0 = (await S()).goodDirt;
+    check('choice fix: JUST LOOK (4th) picked at the benches', await chooseIdx(3));
+    s = await S();
+    check('choice fix: JUST LOOK spends nothing', s.mode === 'overworld' && s.goodDirt === dirt0 && !(s.company && s.company.dirtFed), 'dirt=' + s.goodDirt);
+    await openChoice();
+    check('choice fix: FEED THE COMPANY (3rd) picked at the benches', await chooseIdx(2));
+    await dismissDialogue(6);
+    s = await S();
+    check('choice fix: FEED THE COMPANY spends a dirt and feeds them', s.goodDirt === dirt0 - 1 && !!(s.company && s.company.dirtFed), 'dirt=' + s.goodDirt + ' fed=' + (s.company && s.company.dirtFed));
+  }
+  /* the fence valve (3 options): LEAVE IT is third */
+  await landCF(6, 7);
+  await placeCF('barnOut', 5, 13, 'up');
+  {
+    await openChoice();
+    const d = await DS();
+    check('choice fix: the fence valve lists three options', !!d && !!d.choice && d.choice.length === 3, JSON.stringify(d && d.choice));
+    const proj0 = (await S()).world.proj, wet0 = (await S()).rows.filter(r => r.watered).length;
+    check('choice fix: LEAVE IT (3rd) picked at the fence valve', await chooseIdx(2));
+    s = await S();
+    check('choice fix: LEAVE IT at the valve — no project spent, no rows watered', s.mode === 'overworld' && s.world.proj === proj0 && s.rows.filter(r => r.watered).length === wet0, 'proj=' + s.world.proj);
+  }
+  /* the field row menu (a built list): LEAVE IT last, WATER mid-list */
+  await landCF(11, 0);
+  {
+    const st = await S();
+    const rn = [4, 5, 6, 7, 8, 9, 10, 11, 12].find(r => (st.rows[r - 1] && (st.rows[r - 1].bushCount || 0) > 0) || st.plants.some(p => p.row === r && !p.memorial && !p.gone));
+    const band = (rn - 1) % 3, fy = 13 + Math.floor((rn - 1) / 3);
+    await placeCF('barnOut', 4 + band * 8, fy - 1, 'down');
+    await openChoice();
+    const d = await DS();
+    check('choice fix: the row menu is a list of 3+ options', !!d && !!d.choice && d.choice.length >= 3, JSON.stringify(d && d.choice));
+    const leaveIdx = d.choice.length - 1, waterIdx = d.choice.findIndex(l => l.indexOf('WATER') === 0);
+    check('choice fix: LEAVE IT (last) picked in the row menu', await chooseIdx(leaveIdx));
+    s = await S();
+    check('choice fix: LEAVE IT in the row menu closes it untouched', s.mode === 'overworld' && s.rows[rn - 1].watered === st.rows[rn - 1].watered, 'mode=' + s.mode);
+    await openChoice();
+    check('choice fix: WATER THE ROW picked in the row menu', waterIdx >= 0 && await chooseIdx(waterIdx));
+    await dismissDialogue(6);
+    s = await S();
+    check('choice fix: the row is watered from the list', s.rows[rn - 1].watered === true, 'row ' + rn + ' watered=' + s.rows[rn - 1].watered);
+  }
+  /* the wine measures, batch two in ch.10 (7 options, windowed) */
+  {
+    await landCF(10, 2);
+    const sv = await page.evaluate(() => window.__hss.debugSave());
+    sv.world.ch = 10; sv.world.step = 3; sv.wine.jar = null;
+    await page.evaluate(s2 => window.__hss.setSave(s2), sv);
+    const wineScenario = async () => { await page.evaluate(s2 => window.__hss.setSave(s2), JSON.parse(JSON.stringify(sv))); await placeCF('barnIn', 10, 2, 'up'); await openChoice(); };
+    await wineScenario();
+    const d = await DS();
+    check('choice fix: batch two lists seven measures', !!d && !!d.choice && d.choice.length === 7, JSON.stringify(d && d.choice));
+    check('choice fix: A FLOOD (7th, past the window) picked', await chooseIdx(6));
+    await dismissDialogue(8);
+    s = await S();
+    check('choice fix: the flood measure starts the jar at 1.35', !!s.wine.jar && Math.abs(s.wine.jar.index - 1.35) < 0.001, 'index=' + (s.wine.jar && s.wine.jar.index));
+    await wineScenario();
+    check('choice fix: A MEASURE (3rd) picked for batch two', await chooseIdx(2));
+    await dismissDialogue(8);
+    s = await S();
+    check('choice fix: the measure starts the jar at 0.55', !!s.wine.jar && Math.abs(s.wine.jar.index - 0.55) < 0.001, 'index=' + (s.wine.jar && s.wine.jar.index));
+  }
+  /* the wine measures in the Long Tending (5 options) */
+  {
+    await landCF(11, 0);
+    const yr = (await S()).year;
+    const sv = await page.evaluate(() => window.__hss.debugSave());
+    sv.wine.jar = null; sv.wine.poundsByYear[yr] = 25;
+    await page.evaluate(s2 => window.__hss.setSave(s2), sv);
+    const wineScenario = async () => { await page.evaluate(s2 => window.__hss.setSave(s2), JSON.parse(JSON.stringify(sv))); await placeCF('barnIn', 10, 2, 'up'); await openChoice(); };
+    await wineScenario();
+    const d = await DS();
+    check('choice fix: the Long Tending kitchen lists five measures', !!d && !!d.choice && d.choice.length === 5, JSON.stringify(d && d.choice));
+    check('choice fix: THE LESSON (3rd) picked in the Long Tending', await chooseIdx(2));
+    await dismissDialogue(8);
+    s = await S();
+    check('choice fix: the lesson starts the jar at 0.65', !!s.wine.jar && Math.abs(s.wine.jar.index - 0.65) < 0.001, 'index=' + (s.wine.jar && s.wine.jar.index));
+    await wineScenario();
+    check('choice fix: A GENEROUS CUP (5th) picked in the Long Tending', await chooseIdx(4));
+    await dismissDialogue(8);
+    s = await S();
+    check('choice fix: the generous cup starts the jar at 1.00', !!s.wine.jar && Math.abs(s.wine.jar.index - 1.0) < 0.001, 'index=' + (s.wine.jar && s.wine.jar.index));
+  }
+  /* the house tray (3 options): NOT NOW is third */
+  {
+    await landCF(2, 1);
+    const sv = await page.evaluate(() => window.__hss.debugSave());
+    sv.tray.ready = true; sv.tray.n = 3;
+    await page.evaluate(s2 => window.__hss.setSave(s2), sv);
+    await placeCF('house', 1, 2, 'up');
+    await openChoice();
+    const d = await DS();
+    check('choice fix: the tray lists three options', !!d && !!d.choice && d.choice.length === 3, JSON.stringify(d && d.choice));
+    check('choice fix: NOT NOW (3rd) picked at the tray', await chooseIdx(2));
+    s = await S();
+    check('choice fix: NOT NOW at the tray leaves the sprouts be', s.mode === 'overworld' && s.tray.n === 3, 'mode=' + s.mode + ' tray=' + s.tray.n);
+    await openChoice();
+    check('choice fix: POT UP A SPROUT (1st) picked at the tray', await chooseIdx(0));
+    await dismissDialogue(8);
+    s = await S();
+    check('choice fix: a sprout is potted up from the list', s.tray.n < 3, 'tray=' + s.tray.n);
+  }
+  /* the barn shelf in the carry chapter (3 options): NOT NOW is third */
+  {
+    await landCF(3, 7);
+    await placeCF('barnIn', 1, 2, 'up');
+    await openChoice();
+    const d = await DS();
+    check('choice fix: the office shelf lists three options', !!d && !!d.choice && d.choice.length === 3, JSON.stringify(d && d.choice));
+    check('choice fix: NOT NOW (3rd) picked at the office shelf', await chooseIdx(2));
+    s = await S();
+    check('choice fix: NOT NOW at the shelf — the plants stay in the office', s.mode === 'overworld' && s.plants.some(p => p.location === 'OFFICE' && !p.memorial), 'mode=' + s.mode);
+    await openChoice();
+    check('choice fix: WATER THEM HERE (2nd) picked at the office shelf', await chooseIdx(1));
+    await dismissDialogue(8);
+    s = await S();
+    check('choice fix: the office plants are watered from the list', s.plants.filter(p => p.location === 'OFFICE' && !p.memorial).every(p => p.watered), '');
+  }
+  /* the frost watch (a built list, up to 8): LEAVE IT UNSET is last */
+  {
+    await landCF(9, 2);
+    await placeCF('barnOut', 13, 13, 'up');
+    const st = await S();
+    const rowsWith = [1, 2, 3, 4, 5, 6, 7].filter(r => (st.rows[r - 1] && (st.rows[r - 1].bushCount || 0) > 0) || st.plants.some(p => p.row === r && !p.memorial && !p.gone));
+    const watch0 = await page.evaluate(() => G.save.world.flags.watchTonight);
+    await openChoice();
+    const d = await DS();
+    check('choice fix: the frost watch lists every row plus LEAVE IT UNSET', !!d && !!d.choice && d.choice.length === rowsWith.length + 1 && d.choice.length >= 4, JSON.stringify(d && d.choice));
+    check('choice fix: LEAVE IT UNSET (last) picked at the frost gate', await chooseIdx(d.choice.length - 1));
+    check('choice fix: the climb-back offer follows', await typeOut());
+    await tap('z'); await page.waitForTimeout(400); await settle();
+    s = await S();
+    const watch1 = await page.evaluate(() => G.save.world.flags.watchTonight);
+    check('choice fix: LEAVE IT UNSET keeps the watch and Frank climbs out', s.player.x === 13 && s.player.y === 11 && watch1 === watch0, 'pos=' + s.player.x + ',' + s.player.y + ' watch=' + watch1);
+    await placeCF('barnOut', 13, 13, 'up');
+    await openChoice();
+    check('choice fix: WATCH ROW (3rd) picked at the frost gate', await chooseIdx(2));
+    check('choice fix: the watch confirmation reads out', await typeOut());
+    await tap('z'); await page.waitForTimeout(300); // close the confirmation: the climb-back offer chains behind it
+    check('choice fix: the climb-back offer follows the watch', await typeOut());
+    await tap('z'); await page.waitForTimeout(400); await settle();
+    s = await S();
+    const watch2 = await page.evaluate(() => G.save.world.flags.watchTonight);
+    check('choice fix: the frost watch is set to the third row and Frank climbs out', watch2 === rowsWith[2] && s.player.x === 13 && s.player.y === 11, 'watch=' + watch2 + ' expect=' + rowsWith[2]);
+  }
+
+  /* the barn door in ch.7: NOT YET third; the nested watch list (4) */
+  await landCF(7, 0);
+  await placeCF('barnOut', 13, 5, 'up');
+  {
+    const day0 = (await S()).day;
+    await openChoice();
+    check('choice fix: ch.7 barn door NOT YET (3rd) picked', await chooseIdx(2));
+    s = await S();
+    check('choice fix: ch.7 NOT YET — no watch dialogue, no rest', s.mode === 'overworld' && s.world.area === 'barnOut' && s.day === day0, 'mode=' + s.mode + ' day=' + s.day);
+    // REST opens the watch list: THE FIELD ROWS is third
+    await openChoice();
+    check('choice fix: ch.7 REST opens the watch list', await chooseIdx(0));
+    check('choice fix: the watch list types out', await typeOut());
+    const d = await DS();
+    check('choice fix: the watch list has four options', !!d && !!d.choice && d.choice.length === 4, JSON.stringify(d && d.choice));
+    check('choice fix: THE FIELD ROWS (3rd) picked in the watch list', await chooseIdx(2));
+    await dismissDialogue(25); await settle();
+    s = await S();
+    const wr = await page.evaluate(() => G.save.world.watchRow);
+    check('choice fix: the watch is set to the field rows and the night passes', wr === 'ROWS' && s.day === day0 + 1, 'watchRow=' + wr + ' day=' + s.day);
+    // NO WATCH is fourth: clear a set watch with it
+    await page.evaluate(() => window.__hss.setWatch('ROW1'));
+    await placeCF('barnOut', 13, 5, 'up');
+    const day1 = (await S()).day;
+    await openChoice();
+    await chooseIdx(0);
+    await typeOut();
+    check('choice fix: NO WATCH (4th) picked in the watch list', await chooseIdx(3));
+    await dismissDialogue(25); await settle();
+    s = await S();
+    const wr2 = await page.evaluate(() => G.save.world.watchRow);
+    check('choice fix: NO WATCH clears the watch and the night passes', wr2 === null && s.day === day1 + 1, 'watchRow=' + wr2 + ' day=' + s.day);
   }
 
   await browser.close();

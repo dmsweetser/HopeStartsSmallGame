@@ -6198,7 +6198,19 @@ function syncPixels(e) { e.px = e.tx * TILE; e.py = e.ty * TILE; }
 function faceName(dx, dy) { return dx < 0 ? 'left' : dx > 0 ? 'right' : dy < 0 ? 'up' : 'down'; }
 
 /* ============================== DIALOGUE ============================== */
-let dlg = null; // {lines:[{name,text}], idx, chars, timer, cb, choice}
+let dlg = null; // {lines:[{name,text}], idx, chars, timer, cb, choice, sel}
+let dlgTapRow = -1, dlgTapFor = null; // a tapped choice row (canvas pointer), consumed by dlgUpdate
+/* A choice of three or more cannot ride the A:/B: footer — only the
+   first two options were ever drawn or reachable, and the rest were
+   decoration (dialogue-choice fix, Nov 27, 2026). Three or more opens
+   as a list in the game's own menu idiom instead: a cursor and a
+   highlight, the window following the selection as the register index
+   does, A to choose, and rows that answer a tap. Two-option prompts
+   keep the A:/B: footer they have always had. */
+const DLG_WIN = 5, DLG_PITCH = 12;
+function dlgListOpen() { return !!(dlg && dlg.choice && dlg.choice.length > 2 && dlg.idx === dlg.lines.length - 1 && dlg.chars >= dlg.lines[dlg.idx].text.length); }
+function dlgListStart() { const n = dlg.choice.length; return Math.max(0, Math.min(dlg.sel - (DLG_WIN - 1), n - DLG_WIN)); }
+function dlgListGeom() { const rows = Math.min(DLG_WIN, dlg.choice.length); const h = rows * DLG_PITCH + 7; return { x: 4, y: 103 - h, w: 152, h, rows }; }
 function say(lines, cb, choice) {
   const raw = Array.isArray(lines) ? lines : [lines];
   // a leading "FRANK:" / "CONSTANCE:" / "PASTOR:" becomes a speaker name tag
@@ -6207,7 +6219,8 @@ function say(lines, cb, choice) {
     const m = String(l).match(/^(FRANK|CONSTANCE|PASTOR):\s*/);
     return m ? { name: m[1], text: String(l).slice(m[0].length) } : { name: null, text: String(l) };
   });
-  dlg = { lines: parsed, idx: 0, chars: 0, timer: 0, cb: cb || null, choice: choice || null };
+  dlg = { lines: parsed, idx: 0, chars: 0, timer: 0, cb: cb || null, choice: choice || null, sel: 0 };
+  dlgTapRow = -1; dlgTapFor = null;
   mode = 'dialogue';
 }
 function dlgUpdate(dt) {
@@ -6216,6 +6229,17 @@ function dlgUpdate(dt) {
   dlg.timer += dt;
   const total = line.length;
   if (dlg.chars < total) { dlg.chars = Math.min(total, Math.floor(dlg.timer * 45)); }
+  if (dlgListOpen()) {
+    // the list: every option reachable — cursor by stick, keys or pad
+    // (all feed Input.dir, so menuNavHit hears each), A chooses, and a
+    // tap on a row chooses it outright. B does nothing here: with
+    // three or more options it must never fire the second by reflex.
+    if (dlgTapRow >= 0 && dlgTapFor === dlg) { const t = dlgTapRow; dlgTapRow = -1; dlgTapFor = null; if (t < dlg.choice.length) { endDlg(t); return; } }
+    if (menuNavHit('up')) dlg.sel = (dlg.sel + dlg.choice.length - 1) % dlg.choice.length;
+    if (menuNavHit('down')) dlg.sel = (dlg.sel + 1) % dlg.choice.length;
+    if (Input.aHit) { endDlg(dlg.sel); return; }
+    return;
+  }
   if (Input.aHit) {
     if (dlg.chars < total) { dlg.chars = total; dlg.timer = total / 45; }
     else if (dlg.choice && dlg.idx === dlg.lines.length - 1) { endDlg(0); }
@@ -6226,7 +6250,7 @@ function dlgUpdate(dt) {
   }
 }
 function endDlg(which) {
-  const cb = dlg.cb; dlg = null; if (mode === 'dialogue') mode = 'overworld';
+  const cb = dlg.cb; dlg = null; dlgTapRow = -1; dlgTapFor = null; if (mode === 'dialogue') mode = 'overworld';
   if (cb) cb(which);
 }
 function drawBox(y, h) {
@@ -6255,9 +6279,21 @@ function drawDlg() {
   const wrapped = wrapText(line.slice(0, dlg.chars), 36);
   wrapped.slice(0, 4).forEach((l, i) => drawText(l, 8, 107 + i * 8, '#20242a', 1));
   if (dlg.chars >= line.length) {
-    if (dlg.choice && dlg.idx === dlg.lines.length - 1) drawText(F(TEXT.screens.aChoiceBChoice2, { choice: dlg.choice[0], choice2: dlg.choice[1] }), 8, 135, '#b03030', 1);
+    if (dlgListOpen()) { drawDlgList(); drawText(TEXT.screens.chooseHint, 8, 135, '#5a6270', 1); }
+    else if (dlg.choice && dlg.idx === dlg.lines.length - 1) drawText(F(TEXT.screens.aChoiceBChoice2, { choice: dlg.choice[0], choice2: dlg.choice[1] }), 8, 135, '#b03030', 1);
     else if (Math.floor(perfNow * 2) % 2 === 0) drawText('▼', 148, 133, '#20242a', 1);
   }
+}
+function drawDlgList() {
+  const g = dlgListGeom(), start = dlgListStart();
+  ctx.fillStyle = '#20242a'; ctx.fillRect(g.x, g.y, g.w, g.h);
+  ctx.fillStyle = '#f8f8f8'; ctx.fillRect(g.x + 2, g.y + 2, g.w - 4, g.h - 4);
+  dlg.choice.slice(start, start + g.rows).forEach((label, i) => {
+    const y = g.y + 5 + i * DLG_PITCH, idx = start + i;
+    if (idx === dlg.sel) { ctx.fillStyle = '#ffe9a8'; ctx.fillRect(9, y - 3, 142, 12); drawText('▶', 11, y, '#b03030', 1); }
+    drawText(String(label).slice(0, 32), 20, y, '#20242a', 1);
+  });
+  if (start + g.rows < dlg.choice.length) drawText('▼', 148, g.y + g.h - 10, '#5a6270', 1); // more below the window
 }
 
 /* ============================== OVERWORLD ============================== */
@@ -9011,6 +9047,18 @@ function renderTravelGo() {
   cvs.addEventListener('pointerup', end);
   cvs.addEventListener('pointercancel', end);
 })();
+(function () { // a dialogue's choice list answers a tap on a row, like the slider answers a thumb
+  const cvs = document.getElementById('game');
+  cvs.addEventListener('pointerdown', e => {
+    if (mode !== 'dialogue' || !dlgListOpen()) return;
+    const r = cvs.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * VW, y = (e.clientY - r.top) / r.height * VH;
+    const g = dlgListGeom(), start = dlgListStart();
+    if (x < g.x || x >= g.x + g.w) return;
+    const row = Math.floor((y - (g.y + 2)) / DLG_PITCH);
+    if (row >= 0 && row < g.rows) { dlgTapRow = start + row; dlgTapFor = dlg; }
+  });
+})();
 
 /* ============================== TEST HOOK ============================== */
 window.__hss = {
@@ -9097,6 +9145,7 @@ window.__hss = {
   harvestRow(rn) { harvestRow(rn); },
   tasting() { tasting(); },
   dlgLines() { return dlg ? dlg.lines.map(l => ({ name: l.name, text: l.text })) : []; },
+  dlgState() { return dlg ? { choice: dlg.choice ? dlg.choice.slice() : null, sel: dlg.sel, idx: dlg.idx, chars: dlg.chars, total: dlg.lines[dlg.idx].text.length, lines: dlg.lines.length } : null; },
   ltGoals() { return ltGoals(); },
   plantNurseryRow(rn) { plantNurseryRow(rn); },
   pruneRow(rn) { pruneRow(rn); },

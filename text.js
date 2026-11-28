@@ -2910,6 +2910,8 @@ const TEXT = {
   screens: {
     // game.js line 6013 · drawDlg
     aChoiceBChoice2: "A:{choice}  B:{choice2}",
+    // game.js · drawDlg (the choice list's footer hint)
+    chooseHint: "CHOOSE: MOVE + A — OR TAP A ROW",
     // game.js line 7121 · renderTitle
     hopeStarts: "HOPE STARTS",
     // game.js line 7126 · renderTitle
