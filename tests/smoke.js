@@ -2510,6 +2510,432 @@ function findChromium() {
   check('the farm stand shares the surplus from a traveled-to garden', s.wine.shared > 0, 'shared=' + s.wine.shared);
   await page.screenshot({ path: path.join(SHOTS, 'travel-landing.png') });
 
+  // AREA TRANSITION AUDIT (Nov 27, 2026 — Daniel's commission): from a
+  // time-travel landing in EVERY distinct (chapter, step) region, walk
+  // Frank ON FOOT into and back out of every area enterable in that
+  // state, and prove the not-yet-enterable ones refuse sanely. The two
+  // traps it caught on its first run are named proofs below: the road
+  // home once arrived on a roof tile (11,1 — solid on all four sides,
+  // autosaved there), and the greenhouse's south bench ran wall to
+  // wall, sealing the stove room from the door — a hand player could
+  // never reach the stove, and a traveled morning at the stove could
+  // never leave. The walker plans over the game's own maps (fetched
+  // from the server, so this audits the game as served) and replans
+  // around whoever stands in the way; assertions read the live state.
+  {
+    const auSrc = await page.evaluate(async () => { const r = await fetch('game.js'); return await r.text(); });
+    const auGrabArr = (name) => { const m = auSrc.match(new RegExp('const ' + name + ' = \\[([\\s\\S]*?)\\];')); return Function('return [' + m[1] + ']')(); };
+    const auGrabSet = (name) => { const m = auSrc.match(new RegExp('const ' + name + ' = new Set\\(\\[(.*?)\\]\\)')); return new Set(Function('return [' + m[1] + ']')()); };
+    const auMaps = {
+      yard: { rows: auGrabArr('MAP'), solid: auGrabSet('SOLID') },
+      house: { rows: auGrabArr('HOUSE_MAP'), solid: auGrabSet('HOUSE_SOLID') },
+      barnOut: { rows: auGrabArr('BARNOUT_MAP'), solid: auGrabSet('SOLID') },
+      barnIn: { rows: auGrabArr('BARNIN_MAP'), solid: auGrabSet('IN_SOLID') },
+      oma: { rows: auGrabArr('OMA_MAP'), solid: auGrabSet('IN_SOLID') },
+      green: { rows: auGrabArr('GREEN_MAP'), solid: auGrabSet('IN_SOLID') },
+    };
+    for (const k of Object.keys(auMaps)) { auMaps[k].h = auMaps[k].rows.length; auMaps[k].w = auMaps[k].rows[0].length; }
+    const auStepOn = { barnOut: new Set(['2,0', '20,11']) }; // fire on the step: never transit
+    const auDirs = { up: [0, -1, 'ArrowUp'], down: [0, 1, 'ArrowDown'], left: [-1, 0, 'ArrowLeft'], right: [1, 0, 'ArrowRight'] };
+    const auSettle = async () => {
+      let prev = await S(), eq = 0;
+      for (let i = 0; i < 40 && eq < 2; i++) {
+        await page.waitForTimeout(100);
+        const cur = await S();
+        if (cur.mode === 'overworld' && cur.player.x === prev.player.x && cur.player.y === prev.player.y && cur.world.area === prev.world.area) eq++; else eq = 0;
+        prev = cur;
+      }
+      return prev;
+    };
+    const auDismiss = async (cap) => {
+      for (let i = 0; i < (cap || 40); i++) {
+        const st = await S();
+        if (st.mode !== 'dialogue') return true;
+        await tap('z');
+      }
+      return (await S()).mode !== 'dialogue';
+    };
+    function auPlan(areaName, from, to, dynBlocked, finalDir, startDir) {
+      const A = auMaps[areaName];
+      const solid = (x, y) => {
+        if (x < 0 || y < 0 || x >= A.w || y >= A.h) return true;
+        if (A.solid.has(A.rows[y][x])) return true;
+        if (dynBlocked.has(x + ',' + y)) return true;
+        if ((auStepOn[areaName] || new Set()).has(x + ',' + y) && !(x === to.x && y === to.y)) return true;
+        return false;
+      };
+      startDir = startDir || 'down';
+      const key = (x, y, d) => x + ',' + y + ',' + d;
+      const prev = new Map(); const q = [[from.x, from.y, startDir]];
+      const seen = new Set([key(from.x, from.y, startDir)]);
+      let goalKey = null;
+      while (q.length) {
+        const [x, y, d] = q.shift();
+        if (x === to.x && y === to.y && (!finalDir || d === finalDir)) { goalKey = key(x, y, d); break; }
+        for (const dn of Object.keys(auDirs)) {
+          const [dx, dy] = auDirs[dn];
+          const nx = x + dx, ny = y + dy;
+          if (solid(nx, ny)) continue;
+          const k = key(nx, ny, dn);
+          if (seen.has(k)) continue;
+          seen.add(k); prev.set(k, { from: key(x, y, d), dir: dn }); q.push([nx, ny, dn]);
+        }
+      }
+      if (!goalKey) return null;
+      const steps = [];
+      let cur = goalKey;
+      while (prev.has(cur)) { const p = prev.get(cur); steps.unshift(p.dir); cur = p.from; }
+      return steps;
+    }
+    const auWalk = async (x, y, finalDir) => {
+      const dynBlocked = new Set();
+      for (let attempt = 0; attempt < 40; attempt++) {
+        let st = await S();
+        const areaName = st.world.area;
+        if (st.mode !== 'overworld') return { ok: false, why: 'mode=' + st.mode, ...st.player, area: areaName };
+        if (st.player.x === x && st.player.y === y && (!finalDir || st.player.dir === finalDir)) { await auSettle(); return { ok: true, ...st.player, area: areaName }; }
+        const steps = auPlan(areaName, st.player, { x, y }, dynBlocked, finalDir, st.player.dir);
+        if (!steps) return { ok: false, why: 'no-path', ...st.player, area: areaName };
+        if (!steps.length) return { ok: false, why: 'facing-unreachable', ...st.player, area: areaName };
+        const dirName = steps[0];
+        const [dx, dy, keyName] = auDirs[dirName];
+        const px = st.player.x, py = st.player.y, pArea = areaName;
+        await holdKey(keyName, 120);
+        st = await S();
+        if (st.world.area !== pArea) { await auSettle(); return { ok: st.player.x === x && st.player.y === y, why: 'area-changed', ...st.player, area: st.world.area }; }
+        if (st.player.x === px && st.player.y === py) dynBlocked.add((px + dx) + ',' + (py + dy)); // someone/something held the tile
+      }
+      const st = await S();
+      return { ok: st.player.x === x && st.player.y === y && (!finalDir || st.player.dir === finalDir), why: 'attempts', ...st.player, area: st.world.area };
+    };
+    const auTurn = async (dirKey) => { await holdKey(dirKey, 30); await page.waitForTimeout(80); };
+    const auDoor = async (sx, sy, dirKey, which) => {
+      const w = await auWalk(sx, sy);
+      if (!w.ok) return { ok: false, why: 'walk to door failed: ' + JSON.stringify(w) };
+      await auTurn(dirKey);
+      const before = await S();
+      if (before.player.dir !== { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }[dirKey]) return { ok: false, why: 'facing=' + before.player.dir };
+      await tap('z'); // interact: opens the dialogue
+      let st = await S();
+      for (let i = 0; i < 20 && st.mode !== 'dialogue' && st.world.area === before.world.area; i++) { await page.waitForTimeout(120); st = await S(); }
+      if (st.world.area !== before.world.area) { await auSettle(); return { ok: true, s: st }; } // no dialogue: straight through
+      if (st.mode !== 'dialogue') return { ok: false, why: 'no dialogue, mode=' + st.mode, s: st };
+      if (which === null) { await auDismiss(10); await auSettle(); return { ok: true, s: await S(), dialogueOnly: true }; }
+      await tap('z'); await page.waitForTimeout(200); // complete the line
+      await tap(which === 0 ? 'z' : 'x'); await page.waitForTimeout(400);
+      await auDismiss(10);
+      await auSettle();
+      return { ok: true, s: await S() };
+    };
+    const auPressA = async () => { await tap('z'); await page.waitForTimeout(350); await auSettle(); return S(); };
+
+    // Named proof — the road home: ride out and back on foot from a
+    // chapter 3 morning. The arrival tile is the grass inside the gate.
+    {
+      const idx = meta1.findIndex(m => m.ch === 3 && m.step === 1);
+      await page.evaluate(i => window.__hss.ttLand(i), idx);
+      await page.waitForTimeout(250);
+      const r1 = await auDoor(11, 16, 'ArrowDown', 0); // A: GO TO BERRYHILL
+      let as = await S();
+      await auDismiss(8);
+      const out = r1.ok && as.world.area === 'barnOut';
+      await auWalk(2, 1);
+      await holdKey('ArrowUp', 120); await page.waitForTimeout(300); await auSettle();
+      as = await S();
+      const home = as.world.area === 'yard' && as.player.x === 11 && as.player.y === 16;
+      const free = home && (await auWalk(11, 6)).ok;
+      check('the road home arrives inside the yard gate, on grass Frank can walk off', out && home && free,
+        'arrived ' + as.player.x + ',' + as.player.y + ' in ' + as.world.area);
+    }
+    // Named proof — the greenhouse aisle: a chapter 6 morning lands at
+    // the stove; walk out through the aisle and the door, then come in
+    // the door as a hand player and walk up the aisle to the stove.
+    {
+      const idx = meta1.findIndex(m => m.ch === 6 && m.step === 1);
+      await page.evaluate(i => window.__hss.ttLand(i), idx);
+      await page.waitForTimeout(250);
+      let as = await S();
+      const landedHigh = as.world.area === 'green' && as.player.x === 10 && as.player.y === 4;
+      await auWalk(6, 8); as = await auPressA();
+      const outOk = as.world.area === 'barnOut';
+      await auWalk(20, 10); await auWalk(20, 11);
+      as = await S();
+      const inOk = as.world.area === 'green';
+      const up = inOk && (await auWalk(10, 4)).ok;
+      if (up) await auTurn('ArrowUp'); // face the stove: the tile a player stands on to light it
+      as = await S();
+      const atStove = up && as.player.x === 10 && as.player.y === 4 && as.player.dir === 'up';
+      await auWalk(6, 8); as = await auPressA();
+      check('the greenhouse aisle: out of the stove room and back in the door to the stove, on foot', landedHigh && outOk && inOk && atStove && as.world.area === 'barnOut',
+        'landedHigh=' + landedHigh + ' out=' + outOk + ' in=' + inOk + ' stove=' + atStove);
+    }
+
+    // The full circuit, region by region. Legs: escape (out of the
+    // landing area to the yard, on foot), house, road, barndoor,
+    // stairs, omadoor, green, field, return (the road home again).
+    const auRegions = [];
+    const auSeen = new Set();
+    meta1.forEach((m, i) => { const k = m.ch + '/' + m.step; if (!auSeen.has(k)) { auSeen.add(k); auRegions.push({ idx: i, ...m }); } });
+    for (const reg of auRegions) {
+      const cells = {}; const notes = [];
+      const mark = (col, ok, note) => { cells[col] = ok ? 'ok' : 'FAIL'; if (!ok) notes.push(col + ': ' + note); };
+      const skip = col => { cells[col] = '-'; };
+      await page.evaluate(i => window.__hss.ttLand(i), reg.idx);
+      await page.waitForTimeout(250);
+      let as = await S();
+      const ch = as.world.ch, stairsBuilt = !!as.world.flags.stairsBuilt, buildStep = as.world.flags.buildStep || 0;
+      const landNote = 'land=' + as.world.area + '@' + as.player.x + ',' + as.player.y;
+
+      /* escape the landing area to the yard */
+      try {
+        if (as.world.area === 'green') {
+          const w = await auWalk(6, 7); if (w.ok) { await auWalk(6, 8); as = await auPressA(); }
+          if (as.world.area !== 'barnOut') throw new Error('green exit -> ' + as.world.area);
+        }
+        if (as.world.area === 'oma') {
+          const w = await auWalk(6, 6); if (w.ok) await auWalk(6, 7); as = await auPressA();
+          if (as.world.area !== 'barnOut') throw new Error('oma door exit -> ' + as.world.area);
+        }
+        if (as.world.area === 'barnIn') {
+          const w = await auWalk(14, 6, 'up'); if (!w.ok) throw new Error('walk to stairs landing: ' + JSON.stringify(w));
+          as = await auPressA();
+          if (as.world.area === 'oma') { await auWalk(6, 6); await auWalk(6, 7); as = await auPressA(); }
+          if (as.world.area !== 'barnOut') throw new Error('barnIn exit -> ' + as.world.area);
+        }
+        if (as.world.area === 'house') {
+          await auWalk(10, 12); as = await auPressA();
+          if (as.world.area !== 'yard') throw new Error('house exit -> ' + as.world.area);
+        }
+        if (as.world.area === 'barnOut') {
+          const w = await auWalk(2, 1); if (!w.ok) throw new Error('walk to road: ' + JSON.stringify(w));
+          await holdKey('ArrowUp', 120); await page.waitForTimeout(300); await auSettle(); as = await S();
+          if (as.world.area !== 'yard') throw new Error('road -> ' + as.world.area);
+          if (!(as.player.x === 11 && as.player.y === 16)) throw new Error('road arrival at ' + as.player.x + ',' + as.player.y + ' (not the gate grass 11,16)');
+        }
+        if (as.world.area === 'yard') {
+          const w = await auWalk(11, 6);
+          if (!w.ok) throw new Error('trapped in yard at ' + as.player.x + ',' + as.player.y);
+          mark('escape', true);
+        } else mark('escape', false, 'ended in ' + as.world.area);
+      } catch (e) { mark('escape', false, e.message); }
+
+      /* the house door, both ways (or its sane refusals) */
+      try {
+        as = await S();
+        if (as.world.area !== 'yard') throw new Error('not in yard: ' + as.world.area);
+        if (ch === 1) {
+          const r = await auDoor(11, 4, 'ArrowUp', 1); // B: NOT YET
+          as = await S();
+          if (!r.ok) throw new Error(r.why);
+          if (as.world.area !== 'yard' || as.mode !== 'overworld') throw new Error('ch1 door -> ' + as.world.area + '/' + as.mode);
+          mark('house', true);
+        } else if (ch === 3 && as.world.step === 4) {
+          const r = await auDoor(11, 4, 'ArrowUp', 0); // A: REST (the truck dialogue offers no way in)
+          as = await S();
+          if (!r.ok) throw new Error(r.why);
+          if (as.world.area !== 'yard' || as.mode !== 'overworld') throw new Error('ch3/4 door -> ' + as.world.area + '/' + as.mode);
+          mark('house', true);
+        } else {
+          const r = await auDoor(11, 4, 'ArrowUp', 1); // B: GO INSIDE
+          as = await S();
+          if (!r.ok) throw new Error(r.why);
+          if (as.world.area !== 'house' || !(as.player.x === 10 && as.player.y === 11)) throw new Error('entry -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+          const w = await auWalk(10, 12);
+          if (!w.ok) throw new Error('walk to house exit tile: ' + JSON.stringify(w));
+          as = await S();
+          if (as.world.area !== 'house') throw new Error('stepping on house exit left by itself -> ' + as.world.area);
+          as = await auPressA();
+          if (as.world.area !== 'yard' || !(as.player.x === 10 && as.player.y === 5)) throw new Error('house exit -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+          mark('house', true);
+        }
+      } catch (e) { mark('house', false, e.message); }
+
+      /* the road out, and the Berryhill circuit */
+      if (ch < 3) {
+        try {
+          const r = await auDoor(11, 16, 'ArrowDown', null); // the gate: sticks, dialogue only
+          as = await S();
+          if (!r.ok) throw new Error(r.why);
+          if (as.world.area !== 'yard') throw new Error('gate -> ' + as.world.area);
+          mark('road', true);
+        } catch (e) { mark('road', false, e.message); }
+        ['barndoor', 'stairs', 'omadoor', 'green', 'field', 'return'].forEach(skip);
+      } else {
+        try {
+          const r = await auDoor(11, 16, 'ArrowDown', 0); // A: GO TO BERRYHILL
+          as = await S();
+          if (!r.ok) throw new Error(r.why);
+          if (as.world.area !== 'barnOut' || !(as.player.x === 2 && as.player.y === 1)) throw new Error('road out -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+          await auDismiss(8); // ch3 step1 arrival line
+          mark('road', true);
+        } catch (e) { mark('road', false, e.message); }
+        let inBarn = false;
+        try {
+          const r = await auDoor(13, 5, 'ArrowUp', 1); // B: GO INSIDE
+          as = await S();
+          if (!r.ok) throw new Error(r.why);
+          if (as.world.area !== 'barnIn' || !(as.player.x === 14 && as.player.y === 6)) throw new Error('barn door -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+          inBarn = true;
+          mark('barndoor', true);
+        } catch (e) { mark('barndoor', false, e.message); }
+        if (inBarn) {
+          try {
+            if (ch === 5 && as.world.step === 0 && !stairsBuilt) {
+              // the stair build itself, from the real landing state
+              as = await S();
+              await tap('z'); await page.waitForTimeout(300);
+              as = await S();
+              if (as.mode !== 'dialogue') throw new Error('facing stairs did not open the project (mode=' + as.mode + ')');
+              await tap('z'); await page.waitForTimeout(200);
+              await tap('x'); await page.waitForTimeout(300); // B: NOT YET
+              await auSettle(); as = await S();
+              if (as.world.area !== 'barnIn' || as.world.flags.stairsDay != null) throw new Error('NOT YET -> area=' + as.world.area + ' stairsDay=' + as.world.flags.stairsDay);
+              await tap('z'); await page.waitForTimeout(300);
+              await tap('z'); await page.waitForTimeout(200);
+              await tap('z'); await page.waitForTimeout(300); // A: BUILD THE STAIRS
+              await auDismiss(8); await auSettle(); as = await S();
+              if (as.world.flags.stairsDay == null) throw new Error('build did not start');
+              const w = await auWalk(14, 5);
+              if (!w.ok) throw new Error('walk onto stairs: ' + JSON.stringify(w));
+              as = await auPressA();
+              if (as.world.area !== 'barnOut') throw new Error('standing exit (build day) -> ' + as.world.area);
+              const r = await auDoor(13, 5, 'ArrowUp', 0); // A: REST — the night finishes the stairs
+              as = await S();
+              if (!r.ok) throw new Error(r.why);
+              if (!as.world.flags.stairsBuilt) throw new Error('stairs not built after the night');
+              const r2 = await auDoor(13, 5, 'ArrowUp', 1);
+              as = await S();
+              if (!r2.ok || as.world.area !== 'barnIn') throw new Error('re-entry failed');
+              await auWalk(14, 6, 'up');
+              as = await auPressA();
+              if (as.world.area !== 'oma') throw new Error('built stairs -> ' + as.world.area);
+              mark('stairs', true);
+              try {
+                await auWalk(10, 6);
+                as = await S();
+                if (as.world.area !== 'oma') throw new Error('stepping on oma stairs left by itself');
+                as = await auPressA();
+                if (as.world.area !== 'barnIn') throw new Error('oma stairs -> ' + as.world.area);
+                await auWalk(14, 6, 'up'); as = await auPressA();
+                if (as.world.area !== 'oma') throw new Error('barnIn stairs -> ' + as.world.area);
+                await auWalk(6, 6); await auWalk(6, 7); as = await auPressA();
+                if (as.world.area !== 'barnOut' || !(as.player.x === 18 && as.player.y === 5)) throw new Error('oma door -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+                mark('omadoor', true);
+              } catch (e2) { mark('omadoor', false, e2.message); }
+            } else if (stairsBuilt) {
+              const w = await auWalk(14, 6, 'up');
+              if (!w.ok) throw new Error('walk to stairs landing: ' + JSON.stringify(w));
+              as = await auPressA();
+              if (as.world.area !== 'oma' || !(as.player.x === 10 && as.player.y === 5)) throw new Error('stairs -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+              mark('stairs', true);
+              const w2 = await auWalk(10, 6);
+              as = await S();
+              if (as.world.area !== 'oma') throw new Error('stepping on oma stairs tile left by itself -> ' + as.world.area);
+              as = await auPressA();
+              if (as.world.area !== 'barnIn' || !(as.player.x === 14 && as.player.y === 6)) throw new Error('oma stairs -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+              await auWalk(14, 6, 'up'); as = await auPressA();
+              if (as.world.area !== 'oma') throw new Error('stairs down again -> ' + as.world.area);
+              await auWalk(6, 6); await auWalk(6, 7); as = await auPressA();
+              if (as.world.area !== 'barnOut' || !(as.player.x === 18 && as.player.y === 5)) throw new Error('oma door -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+              const r = await auDoor(18, 5, 'ArrowUp', 0); // A: GO IN (the downstairs door)
+              as = await S();
+              if (!r.ok) throw new Error(r.why);
+              if (as.world.area !== 'oma' || !(as.player.x === 6 && as.player.y === 6)) throw new Error('downstairs door -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+              await auWalk(6, 7); as = await auPressA();
+              if (as.world.area !== 'barnOut') throw new Error('oma door exit (2nd) -> ' + as.world.area);
+              mark('omadoor', true);
+            } else {
+              // no stairs yet: facing the stairs tile is the way out
+              const w = await auWalk(14, 6, 'up');
+              if (!w.ok) throw new Error('walk to stairs landing: ' + JSON.stringify(w));
+              as = await auPressA();
+              if (as.world.area !== 'barnOut' || !(as.player.x === 13 && as.player.y === 5)) throw new Error('stairs (unbuilt) -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+              mark('stairs', true);
+              const r = await auDoor(18, 5, 'ArrowUp', 0);
+              as = await S();
+              if (!r.ok) throw new Error(r.why);
+              if (as.world.area !== 'oma' || !(as.player.x === 6 && as.player.y === 6)) throw new Error('downstairs door -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+              const w2 = await auWalk(10, 6);
+              as = await S();
+              if (!w2.ok || as.world.area !== 'oma') throw new Error('(10,6) without stairs -> ' + as.world.area + ' walk=' + JSON.stringify(w2));
+              await auWalk(6, 6); await auWalk(6, 7); as = await auPressA();
+              if (as.world.area !== 'barnOut' || !(as.player.x === 18 && as.player.y === 5)) throw new Error('oma door -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+              mark('omadoor', true);
+            }
+          } catch (e) { mark('stairs', false, e.message); if (!cells.omadoor) mark('omadoor', false, 'stairs leg failed first'); }
+        } else { skip('stairs'); skip('omadoor'); }
+        /* the greenhouse: in on the step, up the aisle to the stove, out by A */
+        try {
+          as = await S();
+          if (as.world.area !== 'barnOut') {
+            if (as.world.area === 'oma') { await auWalk(6, 6); await auWalk(6, 7); as = await auPressA(); }
+            if (as.world.area === 'barnIn') { await auWalk(14, 6, 'up'); as = await auPressA(); if (as.world.area === 'oma') { await auWalk(6, 6); await auWalk(6, 7); as = await auPressA(); } }
+          }
+          if (as.world.area !== 'barnOut') throw new Error('not at the farm: ' + as.world.area);
+          if (buildStep >= 3) {
+            const w = await auWalk(20, 11);
+            as = await S();
+            if (as.world.area !== 'green' || !(as.player.x === 6 && as.player.y === 7)) throw new Error('green entry -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+            const up = await auWalk(10, 4); // the aisle, up to the stove tile
+            if (!up.ok) throw new Error('aisle to the stove: ' + JSON.stringify(up));
+            const w2 = await auWalk(6, 8);
+            as = await S();
+            if (as.world.area !== 'green') throw new Error('stepping on green door left by itself -> ' + as.world.area);
+            as = await auPressA();
+            if (as.world.area !== 'barnOut' || !(as.player.x === 20 && as.player.y === 11)) throw new Error('green exit -> ' + as.world.area + '@' + as.player.x + ',' + as.player.y);
+            mark('green', true);
+          } else {
+            const w = await auWalk(20, 11);
+            as = await S();
+            if (!w.ok || as.world.area !== 'barnOut') throw new Error('unbuilt greenhouse tile -> ' + as.world.area + ' walk=' + JSON.stringify(w));
+            mark('green', true);
+          }
+        } catch (e) { mark('green', false, e.message); }
+        /* the field gate, both ways (or its ch.3 refusal) */
+        try {
+          as = await S();
+          if (as.world.area !== 'barnOut') throw new Error('not at the farm: ' + as.world.area);
+          if (ch >= 4) {
+            const r = await auDoor(13, 11, 'ArrowDown', 0); // A: ENTER THE FIELD
+            as = await S();
+            if (!r.ok) throw new Error(r.why);
+            if (!(as.player.x === 13 && as.player.y === 13)) throw new Error('field entry -> pos ' + as.player.x + ',' + as.player.y);
+            await auTurn('ArrowUp');
+            await tap('z'); await page.waitForTimeout(300);
+            await tap('z'); await page.waitForTimeout(200);
+            await tap('z'); await page.waitForTimeout(400); // A: CLIMB BACK
+            await auDismiss(8); await auSettle(); as = await S();
+            if (!(as.player.x === 13 && as.player.y === 11)) throw new Error('field exit -> pos ' + as.player.x + ',' + as.player.y);
+            mark('field', true);
+          } else {
+            const r = await auDoor(13, 11, 'ArrowDown', null);
+            as = await S();
+            if (!r.ok) throw new Error(r.why);
+            if (!(as.player.x === 13 && as.player.y === 11)) throw new Error('ch3 gate crossed?! pos ' + as.player.x + ',' + as.player.y);
+            mark('field', true);
+          }
+        } catch (e) { mark('field', false, e.message); }
+        /* the road home */
+        try {
+          as = await S();
+          if (as.world.area !== 'barnOut') throw new Error('not at the farm: ' + as.world.area);
+          const w = await auWalk(2, 1);
+          if (!w.ok) throw new Error('walk to road: ' + JSON.stringify(w));
+          await holdKey('ArrowUp', 120); await page.waitForTimeout(300); await auSettle(); as = await S();
+          if (as.world.area !== 'yard') throw new Error('road back -> ' + as.world.area);
+          const w2 = await auWalk(11, 6);
+          if (!w2.ok) throw new Error('trapped after road return at ' + as.player.x + ',' + as.player.y);
+          mark('return', true);
+        } catch (e) { mark('return', false, e.message); }
+      }
+      const auCols = ['escape', 'house', 'road', 'barndoor', 'stairs', 'omadoor', 'green', 'field', 'return'];
+      const auFailed = auCols.filter(c => cells[c] === 'FAIL');
+      check('area audit ch.' + reg.ch + ' step ' + reg.step + ' (day ' + reg.day + '): every area entered and left on foot',
+        auFailed.length === 0,
+        landNote + ' | ' + auCols.map(c => c + '=' + (cells[c] || '?')).join(' ') + (notes.length ? ' | ' + notes.join(' ; ') : ''));
+    }
+  }
+
   await browser.close();
   if (ownServer) server.close();
   log('SMOKE DONE');

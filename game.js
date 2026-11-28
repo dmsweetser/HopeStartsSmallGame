@@ -3483,7 +3483,12 @@ const GREEN_MAP = [
   'HzzzzzzzzzzH',
   'HzzzzzzzzzhH',
   'HzzzzzzzzzzH',
-  'HaaaaaaaaaaH',
+  /* The centre aisle (x=6, under the door): the south bench once ran
+     wall to wall, and the stove room beyond it could be reached only
+     by being placed there — a hand player at the door could never
+     reach the stove, and a traveled morning at the stove could never
+     leave. Found by the area-transition audit, Nov 27, 2026. */
+  'HaaaaazaaaaH',
   'HzzzzzzzzzzH',
   'HzzzzzzzzzzH',
   'HHHHHHDHHHHH',
@@ -3545,7 +3550,11 @@ function exitsFor(a) { return EXITS[a] ? EXITS[a]() : []; }
 const EXITS = { // area -> () => [{x,y,to,tx,ty}] (state-dependent)
   house: () => [{ x: 10, y: 12, to: 'yard', tx: 10, ty: 5 }],
   barnOut: () => {
-    const ex = [{ x: 2, y: 0, to: 'yard', tx: 11, ty: 1 }];
+    /* The road home arrives INSIDE the yard gate at (11,16) — the mirror of
+       the trip out. (It once arrived at (11,1): a roof tile, solid on all
+       four sides — stepping off the road walled Frank into the roof and
+       the autosave kept him there. Found by the area-transition audit.) */
+    const ex = [{ x: 2, y: 0, to: 'yard', tx: 11, ty: 16 }];
     if (G.save.world.ch >= 3 && (G.save.world.flags.buildStep || 0) >= 3) ex.push({ x: 20, y: 11, to: 'green', tx: 6, ty: 7 });
     return ex;
   },
@@ -3790,15 +3799,27 @@ function barnInteract(f) {
   if (f.x === 13 && f.y === 12) { // the field gate
     if (w.ch >= 4) {
       if (player.ty >= 13) {
-        if (w.ch === 6 && w.step === 5) return say(TEXT.barn.thePlantingGateThe, which => { if (which === 0) doPlanting(); if (which === 1) say([TEXT.barn.theListAsThe, ...(plantingGate().length ? plantingGate().map(m => '— ' + m) : TEXT.barn.nothingItIsTime)]); }, TEXT.barn.plantingDay);
+        const offerClimbBack = () => say(TEXT.barn.backToTheYard, which => { if (which === 0) { player.tx = 13; player.ty = 11; syncPixels(player); alvin.tx = 13; alvin.ty = 12; syncPixels(alvin); } }, TEXT.barn.climbBack);
+        /* The gate is the field's only way out, so its two special
+           dialogues must never seal it (area-transition audit, Nov 27,
+           2026): the planting dialogue fires only when the planting can
+           actually happen — the same condition the canonical run plants
+           on — and until then the gate is a gate, so the field work the
+           list names (tarp, fence, mulch) can be done and LEFT from;
+           and the frost watch, once its business is done, hands Frank
+           the climb-back offer itself instead of leaving him inside. */
+        if (w.ch === 6 && w.step === 5 && plantingGate().length === 0) return say(TEXT.barn.thePlantingGateThe, which => { if (which === 0) doPlanting(); if (which === 1) say([TEXT.barn.theListAsThe, ...(plantingGate().length ? plantingGate().map(m => '— ' + m) : TEXT.barn.nothingItIsTime)]); }, TEXT.barn.plantingDay);
         if (w.ch === 9 && w.step === 2) {
           const rowsWithPlants = [1, 2, 3, 4, 5, 6, 7].filter(rn => rowHasBushes(rn));
-          const opts = rowsWithPlants.map(rn => F(TEXT.barn.watchRowRn, { rn: rn }));
-          return say(F(TEXT.barn.theFrostWatchOne, { v: (w.flags.watchTonight ? F(TEXT.barn.rowWatchtonight, { watchTonight: w.flags.watchTonight }) : "UNSET") }), which => {
-            if (which < rowsWithPlants.length) { w.flags.watchTonight = rowsWithPlants[which]; saveGame(); say(F(TEXT.barn.rowWhichTonightAlvin, { which: rowsWithPlants[which] })); }
-          }, [...opts, TEXT.barn.leaveItUnset]);
+          if (rowsWithPlants.length) {
+            const opts = rowsWithPlants.map(rn => F(TEXT.barn.watchRowRn, { rn: rn }));
+            return say(F(TEXT.barn.theFrostWatchOne, { v: (w.flags.watchTonight ? F(TEXT.barn.rowWatchtonight, { watchTonight: w.flags.watchTonight }) : "UNSET") }), which => {
+              if (which < rowsWithPlants.length) { w.flags.watchTonight = rowsWithPlants[which]; saveGame(); say(F(TEXT.barn.rowWhichTonightAlvin, { which: rowsWithPlants[which] }), () => offerClimbBack()); }
+              else offerClimbBack();
+            }, [...opts, TEXT.barn.leaveItUnset]);
+          }
         }
-        return say(TEXT.barn.backToTheYard, which => { if (which === 0) { player.tx = 13; player.ty = 11; syncPixels(player); alvin.tx = 13; alvin.ty = 12; syncPixels(alvin); } }, TEXT.barn.climbBack);
+        return offerClimbBack();
       }
       return say(TEXT.barn.theFieldGateIt, which => { if (which === 0) { player.tx = 13; player.ty = 13; syncPixels(player); alvin.tx = 13; alvin.ty = 12; syncPixels(alvin); if (w.ch === 4 && w.step === 0) stakeField(); } }, TEXT.barn.enterTheField);
     }
@@ -5451,9 +5472,11 @@ function drawAreaProps() {
     const gp = s2.plants.filter(p => p.location === 'GREENHOUSE' && !p.memorial && !p.gone);
     if (s2.company && !s2.company.gone && s2.company.n > 0 && s2.company.loc === 'GREENHOUSE') gp.push({ stage: s2.company.stage, watered: s2.company.watered, health: s2.company.health });
     if (s2.nursery && s2.nursery.stock > 0) gp.push({ stage: s2.nursery.stage, watered: s2.nursery.watered, health: s2.nursery.health });
-    gp.slice(0, 20).forEach((p, i) => {
+    gp.slice(0, 19).forEach((p, i) => {
       const north = i < 10;
-      const sx = (1 + (i % 10)) * TILE - camX, sy = (north ? 1 : 5) * TILE - camY;
+      let bx = 1 + (i % 10);
+      if (!north && bx >= 6) bx += 1; // the centre aisle: no pot sits in the walkway
+      const sx = bx * TILE - camX, sy = (north ? 1 : 5) * TILE - camY;
       ctx.drawImage(POT_SPRITES[Math.min(p.stage, 3)], sx + 1, sy - 1, 13, 13);
       if (p.watered) { ctx.fillStyle = '#3b6fe0'; ctx.fillRect(sx + 11, sy - 4, 2, 3); }
       if (p.health >= 2) { ctx.fillStyle = '#e0483e'; ctx.fillRect(sx + 12, sy + 9, 3, 3); }
